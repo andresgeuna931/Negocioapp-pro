@@ -1,6 +1,8 @@
-import { Settings, Store, Bell, Users, CreditCard } from 'lucide-react';
+import { Settings, Store, Bell, Users, CreditCard, Tag, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { getTenantSettings, getSubscriptionStatus, getTeamMembers } from '@/lib/actions/auth';
 import { formatCurrency, formatDate, getSubscriptionStatusLabel } from '@/lib/utils';
 import { TenantSettingsForm } from '@/components/config/tenant-settings-form';
@@ -138,6 +140,28 @@ export default async function ConfigPage() {
                     </p>
                 </CardContent>
             </Card>
+
+            {/* Price Lists */}
+            <Link href="/config/precios">
+                <Card className="cursor-pointer hover:border-emerald-300 hover:shadow-md transition-all">
+                    <CardContent className="py-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                                <Tag className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-slate-900 dark:text-white">
+                                    Listas de Precios
+                                </h3>
+                                <p className="text-sm text-slate-500">
+                                    Configurá precios para efectivo, tarjeta, mayorista, etc.
+                                </p>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-slate-400" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </Link>
 
             {/* Team */}
             <Card>
