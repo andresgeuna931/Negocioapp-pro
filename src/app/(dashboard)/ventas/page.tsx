@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
     ScanLine,
     Search,
@@ -11,7 +11,8 @@ import {
     CreditCard,
     Banknote,
     ArrowRight,
-    CheckCircle
+    CheckCircle,
+    Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +21,19 @@ import { Badge } from '@/components/ui/badge';
 import { Scanner } from '@/components/sales/scanner';
 import { getProducts, getProductByBarcode } from '@/lib/actions/products';
 import { createSale } from '@/lib/actions/sales';
+import { getPriceLists, type PriceList } from '@/lib/actions/price-lists';
+import { calculateAdjustedPrice } from '@/lib/utils/pricing';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import type { Product, CartItem, PaymentMethod } from '@/lib/types';
 
+interface CartItemWithPrice extends CartItem {
+    adjustedPrice: number;
+}
+
 export default function SalesPage() {
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [cart, setCart] = useState<CartItemWithPrice[]>([]);
+    const [priceLists, setPriceLists] = useState<PriceList[]>([]);
+    const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
     const [showScanner, setShowScanner] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -34,8 +43,32 @@ export default function SalesPage() {
     const [saleComplete, setSaleComplete] = useState<string | null>(null);
     const [error, setError] = useState('');
 
-    // Calculate total
-    const total = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0);
+    // Load price lists on mount
+    useEffect(() => {
+        const loadPriceLists = async () => {
+            const result = await getPriceLists();
+            if (result.data && result.data.length > 0) {
+                setPriceLists(result.data);
+                // Select default list
+                const defaultList = result.data.find(l => l.is_default) || result.data[0];
+                setSelectedPriceList(defaultList);
+            }
+        };
+        loadPriceLists();
+    }, []);
+
+    // Calculate adjusted price for a product
+    const getAdjustedPrice = (product: Product): number => {
+        if (!selectedPriceList) return product.price;
+        return calculateAdjustedPrice(
+            product.price,
+            selectedPriceList.adjustment_type,
+            selectedPriceList.adjustment_value
+        );
+    };
+
+    // Calculate total using adjusted prices
+    const total = cart.reduce((sum, item) => sum + item.adjustedPrice * item.qty, 0);
 
     // Handle barcode scan
     const handleScan = useCallback(async (barcode: string) => {
@@ -52,7 +85,7 @@ export default function SalesPage() {
         if (result.data) {
             addToCart(result.data);
         }
-    }, []);
+    }, [selectedPriceList]);
 
     // Search products
     const handleSearch = async (query: string) => {
@@ -70,20 +103,35 @@ export default function SalesPage() {
 
     // Add product to cart
     const addToCart = (product: Product, qty: number = 1) => {
+        const adjustedPrice = getAdjustedPrice(product);
         setCart((prev) => {
             const existing = prev.find((item) => item.product.id === product.id);
             if (existing) {
                 return prev.map((item) =>
                     item.product.id === product.id
-                        ? { ...item, qty: item.qty + qty }
+                        ? { ...item, qty: item.qty + qty, adjustedPrice }
                         : item
                 );
             }
-            return [...prev, { product, qty }];
+            return [...prev, { product, qty, adjustedPrice }];
         });
         setSearchQuery('');
         setSearchResults([]);
     };
+
+    // Recalculate prices when price list changes
+    useEffect(() => {
+        if (selectedPriceList && cart.length > 0) {
+            setCart(prev => prev.map(item => ({
+                ...item,
+                adjustedPrice: calculateAdjustedPrice(
+                    item.product.price,
+                    selectedPriceList.adjustment_type,
+                    selectedPriceList.adjustment_value
+                )
+            })));
+        }
+    }, [selectedPriceList]);
 
     // Update quantity
     const updateQty = (productId: string, delta: number) => {
@@ -178,13 +226,41 @@ export default function SalesPage() {
     return (
         <div className="space-y-4">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                    Venta Rápida
-                </h1>
-                <p className="text-slate-500">
-                    Escaneá o buscá productos para agregar al carrito
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Venta Rápida
+                    </h1>
+                    <p className="text-slate-500">
+                        Escaneá o buscá productos para agregar al carrito
+                    </p>
+                </div>
+
+                {/* Price List Selector */}
+                {priceLists.length > 1 && (
+                    <div className="flex items-center gap-2">
+                        <Tag className="w-5 h-5 text-slate-400" />
+                        <select
+                            value={selectedPriceList?.id || ''}
+                            onChange={(e) => {
+                                const list = priceLists.find(l => l.id === e.target.value);
+                                if (list) setSelectedPriceList(list);
+                            }}
+                            className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
+                        >
+                            {priceLists.map(list => (
+                                <option key={list.id} value={list.id}>
+                                    {list.name}
+                                    {list.adjustment_value !== 0 && (
+                                        list.adjustment_type === 'percentage'
+                                            ? ` (${list.adjustment_value > 0 ? '+' : ''}${list.adjustment_value}%)`
+                                            : ` (${list.adjustment_value > 0 ? '+' : ''}$${list.adjustment_value})`
+                                    )}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {error && (
@@ -279,7 +355,12 @@ export default function SalesPage() {
                                                     {item.product.name}
                                                 </p>
                                                 <p className="text-sm text-slate-500">
-                                                    {formatCurrency(item.product.price)} x {item.product.unit_type}
+                                                    {formatCurrency(item.adjustedPrice)} x {item.product.unit_type}
+                                                    {item.adjustedPrice !== item.product.price && (
+                                                        <span className="text-xs text-slate-400 line-through ml-2">
+                                                            {formatCurrency(item.product.price)}
+                                                        </span>
+                                                    )}
                                                 </p>
                                             </div>
 
@@ -312,7 +393,7 @@ export default function SalesPage() {
                                             {/* Line total */}
                                             <div className="text-right w-24">
                                                 <p className="font-semibold text-slate-900 dark:text-white">
-                                                    {formatCurrency(item.product.price * item.qty)}
+                                                    {formatCurrency(item.adjustedPrice * item.qty)}
                                                 </p>
                                             </div>
 
