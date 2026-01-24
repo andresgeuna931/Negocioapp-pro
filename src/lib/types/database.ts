@@ -8,8 +8,8 @@ export type UserRole = 'owner' | 'staff' | 'admin';
 export type UnitType = 'unit' | 'kg' | 'g' | 'lt' | 'ml';
 export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'mixed';
 export type MovementType = 'sale' | 'adjustment' | 'purchase' | 'return';
-export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
-export type SubscriptionPlan = 'free' | 'basic' | 'premium';
+export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'unpaid';
+export type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'starter' | 'professional' | 'business';
 export type CashSessionStatus = 'open' | 'closed';
 export type CashMovementType = 'sale' | 'withdrawal' | 'deposit' | 'expense';
 
@@ -19,6 +19,11 @@ export interface Tenant {
   name: string;
   slug: string;
   status: TenantStatus;
+  plan_type: SubscriptionPlan; // Added
+  subscription_status: SubscriptionStatus; // Added
+  trial_ends_at?: string; // Added
+  current_period_end?: string; // Added
+  mercadopago_customer_id?: string; // Added
   low_stock_threshold_default: number;
   address?: string;
   phone?: string;
@@ -116,10 +121,12 @@ export interface InventoryMovement {
 export interface Subscription {
   id: string;
   tenant_id: string;
-  plan: SubscriptionPlan;
+  plan?: SubscriptionPlan; // Legacy
+  plan_id?: SubscriptionPlan; // Added
   status: SubscriptionStatus;
   current_period_start: string;
   current_period_end: string;
+  mercadopago_subscription_id?: string; // Added
   trial_ends_at?: string;
   last_payment_at?: string;
   last_payment_amount?: number;
