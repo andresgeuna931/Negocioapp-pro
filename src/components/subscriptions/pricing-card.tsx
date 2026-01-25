@@ -68,10 +68,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading }: Pricin
                         text="Cuentas Corrientes (Fiado)"
                         tooltip="Permite vender a crédito y registrar deudas de clientes"
                     />
-                    <FeatureRow
-                        included={plan.features.multi_branch}
-                        text="Multi-sucursal (Próximamente)"
-                    />
+
 
                     {/* Soporte - Diferenciador */}
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800">

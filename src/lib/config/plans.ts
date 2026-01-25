@@ -13,7 +13,6 @@ export const PLANS = {
             reports: 'basic',
             support: 'chatbot', // Autogestión 100%
             current_account: false,
-            multi_branch: false,
         },
         description: 'Ideal para kioscos pequeños que recién empiezan.'
     },
@@ -31,7 +30,6 @@ export const PLANS = {
             reports: 'advanced',
             support: 'whatsapp_business', // Horario comercial
             current_account: true,
-            multi_branch: false,
         },
         description: 'Para negocios en crecimiento que necesitan gestión de clientes.'
     },
@@ -49,7 +47,6 @@ export const PLANS = {
             reports: 'advanced_excel',
             support: 'priority', // Prioridad en respuesta
             current_account: true,
-            multi_branch: true,
         },
         description: 'Gestión total sin límites para comercios establecidos.'
     }
