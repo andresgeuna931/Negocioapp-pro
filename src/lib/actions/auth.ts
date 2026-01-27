@@ -223,6 +223,7 @@ export async function getSubscriptionStatus() {
 
 // Import business types for internal use (cannot re-export from 'use server' file)
 import { type BusinessType } from '@/lib/constants/business-types';
+import { seedTenantData } from './seeding';
 
 // Sign up - Create new user with tenant
 export async function signUp(data: {
@@ -236,7 +237,7 @@ export async function signUp(data: {
 
     // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
+        email: data.email.trim(),
         password: data.password,
     });
 
@@ -260,60 +261,37 @@ export async function signUp(data: {
         + '-' + Date.now().toString(36);
 
     // 3. Create tenant
-    const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .insert({
-            name: data.businessName,
-            slug: slug,
-            status: 'trial',
-            low_stock_threshold_default: 5,
-            settings: { business_type: data.businessType },
-        })
-        .select()
-        .single();
+    // 3. Call RPC to create tenant, profile, subscription safely
+    console.log('Calling register_new_tenant RPC with:', {
+        p_user_id: userId,
+        p_email: data.email,
+        p_business_type: data.businessType
+    });
 
-    if (tenantError) {
-        return { error: 'Error al crear negocio: ' + tenantError.message };
+    const { data: tenantId, error: rpcError } = await supabase.rpc('register_new_tenant', {
+        p_user_id: userId,
+        p_email: data.email,
+        p_full_name: data.fullName,
+        p_business_name: data.businessName,
+        p_business_type: data.businessType,
+        p_slug: slug
+    });
+
+    if (rpcError) {
+        console.error('RPC Error details:', rpcError);
+        // Warning: The user is created in Auth but DB setup failed. 
+        // In a real app we might want to clean up the auth user here.
+        return { error: 'Error al registrar negocio (RPC): ' + rpcError.message };
     }
 
-    // 4. Create profile
-    const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-            id: userId,
-            tenant_id: tenant.id,
-            role: 'owner',
-            full_name: data.fullName,
-            email: data.email,
-            is_active: true,
-        });
+    // 6. Seed initial data based on business type
+    // Import dynamically or ensure import is at top
+    // tenantId is returned directly from RPC
+    await seedTenantData(tenantId, data.businessType);
 
-    if (profileError) {
-        // Rollback tenant if profile creation fails
-        await supabase.from('tenants').delete().eq('id', tenant.id);
-        return { error: 'Error al crear perfil: ' + profileError.message };
-    }
-
-    // 5. Create trial subscription (30 days)
-    const now = new Date();
-    const trialEnd = new Date(now);
-    trialEnd.setDate(trialEnd.getDate() + 30);
-
-    const { error: subError } = await supabase
-        .from('subscriptions')
-        .insert({
-            tenant_id: tenant.id,
-            plan: 'free',
-            status: 'trial',
-            current_period_start: now.toISOString(),
-            current_period_end: trialEnd.toISOString(),
-            trial_ends_at: trialEnd.toISOString(),
-        });
-
-    if (subError) {
-        console.error('Error creating subscription:', subError);
-        // Continue anyway - subscription is not critical for MVP
-    }
+    // 6. Seed initial data based on business type
+    // Import dynamically or ensure import is at top
+    await seedTenantData(tenant.id, data.businessType);
 
     revalidatePath('/');
     return { error: null };

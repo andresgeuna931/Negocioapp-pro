@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { getProducts, getCategories } from '@/lib/actions/products';
 import { formatCurrency, formatQuantity, getStockStatus } from '@/lib/utils';
 import { ProductSearch } from '@/components/products/product-search';
+import { ProductsImportModal } from '@/components/products/ProductsImportModal';
 
 export default async function ProductsPage({
     searchParams,
@@ -33,6 +34,7 @@ export default async function ProductsPage({
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <ProductsImportModal />
                     <Link href="/productos/precios">
                         <Button variant="secondary" className="w-full sm:w-auto">
                             <DollarSign className="w-5 h-5 mr-2" />

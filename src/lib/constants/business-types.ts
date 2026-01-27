@@ -3,6 +3,7 @@
 export const BUSINESS_TYPES = [
     { value: 'kiosco', label: 'Kiosco / Almacén' },
     { value: 'libreria', label: 'Librería' },
+    { value: 'ferreteria', label: 'Ferretería' },
     { value: 'veterinaria', label: 'Veterinaria' },
     { value: 'verduleria', label: 'Verdulería' },
     { value: 'carniceria', label: 'Carnicería' },

@@ -6,7 +6,7 @@
 export type TenantStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
 export type UserRole = 'owner' | 'staff' | 'admin';
 export type UnitType = 'unit' | 'kg' | 'g' | 'lt' | 'ml';
-export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'mixed';
+export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'mixed' | 'account';
 export type MovementType = 'sale' | 'adjustment' | 'purchase' | 'return';
 export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'unpaid';
 export type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'starter' | 'professional' | 'business';
@@ -136,6 +136,50 @@ export interface Subscription {
   updated_at: string;
 }
 
+// Customers & Accounts
+export type AccountMovementType = 'sale' | 'payment' | 'adjustment_debit' | 'adjustment_credit';
+
+export interface Customer {
+  id: string;
+  tenant_id: string;
+  full_name: string;
+  dni?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  notes?: string;
+  is_active: boolean;
+  credit_limit: number;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  account?: CustomerAccount;
+}
+
+export interface CustomerAccount {
+  id: string;
+  tenant_id: string;
+  customer_id: string;
+  balance: number;
+  last_movement_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountMovement {
+  id: string;
+  tenant_id: string;
+  account_id: string;
+  type: AccountMovementType;
+  amount: number;
+  description?: string;
+  reference_id?: string;
+  created_by?: string;
+  created_at: string;
+  // Relations
+  creator?: Profile;
+}
+
 // ============================================
 // TIPOS PARA FORMULARIOS Y ACCIONES
 // ============================================
@@ -168,6 +212,7 @@ export interface CreateSaleData {
     qty: number;
   }[];
   payment_method: PaymentMethod;
+  customer_id?: string;
   notes?: string;
 }
 

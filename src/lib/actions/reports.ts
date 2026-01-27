@@ -147,3 +147,27 @@ export async function getInventoryValue() {
         error: null,
     };
 }
+
+export async function getSalesHistory(days: number = 30) {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+
+    const { data } = await getSalesByDateRange(from.toISOString(), to.toISOString());
+
+    const filledData = [];
+    for (let i = 0; i <= days; i++) {
+        const d = new Date(from);
+        d.setDate(d.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+
+        const existing = data?.find(item => item.date === dateStr);
+        filledData.push({
+            date: dateStr,
+            total: existing ? existing.total : 0,
+            count: existing ? existing.count : 0
+        });
+    }
+
+    return filledData;
+}

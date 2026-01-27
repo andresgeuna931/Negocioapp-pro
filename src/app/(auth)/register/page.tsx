@@ -49,11 +49,18 @@ function RegisterForm() {
             return;
         }
 
+        // Client-side validation: Trim and check regex
+        const cleanEmail = formData.email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+            setError('Formato de email inválido. Revisá que no tenga espacios ni caracteres extraños.');
+            return;
+        }
+
         setLoading(true);
 
         try {
             const result = await signUp({
-                email: formData.email,
+                email: cleanEmail,
                 password: formData.password,
                 fullName: formData.fullName,
                 businessName: formData.businessName,
@@ -66,7 +73,8 @@ function RegisterForm() {
                 router.push(redirect);
                 router.refresh();
             }
-        } catch {
+        } catch (err) {
+            console.error('Submission error:', err);
             setError('Error al crear la cuenta');
         } finally {
             setLoading(false);

@@ -13,6 +13,8 @@ export const PLANS = {
             reports: 'basic',
             support: 'chatbot', // Autogestión 100%
             current_account: false,
+            bulk_products_update: true, // ✅ CRITICO: Permitir actualizar precios por inflación
+            excel_reports_export: false, // ❌ GANCHO: No pueden sacar la data para el contador
         },
         description: 'Ideal para kioscos pequeños que recién empiezan.'
     },
@@ -29,7 +31,9 @@ export const PLANS = {
             cash_control: true,
             reports: 'advanced',
             support: 'whatsapp_business', // Horario comercial
-            current_account: true,
+            current_account: true, // ✅ FEATURE ESTRELLA
+            bulk_products_update: true,
+            excel_reports_export: true,
         },
         description: 'Para negocios en crecimiento que necesitan gestión de clientes.'
     },
@@ -39,14 +43,18 @@ export const PLANS = {
         price: 49990,
         limits: {
             products: -1, // Ilimitado
-            users: 3,
+            users: 5, // ✅ AUMENTADO: De 3 a 5 para cubrir turnos rotativos
         },
         features: {
+            multi_branch: true, // ✅ CRITICO: Multi-sucursal incluido (Shopify cobra extra)
             multi_price_lists: true,
             cash_control: true,
             reports: 'advanced_excel',
             support: 'priority', // Prioridad en respuesta
             current_account: true,
+            bulk_products_update: true,
+            excel_reports_export: true,
+            audit_logs: true, // ✅ SEGURIDAD: Control de dueños ausentes
         },
         description: 'Gestión total sin límites para comercios establecidos.'
     }

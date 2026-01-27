@@ -12,7 +12,8 @@ import {
     HelpCircle,
     X,
     Wallet,
-    ClipboardList
+    ClipboardList,
+    Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,11 @@ const navItems = [
         href: '/ventas',
         label: 'Venta Rápida',
         icon: ShoppingCart,
+    },
+    {
+        href: '/clientes',
+        label: 'Clientes',
+        icon: Users,
     },
     {
         href: '/productos',

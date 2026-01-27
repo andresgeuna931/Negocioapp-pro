@@ -1,16 +1,19 @@
 import { BarChart3, TrendingUp, DollarSign, Package, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSalesSummary, getTopProducts, getInventoryValue } from '@/lib/actions/reports';
+
+import { getSalesSummary, getTopProducts, getInventoryValue, getSalesHistory } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { ExportButtons } from '@/components/reports/export-buttons';
+import { SalesChart } from '@/components/reports/sales-chart';
 
 export default async function ReportsPage() {
-    const [todaySummary, monthSummary, topProducts, inventory] = await Promise.all([
+    const [todaySummary, monthSummary, topProducts, inventory, history] = await Promise.all([
         getSalesSummary('today'),
         getSalesSummary('month'),
         getTopProducts(10, 'month'),
         getInventoryValue(),
+        getSalesHistory(30),
     ]);
 
     // Prepare data for export
@@ -116,6 +119,11 @@ export default async function ReportsPage() {
                         </div>
                     </CardContent>
                 </Card>
+            </div>
+
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <SalesChart data={history} />
             </div>
 
             {/* Top Products */}

@@ -12,8 +12,10 @@ import {
     Banknote,
     ArrowRight,
     CheckCircle,
-    Tag
+    Tag,
+    User
 } from 'lucide-react';
+import { CustomerSelector } from '@/components/pos/customer-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +42,9 @@ export default function SalesPage() {
     const [searching, setSearching] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [showCheckout, setShowCheckout] = useState(false);
+    const [showCustomerSelect, setShowCustomerSelect] = useState(false);
     const [saleComplete, setSaleComplete] = useState<string | null>(null);
+    const [lastSaleTotal, setLastSaleTotal] = useState(0);
     const [error, setError] = useState('');
 
     // Load price lists on mount
@@ -165,7 +169,7 @@ export default function SalesPage() {
     };
 
     // Process sale
-    const handleCheckout = async (paymentMethod: PaymentMethod) => {
+    const handleCheckout = async (paymentMethod: PaymentMethod, customerId?: string) => {
         setProcessing(true);
         setError('');
 
@@ -176,12 +180,14 @@ export default function SalesPage() {
                     qty: item.qty,
                 })),
                 payment_method: paymentMethod,
+                customer_id: customerId,
             });
 
             if (result.error) {
                 setError(result.error);
             } else {
                 setSaleComplete(result.data);
+                setLastSaleTotal(total);
                 setCart([]);
                 setShowCheckout(false);
             }
@@ -213,7 +219,7 @@ export default function SalesPage() {
                     La venta se registró correctamente
                 </p>
                 <p className="text-3xl font-bold text-emerald-600 mb-8">
-                    {formatCurrency(total)}
+                    {formatCurrency(lastSaleTotal)}
                 </p>
                 <Button size="lg" onClick={handleNewSale}>
                     <ShoppingCart className="w-5 h-5 mr-2" />
@@ -462,6 +468,17 @@ export default function SalesPage() {
                                         </Button>
 
                                         <Button
+                                            size="lg"
+                                            variant="outline"
+                                            className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                                            onClick={() => setShowCustomerSelect(true)}
+                                            loading={processing}
+                                        >
+                                            <User className="w-5 h-5 mr-2" />
+                                            Cuenta Corriente (Fiado)
+                                        </Button>
+
+                                        <Button
                                             variant="ghost"
                                             className="w-full"
                                             onClick={() => setShowCheckout(false)}
@@ -476,6 +493,19 @@ export default function SalesPage() {
                     </Card>
                 </div>
             </div>
+
+            <CustomerSelector
+                open={showCustomerSelect}
+                onOpenChange={setShowCustomerSelect}
+                onSelect={(customer) => {
+                    setShowCustomerSelect(false);
+                    // Checkout with account
+                    // We need to pass the customer id
+                    // Since handleCheckout only takes method, we should update handleCheckout signature or state
+                    // Quick fix: call handleCheckout with extra arg if we update signature, or use a state
+                    handleCheckout('account', customer.id);
+                }}
+            />
         </div>
     );
 }

@@ -255,3 +255,114 @@ export async function adjustStock(
     revalidatePath('/stock');
     return { success: true, error: null };
 }
+
+// Bulk import products
+export async function importProducts(
+    products: {
+        name: string;
+        barcode?: string;
+        sku?: string;
+        price: number;
+        cost?: number;
+        stock_on_hand: number;
+        category?: string;
+        unit_type?: 'unit' | 'kg' | 'g' | 'lt' | 'ml';
+    }[]
+) {
+    const supabase = await createClient();
+
+    // Get current user's tenant_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { success: false, error: 'No autenticado' };
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile) {
+        return { success: false, error: 'Perfil no encontrado' };
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    let errors: string[] = [];
+
+    // Process in batches (simulated by loop for now)
+    for (const p of products) {
+        try {
+            // Check if product exists (by barcode OR sku)
+            let existingProduct = null;
+
+            if (p.barcode) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('id')
+                    .eq('tenant_id', profile.tenant_id)
+                    .eq('barcode', p.barcode)
+                    .single();
+                existingProduct = data;
+            } else if (p.sku) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('id')
+                    .eq('tenant_id', profile.tenant_id)
+                    .eq('sku', p.sku)
+                    .single();
+                existingProduct = data;
+            }
+
+            if (existingProduct) {
+                // Update
+                const { error } = await supabase
+                    .from('products')
+                    .update({
+                        name: p.name,
+                        price: p.price,
+                        cost: p.cost,
+                        stock_on_hand: p.stock_on_hand, // Basic update, usually adds to stock but for import we overwrite
+                        category: p.category,
+                        unit_type: p.unit_type || 'unit',
+                        is_active: true
+                    })
+                    .eq('id', existingProduct.id);
+
+                if (error) throw error;
+                updatedCount++;
+            } else {
+                // Create New
+                const { error } = await supabase
+                    .from('products')
+                    .insert({
+                        tenant_id: profile.tenant_id,
+                        name: p.name,
+                        barcode: p.barcode,
+                        sku: p.sku || p.barcode, // Fallback SKU
+                        price: p.price,
+                        cost: p.cost,
+                        stock_on_hand: p.stock_on_hand,
+                        category: p.category,
+                        unit_type: p.unit_type || 'unit',
+                        is_active: true
+                    });
+
+                if (error) throw error;
+                createdCount++;
+            }
+        } catch (err: any) {
+            console.error('Error importing product:', p.name, err);
+            errors.push(`Error en ${p.name}: ${err.message || 'Error desconocido'}`);
+        }
+    }
+
+    revalidatePath('/productos');
+    return {
+        success: true,
+        created: createdCount,
+        updated: updatedCount,
+        errors: errors.length > 0 ? errors : null
+    };
+}
