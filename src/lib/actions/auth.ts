@@ -289,10 +289,6 @@ export async function signUp(data: {
     // tenantId is returned directly from RPC
     await seedTenantData(tenantId, data.businessType);
 
-    // 6. Seed initial data based on business type
-    // Import dynamically or ensure import is at top
-    await seedTenantData(tenant.id, data.businessType);
-
     revalidatePath('/');
     return { error: null };
 }

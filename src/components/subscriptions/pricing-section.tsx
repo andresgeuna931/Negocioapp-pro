@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { PricingCard } from './pricing-card';
 import { PLANS } from '@/lib/config/plans';
-// import { useToast } from '@/components/ui/use-toast';
-// import { createSubscriptionPreference } from '@/lib/actions/mercadopago'; // Future implementation
 
 interface PricingSectionProps {
     currentPlanId: string;
@@ -13,45 +11,78 @@ interface PricingSectionProps {
 
 export function PricingSection({ currentPlanId, tenantId }: PricingSectionProps) {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-    // const { toast } = useToast();
+    const [error, setError] = useState<string | null>(null);
 
     const handleSelectPlan = async (planId: string) => {
+        // Don't allow selecting the current plan
+        if (planId === currentPlanId) {
+            return;
+        }
+
         setLoadingPlan(planId);
+        setError(null);
 
-        // TODO: Implement MercadoPago integration here
-        // const result = await createSubscriptionPreference(planId);
+        try {
+            // Call our checkout API
+            const response = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ planId }),
+            });
 
-        // Simulation for now
-        setTimeout(() => {
-            alert("Próximamente: La integración con MercadoPago estará lista muy pronto.");
-            // toast({
-            //     title: "Próximamente",
-            //     description: "La integración con MercadoPago estará lista muy pronto.",
-            // });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Error al crear el checkout');
+            }
+
+            // Redirect to Mercado Pago checkout
+            // Use sandbox_init_point for testing, init_point for production
+            const checkoutUrl = data.init_point || data.sandbox_init_point;
+
+            if (checkoutUrl) {
+                window.location.href = checkoutUrl;
+            } else {
+                throw new Error('No se recibió URL de pago');
+            }
+
+        } catch (err) {
+            console.error('Checkout error:', err);
+            setError(err instanceof Error ? err.message : 'Error al procesar el pago');
             setLoadingPlan(null);
-        }, 500);
+        }
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-            <PricingCard
-                planId="starter"
-                currentPlanId={currentPlanId}
-                onSelect={handleSelectPlan}
-                loading={loadingPlan === 'starter'}
-            />
-            <PricingCard
-                planId="professional"
-                currentPlanId={currentPlanId}
-                onSelect={handleSelectPlan}
-                loading={loadingPlan === 'professional'}
-            />
-            <PricingCard
-                planId="business"
-                currentPlanId={currentPlanId}
-                onSelect={handleSelectPlan}
-                loading={loadingPlan === 'business'}
-            />
+        <div>
+            {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
+                    {error}
+                </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+                <PricingCard
+                    planId="starter"
+                    currentPlanId={currentPlanId}
+                    onSelect={handleSelectPlan}
+                    loading={loadingPlan === 'starter'}
+                />
+                <PricingCard
+                    planId="professional"
+                    currentPlanId={currentPlanId}
+                    onSelect={handleSelectPlan}
+                    loading={loadingPlan === 'professional'}
+                />
+                <PricingCard
+                    planId="business"
+                    currentPlanId={currentPlanId}
+                    onSelect={handleSelectPlan}
+                    loading={loadingPlan === 'business'}
+                />
+            </div>
         </div>
     );
 }
+

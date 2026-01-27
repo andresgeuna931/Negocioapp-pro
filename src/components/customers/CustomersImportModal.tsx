@@ -94,7 +94,7 @@ export function CustomersImportModal() {
             if (result.success) {
                 setSummary({
                     created: result.created || 0,
-                    errors: result.errors
+                    errors: result.errors ?? null
                 });
                 toast.success('Importación completada');
                 router.refresh();
