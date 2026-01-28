@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { X, Camera, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -10,19 +11,12 @@ interface ScannerProps {
 }
 
 export function Scanner({ onScan, onClose }: ScannerProps) {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const readerRef = useRef<import('@zxing/library').BrowserMultiFormatReader | null>(null);
+    const scannerRef = useRef<Html5Qrcode | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const [status, setStatus] = useState<'starting' | 'scanning' | 'error'>('starting');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const hasScannedRef = useRef(false);
-
-    const stopScanner = useCallback(() => {
-        hasScannedRef.current = true;
-        if (readerRef.current) {
-            readerRef.current.reset();
-            readerRef.current = null;
-        }
-    }, []);
+    const containerId = 'html5-qrcode-scanner';
 
     const playBeep = () => {
         try {
@@ -36,85 +30,98 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
         } catch { }
     };
 
+    const stopScanner = useCallback(async () => {
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.stop();
+            } catch (e) {
+                console.log('Stop error (ignoring):', e);
+            }
+            try {
+                scannerRef.current.clear();
+            } catch { }
+            scannerRef.current = null;
+        }
+    }, []);
+
     const startScanner = useCallback(async () => {
         setStatus('starting');
         setErrorMessage(null);
         hasScannedRef.current = false;
 
         try {
-            // Stop any existing scanner
-            stopScanner();
+            await stopScanner();
 
-            if (!navigator.mediaDevices?.getUserMedia) {
-                throw new Error('Tu navegador no soporta acceso a cámara');
+            // Wait for container to be available
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const container = document.getElementById(containerId);
+            if (!container) {
+                throw new Error('Container not found');
             }
 
-            // Load zxing dynamically
-            const { BrowserMultiFormatReader } = await import('@zxing/library');
+            // Create scanner
+            const scanner = new Html5Qrcode(containerId, {
+                verbose: false,
+                formatsToSupport: undefined // Support all formats
+            });
+            scannerRef.current = scanner;
 
-            const reader = new BrowserMultiFormatReader();
-            readerRef.current = reader;
+            // Get cameras
+            const cameras = await Html5Qrcode.getCameras();
+            console.log('Available cameras:', cameras);
 
-            // Get available video devices
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(d => d.kind === 'videoinput');
-
-            if (videoDevices.length === 0) {
+            if (!cameras || cameras.length === 0) {
                 throw new Error('No se encontró ninguna cámara');
             }
 
-            console.log('Video devices:', videoDevices);
-
-            // Try to find back camera
-            let deviceId: string | undefined = undefined;
-            const backCamera = videoDevices.find(d =>
-                d.label.toLowerCase().includes('back') ||
-                d.label.toLowerCase().includes('trasera') ||
-                d.label.toLowerCase().includes('rear') ||
-                d.label.toLowerCase().includes('environment')
+            // Find back camera
+            let cameraId = cameras[cameras.length - 1].id; // Default to last (usually back)
+            const backCamera = cameras.find(c =>
+                c.label.toLowerCase().includes('back') ||
+                c.label.toLowerCase().includes('trasera') ||
+                c.label.toLowerCase().includes('rear')
             );
             if (backCamera) {
-                deviceId = backCamera.deviceId;
-            } else if (videoDevices.length > 0) {
-                // On mobile, usually the last camera is the back one
-                deviceId = videoDevices[videoDevices.length - 1].deviceId;
+                cameraId = backCamera.id;
             }
 
-            console.log('Using device:', deviceId);
+            console.log('Using camera:', cameraId);
 
-            // Start continuous decoding from video device
-            await reader.decodeFromVideoDevice(
-                deviceId || null,
-                videoRef.current!,
-                (result, error) => {
+            // Start scanning
+            await scanner.start(
+                cameraId,
+                {
+                    fps: 10,
+                    qrbox: { width: 280, height: 150 }, // Rectangular for barcodes
+                    aspectRatio: 1.0,
+                },
+                (decodedText, decodedResult) => {
                     if (hasScannedRef.current) return;
 
-                    if (result) {
-                        const code = result.getText();
-                        console.log('✅ Scanned:', code);
+                    console.log('✅ Scanned:', decodedText, decodedResult.result.format?.formatName);
+                    hasScannedRef.current = true;
 
-                        hasScannedRef.current = true;
-                        playBeep();
-                        stopScanner();
-                        onScan(code);
-                    }
-
-                    // Log errors occasionally for debugging (but not every frame)
-                    if (error && Math.random() < 0.01) {
-                        console.log('Scanning...', error.message);
-                    }
+                    playBeep();
+                    stopScanner();
+                    onScan(decodedText);
+                },
+                (errorMessage) => {
+                    // Silently ignore scan errors - they happen every frame when no code is visible
                 }
             );
 
             setStatus('scanning');
-            console.log('Scanner started - point at a barcode');
+            console.log('Scanner ready - point at a barcode');
 
         } catch (err) {
             console.error('Scanner error:', err);
             const msg = err instanceof Error ? err.message : 'Error al acceder a la cámara';
 
             if (msg.includes('Permission') || msg.includes('NotAllowed') || msg.includes('denied')) {
-                setErrorMessage('Permiso de cámara denegado. Por favor, permití el acceso.');
+                setErrorMessage('Permiso de cámara denegado.');
+            } else if (msg.includes('NotReadable') || msg.includes('TrackStart')) {
+                setErrorMessage('La cámara está siendo usada por otra app.');
             } else {
                 setErrorMessage(msg);
             }
@@ -141,7 +148,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
             {/* Header */}
-            <div className="flex-shrink-0 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-10">
+            <div className="flex-shrink-0 flex items-center justify-between p-4 bg-black z-10">
                 <div className="text-white">
                     <h2 className="font-bold text-lg">Escanear Código</h2>
                     <p className="text-white/70 text-sm">
@@ -161,33 +168,20 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
             </div>
 
             {/* Scanner Area */}
-            <div className="flex-1 relative overflow-hidden">
-                {/* Video element */}
-                <video
-                    ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    playsInline
-                    muted
+            <div className="flex-1 relative flex items-center justify-center overflow-hidden">
+                {/* Html5Qrcode container - the library renders video inside this */}
+                <div
+                    id={containerId}
+                    ref={containerRef}
+                    className="w-full h-full"
+                    style={{
+                        display: status === 'error' ? 'none' : 'block',
+                    }}
                 />
 
-                {/* Scan overlay */}
-                {status === 'scanning' && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-72 h-48 border-2 border-white/30 rounded-2xl relative">
-                            {/* Corner markers */}
-                            <div className="absolute -top-1 -left-1 w-10 h-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-                            <div className="absolute -top-1 -right-1 w-10 h-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-                            <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-                            <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
-                            {/* Scan line animation */}
-                            <div className="absolute inset-x-4 top-1/2 h-0.5 bg-emerald-400 animate-pulse" />
-                        </div>
-                    </div>
-                )}
-
-                {/* Starting state */}
+                {/* Starting overlay */}
                 {status === 'starting' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
                         <div className="text-center text-white">
                             <Camera className="w-16 h-16 mx-auto mb-4 animate-pulse" />
                             <p className="text-lg">Iniciando cámara...</p>
@@ -204,14 +198,6 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                         <div className="text-center text-white max-w-sm">
                             <Camera className="w-16 h-16 mx-auto mb-4 text-red-400" />
                             <p className="text-red-400 text-lg mb-4">{errorMessage}</p>
-                            <div className="bg-white/10 rounded-lg p-4 mb-4 text-left text-sm">
-                                <p className="font-medium mb-2">Para habilitar la cámara:</p>
-                                <ol className="list-decimal list-inside space-y-1 text-white/80">
-                                    <li>Tocá el ícono de candado en la barra</li>
-                                    <li>Buscá "Cámara" y cambiá a "Permitir"</li>
-                                    <li>Recargá la página</li>
-                                </ol>
-                            </div>
                             <div className="flex gap-2">
                                 <Button
                                     onClick={startScanner}
@@ -235,7 +221,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
             {/* Footer */}
             {status === 'scanning' && (
-                <div className="flex-shrink-0 p-4 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0">
+                <div className="flex-shrink-0 p-4 bg-black">
                     <Button
                         variant="outline"
                         className="w-full border-white/30 text-white hover:bg-white/20"
