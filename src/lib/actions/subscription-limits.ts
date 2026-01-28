@@ -27,7 +27,7 @@ export async function checkResourceLimit(resource: ResourceType): Promise<LimitC
         return { success: false, error: 'Tenant no encontrado' };
     }
 
-    const subscription = subscriptionResult.subscription;
+    const subscription = subscriptionResult?.subscription;
     const now = new Date();
 
     // 2. Check Subscription Status (Strict Access Control)
