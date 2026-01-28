@@ -14,17 +14,31 @@ import { Button } from '@/components/ui/button';
 import { getDashboardData } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity, getStockStatus } from '@/lib/utils';
 
+// ... imports
+import { getTenantSettings } from '@/lib/actions/auth'; // Import action
+import { PLANS } from '@/lib/config/plans'; // Import plans config (assuming it's exported)
+
 export default async function DashboardPage() {
-    const data = await getDashboardData();
+    const [data, tenant] = await Promise.all([
+        getDashboardData(),
+        getTenantSettings()
+    ]);
+
+    const planName = PLANS[tenant?.plan_type?.toUpperCase() as keyof typeof PLANS]?.name || 'Gratis';
 
     return (
         <div className="space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        Dashboard
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            Dashboard
+                        </h1>
+                        <Badge variant={tenant?.plan_type === 'business' ? 'default' : tenant?.plan_type === 'professional' ? 'secondary' : 'outline'}>
+                            Plan {planName}
+                        </Badge>
+                    </div>
                     <p className="text-slate-500">
                         Resumen de tu negocio
                     </p>
@@ -110,12 +124,12 @@ export default async function DashboardPage() {
                                 <p className="text-slate-500 text-sm mt-1">productos</p>
                             </div>
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${data.lowStock && data.lowStock.length > 0
-                                    ? 'bg-amber-200 dark:bg-amber-800'
-                                    : 'bg-slate-100 dark:bg-slate-800'
+                                ? 'bg-amber-200 dark:bg-amber-800'
+                                : 'bg-slate-100 dark:bg-slate-800'
                                 }`}>
                                 <AlertTriangle className={`w-6 h-6 ${data.lowStock && data.lowStock.length > 0
-                                        ? 'text-amber-600'
-                                        : 'text-slate-600 dark:text-slate-400'
+                                    ? 'text-amber-600'
+                                    : 'text-slate-600 dark:text-slate-400'
                                     }`} />
                             </div>
                         </div>
@@ -137,9 +151,9 @@ export default async function DashboardPage() {
                                 {data.topProducts.map((product, index) => (
                                     <div key={product.product_id} className="flex items-center gap-4">
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-100 text-amber-700' :
-                                                index === 1 ? 'bg-slate-200 text-slate-700' :
-                                                    index === 2 ? 'bg-orange-100 text-orange-700' :
-                                                        'bg-slate-100 text-slate-500'
+                                            index === 1 ? 'bg-slate-200 text-slate-700' :
+                                                index === 2 ? 'bg-orange-100 text-orange-700' :
+                                                    'bg-slate-100 text-slate-500'
                                             }`}>
                                             {index + 1}
                                         </div>
@@ -187,8 +201,8 @@ export default async function DashboardPage() {
                                     return (
                                         <div key={product.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
                                             <div className={`w-2 h-2 rounded-full ${status === 'out' ? 'bg-red-500' :
-                                                    status === 'critical' ? 'bg-orange-500' :
-                                                        'bg-amber-500'
+                                                status === 'critical' ? 'bg-orange-500' :
+                                                    'bg-amber-500'
                                                 }`} />
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-slate-900 dark:text-white truncate">
