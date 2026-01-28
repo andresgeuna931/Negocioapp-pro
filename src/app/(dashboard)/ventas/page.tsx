@@ -357,7 +357,7 @@ export default function SalesPage() {
                                             className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800"
                                         >
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-slate-900 dark:text-white truncate">
+                                                <p className="font-medium text-slate-900 dark:text-white text-sm leading-tight">
                                                     {item.product.name}
                                                 </p>
                                                 <p className="text-sm text-slate-500">

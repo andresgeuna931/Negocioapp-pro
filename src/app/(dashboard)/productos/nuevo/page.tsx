@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Package, Save } from 'lucide-react';
+import { ArrowLeft, Package, Save, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Scanner } from '@/components/sales/scanner';
 import { createProduct } from '@/lib/actions/products';
 import type { UnitType } from '@/lib/types';
 
@@ -23,6 +24,18 @@ export default function NewProductPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showScanner, setShowScanner] = useState(false);
+    const [barcode, setBarcode] = useState('');
+    const nameInputRef = useRef<HTMLInputElement>(null);
+
+    const handleScan = (scannedCode: string) => {
+        setBarcode(scannedCode);
+        setShowScanner(false);
+        // Focus on name input after scanning
+        setTimeout(() => {
+            nameInputRef.current?.focus();
+        }, 100);
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -34,7 +47,7 @@ export default function NewProductPage() {
         try {
             const result = await createProduct({
                 name: formData.get('name') as string,
-                barcode: formData.get('barcode') as string || undefined,
+                barcode: barcode || (formData.get('barcode') as string) || undefined,
                 sku: formData.get('sku') as string || undefined,
                 unit_type: formData.get('unit_type') as UnitType,
                 price: parseFloat(formData.get('price') as string),
@@ -60,6 +73,11 @@ export default function NewProductPage() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
+            {/* Scanner Modal */}
+            {showScanner && (
+                <Scanner onScan={handleScan} onClose={() => setShowScanner(false)} />
+            )}
+
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Link href="/productos">
@@ -94,6 +112,7 @@ export default function NewProductPage() {
                         )}
 
                         <Input
+                            ref={nameInputRef}
                             name="name"
                             label="Nombre del producto *"
                             placeholder="Ej: Coca Cola 500ml"
@@ -101,11 +120,31 @@ export default function NewProductPage() {
                         />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Input
-                                name="barcode"
-                                label="Código de barras"
-                                placeholder="Ej: 7790895000058"
-                            />
+                            {/* Barcode with scan button */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Código de barras
+                                </label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        name="barcode"
+                                        placeholder="Ej: 7790895000058"
+                                        value={barcode}
+                                        onChange={(e) => setBarcode(e.target.value)}
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => setShowScanner(true)}
+                                        title="Escanear código"
+                                        className="shrink-0 h-11 w-11"
+                                    >
+                                        <ScanLine className="w-5 h-5" />
+                                    </Button>
+                                </div>
+                            </div>
                             <Input
                                 name="sku"
                                 label="SKU"
