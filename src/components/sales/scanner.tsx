@@ -9,30 +9,37 @@ interface ScannerProps {
     onClose: () => void;
 }
 
-// Dynamic import for zxing to handle SSR
-let BrowserMultiFormatReader: typeof import('@zxing/library').BrowserMultiFormatReader | null = null;
-
 export function Scanner({ onScan, onClose }: ScannerProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
-    const scanningRef = useRef(false);
+    const readerRef = useRef<import('@zxing/library').BrowserMultiFormatReader | null>(null);
     const [status, setStatus] = useState<'starting' | 'scanning' | 'error'>('starting');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const hasScannedRef = useRef(false);
 
     const stopScanner = useCallback(() => {
-        scanningRef.current = false;
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
+        hasScannedRef.current = true;
+        if (readerRef.current) {
+            readerRef.current.reset();
+            readerRef.current = null;
         }
     }, []);
+
+    const playBeep = () => {
+        try {
+            const audioCtx = new AudioContext();
+            const oscillator = audioCtx.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+            oscillator.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        } catch { }
+    };
 
     const startScanner = useCallback(async () => {
         setStatus('starting');
         setErrorMessage(null);
+        hasScannedRef.current = false;
 
         try {
             // Stop any existing scanner
@@ -43,71 +50,64 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
             }
 
             // Load zxing dynamically
-            if (!BrowserMultiFormatReader) {
-                const zxing = await import('@zxing/library');
-                BrowserMultiFormatReader = zxing.BrowserMultiFormatReader;
-            }
+            const { BrowserMultiFormatReader } = await import('@zxing/library');
 
-            // Request camera permission and get stream
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            });
-
-            streamRef.current = stream;
-
-            // Attach stream to video element
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                await videoRef.current.play();
-            }
-
-            setStatus('scanning');
-            scanningRef.current = true;
-
-            // Create reader instance
             const reader = new BrowserMultiFormatReader();
+            readerRef.current = reader;
 
-            // Start scanning loop
-            const scanLoop = async () => {
-                if (!scanningRef.current || !videoRef.current) return;
+            // Get available video devices
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
 
-                try {
-                    const result = await reader.decodeFromVideoElement(videoRef.current);
+            if (videoDevices.length === 0) {
+                throw new Error('No se encontró ninguna cámara');
+            }
+
+            console.log('Video devices:', videoDevices);
+
+            // Try to find back camera
+            let deviceId: string | undefined = undefined;
+            const backCamera = videoDevices.find(d =>
+                d.label.toLowerCase().includes('back') ||
+                d.label.toLowerCase().includes('trasera') ||
+                d.label.toLowerCase().includes('rear') ||
+                d.label.toLowerCase().includes('environment')
+            );
+            if (backCamera) {
+                deviceId = backCamera.deviceId;
+            } else if (videoDevices.length > 0) {
+                // On mobile, usually the last camera is the back one
+                deviceId = videoDevices[videoDevices.length - 1].deviceId;
+            }
+
+            console.log('Using device:', deviceId);
+
+            // Start continuous decoding from video device
+            await reader.decodeFromVideoDevice(
+                deviceId || null,
+                videoRef.current!,
+                (result, error) => {
+                    if (hasScannedRef.current) return;
+
                     if (result) {
                         const code = result.getText();
-                        console.log('Scanned:', code);
+                        console.log('✅ Scanned:', code);
 
-                        // Play beep
-                        try {
-                            const audioCtx = new AudioContext();
-                            const oscillator = audioCtx.createOscillator();
-                            oscillator.type = 'sine';
-                            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                            oscillator.connect(audioCtx.destination);
-                            oscillator.start();
-                            oscillator.stop(audioCtx.currentTime + 0.15);
-                        } catch { }
-
+                        hasScannedRef.current = true;
+                        playBeep();
                         stopScanner();
                         onScan(code);
-                        return;
                     }
-                } catch {
-                    // Decode failed - no barcode in view, continue scanning
-                }
 
-                // Continue scanning
-                if (scanningRef.current) {
-                    requestAnimationFrame(scanLoop);
+                    // Log errors occasionally for debugging (but not every frame)
+                    if (error && Math.random() < 0.01) {
+                        console.log('Scanning...', error.message);
+                    }
                 }
-            };
+            );
 
-            // Start the scan loop
-            scanLoop();
+            setStatus('scanning');
+            console.log('Scanner started - point at a barcode');
 
         } catch (err) {
             console.error('Scanner error:', err);
@@ -141,7 +141,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
     return (
         <div className="fixed inset-0 z-50 bg-black flex flex-col">
             {/* Header */}
-            <div className="flex-shrink-0 flex items-center justify-between p-4 bg-black/80">
+            <div className="flex-shrink-0 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-10">
                 <div className="text-white">
                     <h2 className="font-bold text-lg">Escanear Código</h2>
                     <p className="text-white/70 text-sm">
@@ -162,25 +162,24 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
             {/* Scanner Area */}
             <div className="flex-1 relative overflow-hidden">
-                {/* Video element - always present */}
+                {/* Video element */}
                 <video
                     ref={videoRef}
                     className="absolute inset-0 w-full h-full object-cover"
                     playsInline
                     muted
-                    autoPlay
                 />
 
                 {/* Scan overlay */}
                 {status === 'scanning' && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-64 h-64 border-2 border-white/30 rounded-2xl relative">
+                        <div className="w-72 h-48 border-2 border-white/30 rounded-2xl relative">
                             {/* Corner markers */}
-                            <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-                            <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-                            <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-                            <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
-                            {/* Scan line */}
+                            <div className="absolute -top-1 -left-1 w-10 h-10 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+                            <div className="absolute -top-1 -right-1 w-10 h-10 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+                            <div className="absolute -bottom-1 -left-1 w-10 h-10 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+                            <div className="absolute -bottom-1 -right-1 w-10 h-10 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
+                            {/* Scan line animation */}
                             <div className="absolute inset-x-4 top-1/2 h-0.5 bg-emerald-400 animate-pulse" />
                         </div>
                     </div>
@@ -236,7 +235,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
             {/* Footer */}
             {status === 'scanning' && (
-                <div className="flex-shrink-0 p-4 bg-black/80">
+                <div className="flex-shrink-0 p-4 bg-gradient-to-t from-black/80 to-transparent absolute bottom-0 left-0 right-0">
                     <Button
                         variant="outline"
                         className="w-full border-white/30 text-white hover:bg-white/20"
