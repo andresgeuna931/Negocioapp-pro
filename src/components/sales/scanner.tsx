@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserMultiFormatReader, BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { X, Camera, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -10,20 +9,23 @@ interface ScannerProps {
     onClose: () => void;
 }
 
+// Dynamic import for zxing to handle SSR
+let BrowserMultiFormatReader: typeof import('@zxing/library').BrowserMultiFormatReader | null = null;
+
 export function Scanner({ onScan, onClose }: ScannerProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const scanningRef = useRef(false);
     const [status, setStatus] = useState<'starting' | 'scanning' | 'error'>('starting');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const stopScanner = useCallback(() => {
-        if (readerRef.current) {
-            readerRef.current.reset();
-            readerRef.current = null;
+        scanningRef.current = false;
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
         }
-        if (videoRef.current?.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
+        if (videoRef.current) {
             videoRef.current.srcObject = null;
         }
     }, []);
@@ -40,6 +42,12 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                 throw new Error('Tu navegador no soporta acceso a cámara');
             }
 
+            // Load zxing dynamically
+            if (!BrowserMultiFormatReader) {
+                const zxing = await import('@zxing/library');
+                BrowserMultiFormatReader = zxing.BrowserMultiFormatReader;
+            }
+
             // Request camera permission and get stream
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
@@ -49,51 +57,57 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                 }
             });
 
+            streamRef.current = stream;
+
             // Attach stream to video element
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
                 await videoRef.current.play();
             }
 
-            // Set up barcode reader
-            const hints = new Map();
-            hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-                BarcodeFormat.EAN_13,
-                BarcodeFormat.EAN_8,
-                BarcodeFormat.UPC_A,
-                BarcodeFormat.UPC_E,
-                BarcodeFormat.CODE_128,
-                BarcodeFormat.CODE_39,
-                BarcodeFormat.QR_CODE,
-            ]);
-
-            const reader = new BrowserMultiFormatReader(hints);
-            readerRef.current = reader;
-
-            // Start continuous decoding
-            reader.decodeFromVideoElement(videoRef.current!, (result, error) => {
-                if (result) {
-                    const code = result.getText();
-                    console.log('Scanned:', code);
-
-                    // Play beep
-                    try {
-                        const audioCtx = new AudioContext();
-                        const oscillator = audioCtx.createOscillator();
-                        oscillator.type = 'sine';
-                        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
-                        oscillator.connect(audioCtx.destination);
-                        oscillator.start();
-                        oscillator.stop(audioCtx.currentTime + 0.15);
-                    } catch { }
-
-                    onScan(code);
-                }
-                // Ignore decode errors - they happen constantly when no code is in view
-            });
-
             setStatus('scanning');
-            console.log('Scanner started successfully');
+            scanningRef.current = true;
+
+            // Create reader instance
+            const reader = new BrowserMultiFormatReader();
+
+            // Start scanning loop
+            const scanLoop = async () => {
+                if (!scanningRef.current || !videoRef.current) return;
+
+                try {
+                    const result = await reader.decodeFromVideoElement(videoRef.current);
+                    if (result) {
+                        const code = result.getText();
+                        console.log('Scanned:', code);
+
+                        // Play beep
+                        try {
+                            const audioCtx = new AudioContext();
+                            const oscillator = audioCtx.createOscillator();
+                            oscillator.type = 'sine';
+                            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                            oscillator.connect(audioCtx.destination);
+                            oscillator.start();
+                            oscillator.stop(audioCtx.currentTime + 0.15);
+                        } catch { }
+
+                        stopScanner();
+                        onScan(code);
+                        return;
+                    }
+                } catch {
+                    // Decode failed - no barcode in view, continue scanning
+                }
+
+                // Continue scanning
+                if (scanningRef.current) {
+                    requestAnimationFrame(scanLoop);
+                }
+            };
+
+            // Start the scan loop
+            scanLoop();
 
         } catch (err) {
             console.error('Scanner error:', err);
@@ -155,7 +169,6 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                     playsInline
                     muted
                     autoPlay
-                    style={{ display: status === 'scanning' ? 'block' : 'none' }}
                 />
 
                 {/* Scan overlay */}
@@ -175,7 +188,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
                 {/* Starting state */}
                 {status === 'starting' && (
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black">
                         <div className="text-center text-white">
                             <Camera className="w-16 h-16 mx-auto mb-4 animate-pulse" />
                             <p className="text-lg">Iniciando cámara...</p>
@@ -188,7 +201,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
                 {/* Error state */}
                 {status === 'error' && (
-                    <div className="absolute inset-0 flex items-center justify-center p-6">
+                    <div className="absolute inset-0 flex items-center justify-center p-6 bg-black">
                         <div className="text-center text-white max-w-sm">
                             <Camera className="w-16 h-16 mx-auto mb-4 text-red-400" />
                             <p className="text-red-400 text-lg mb-4">{errorMessage}</p>
