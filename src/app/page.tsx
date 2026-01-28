@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getCurrentSession, getTenantSettings } from '@/lib/actions/auth';
+import { getCurrentSession, getTenantSettings, getSubscriptionStatus } from '@/lib/actions/auth';
 import { getSalesSummary, getTopProducts } from '@/lib/actions/reports';
 import { getLowStockProducts } from '@/lib/actions/products';
 import { PLANS } from '@/lib/config/plans';
@@ -13,7 +13,8 @@ import {
   Package,
   AlertTriangle,
   DollarSign,
-  BarChart3
+  BarChart3,
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -25,25 +26,75 @@ export default async function DashboardPage() {
   }
 
   // Fetch dashboard data
-  const [todaySummary, monthSummary, topProducts, lowStock, tenant] = await Promise.all([
+  const [todaySummary, monthSummary, topProducts, lowStock, tenant, subscriptionResult] = await Promise.all([
     getSalesSummary('today'),
     getSalesSummary('month'),
     getTopProducts(5, 'month'),
     getLowStockProducts(),
-    getTenantSettings()
+    getTenantSettings(),
+    getSubscriptionStatus()
   ]);
 
-  const planName = PLANS[tenant?.plan_type?.toUpperCase() as keyof typeof PLANS]?.name || 'Gratis';
+  const subscription = subscriptionResult?.subscription;
+
+  // Determine plan and trial status
+  let planName = 'Gratis';
+  let isInTrial = false;
+  let trialDaysLeft = 0;
+
+  if (subscription && ['active', 'trialing'].includes(subscription.status)) {
+    planName = PLANS[subscription.plan_id?.toUpperCase() as keyof typeof PLANS]?.name || 'Profesional';
+    isInTrial = subscription.status === 'trialing';
+  } else if (tenant?.created_at) {
+    // Check implicit trial (14 days from registration)
+    const createdAt = new Date(tenant.created_at);
+    const trialEndDate = new Date(createdAt);
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
+    const now = new Date();
+
+    if (now < trialEndDate) {
+      isInTrial = true;
+      trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      planName = 'Profesional (Prueba)';
+    }
+  }
 
   return (
     <div className="space-y-6">
+      {/* Trial Banner */}
+      {isInTrial && trialDaysLeft > 0 && (
+        <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="w-6 h-6" />
+                <div>
+                  <p className="font-semibold">
+                    Te quedan {trialDaysLeft} días de prueba gratis
+                  </p>
+                  <p className="text-sm text-blue-100">
+                    Estás usando el Plan Profesional completo. ¡Aprovechalo!
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/precios"
+                className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+              >
+                Ver Planes
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             ¡Hola, {session.profile.full_name?.split(' ')[0] || 'Usuario'}!
           </h1>
-          <Badge variant={tenant?.plan_type === 'business' ? 'success' : tenant?.plan_type === 'professional' ? 'info' : 'default'}>
+          <Badge variant={isInTrial ? 'info' : tenant?.plan_type === 'business' ? 'success' : tenant?.plan_type === 'professional' ? 'info' : 'default'}>
             Plan {planName}
           </Badge>
         </div>
@@ -51,6 +102,7 @@ export default async function DashboardPage() {
           Bienvenido a {session.tenant.name}
         </p>
       </div>
+
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
