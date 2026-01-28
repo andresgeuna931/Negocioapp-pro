@@ -39,7 +39,7 @@ export async function checkResourceLimit(resource: ResourceType): Promise<LimitC
     let isAccessAllowed = false;
     let effectivePlanId = 'starter'; // Default fallback (though strictly we block if unpaid)
 
-    if (subscription && ['active', 'trialing'].includes(subscription.status)) {
+    if (subscription && ['active', 'trial'].includes(subscription.status)) {
         isAccessAllowed = true;
         effectivePlanId = subscription?.plan_id || 'starter';
     } else {
