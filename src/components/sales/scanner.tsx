@@ -27,18 +27,15 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                 throw new Error('Tu navegador no soporta acceso a cámara');
             }
 
-            // Request camera permission explicitly
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                // Stop the stream immediately, we just needed permission
-                stream.getTracks().forEach(track => track.stop());
-            } catch (permErr) {
-                console.error('Permission error:', permErr);
-                setPermissionDenied(true);
-                throw new Error('Permiso de cámara denegado. Por favor, permití el acceso a la cámara.');
+            // Get available cameras
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const cameras = devices.filter(d => d.kind === 'videoinput');
+
+            if (cameras.length === 0) {
+                throw new Error('No se encontró ninguna cámara');
             }
+
+            console.log('Cameras found:', cameras.length);
 
             // Stop existing scanner if any
             if (scannerRef.current) {
@@ -47,17 +44,27 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                 } catch {
                     // Ignore stop errors
                 }
+                scannerRef.current = null;
             }
+
+            // Small delay to ensure DOM is ready
+            await new Promise(resolve => setTimeout(resolve, 300));
 
             const html5QrCode = new Html5Qrcode('scanner-container');
             scannerRef.current = html5QrCode;
 
+            // Use back camera if available, otherwise fall back to any camera
+            const cameraConfig = cameras.length > 1
+                ? { facingMode: 'environment' }
+                : { deviceId: cameras[0].deviceId };
+
             await html5QrCode.start(
-                { facingMode: 'environment' },
+                cameraConfig,
                 {
                     fps: 10,
-                    qrbox: { width: 250, height: 250 },
+                    qrbox: { width: 200, height: 200 },
                     aspectRatio: 1,
+                    disableFlip: false,
                 },
                 (decodedText) => {
                     // Play beep sound
@@ -80,10 +87,18 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
                     // Ignore errors during scanning
                 }
             );
+
+            console.log('Scanner started successfully');
             setIsStarting(false);
         } catch (err) {
             console.error('Scanner error:', err);
             const errorMessage = err instanceof Error ? err.message : 'Error al iniciar la cámara';
+
+            // Check for permission denied
+            if (errorMessage.includes('Permission') || errorMessage.includes('NotAllowed')) {
+                setPermissionDenied(true);
+            }
+
             setError(errorMessage);
             setIsStarting(false);
         }
@@ -94,7 +109,7 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
         return () => {
             if (scannerRef.current) {
-                scannerRef.current.stop().catch(console.error);
+                scannerRef.current.stop().catch(() => { });
             }
         };
     }, [startScanner]);
@@ -172,8 +187,12 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
 
                 <div
                     id="scanner-container"
-                    className="w-full max-w-md aspect-square"
-                    style={{ display: isStarting || error ? 'none' : 'block' }}
+                    className="w-full max-w-md aspect-square relative overflow-hidden"
+                    style={{
+                        display: isStarting || error ? 'none' : 'block',
+                        minHeight: '300px',
+                        zIndex: 1
+                    }}
                 />
             </div>
 
