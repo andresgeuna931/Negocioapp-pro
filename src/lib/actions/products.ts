@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Product, ProductFormData } from '@/lib/types';
+import { checkResourceLimit } from '@/lib/actions/subscription-limits';
 
 // Get all products for current tenant
 export async function getProducts(options?: {
@@ -82,6 +83,12 @@ export async function getProductById(id: string) {
 
 // Create new product
 export async function createProduct(formData: ProductFormData) {
+    // 1. Check Limits & Access
+    const limitCheck = await checkResourceLimit('products');
+    if (!limitCheck.success) {
+        return { data: null, error: limitCheck.error || 'Límite alcanzado' };
+    }
+
     const supabase = await createClient();
 
     // Get current user's tenant_id
@@ -269,6 +276,12 @@ export async function importProducts(
         unit_type?: 'unit' | 'kg' | 'g' | 'lt' | 'ml';
     }[]
 ) {
+    // 1. Check Limits & Access
+    const limitCheck = await checkResourceLimit('products');
+    if (!limitCheck.success) {
+        return { success: false, error: limitCheck.error || 'Límite alcanzado', created: 0, updated: 0, errors: [] };
+    }
+
     const supabase = await createClient();
 
     // Get current user's tenant_id
