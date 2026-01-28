@@ -3,6 +3,21 @@
 import { createClient } from '@/lib/supabase/server';
 import type { SalesSummary, TopProduct, LowStockProduct } from '@/lib/types';
 
+// Helper to get current user's tenant_id
+async function getCurrentTenantId() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    return profile?.tenant_id || null;
+}
+
 // Get sales summary for a period
 export async function getSalesSummary(period: 'today' | 'week' | 'month' | 'year' = 'today') {
     const supabase = await createClient();
@@ -80,13 +95,19 @@ export async function getDashboardData() {
     };
 }
 
-// Get sales by date range for charts
+// Get sales by date range for charts - WITH TENANT FILTER
 export async function getSalesByDateRange(from: string, to: string) {
     const supabase = await createClient();
+    const tenantId = await getCurrentTenantId();
+
+    if (!tenantId) {
+        return { data: null, error: 'No autenticado' };
+    }
 
     const { data, error } = await supabase
         .from('sales')
         .select('created_at, total_amount')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .gte('created_at', from)
         .lte('created_at', to)
         .order('created_at');
@@ -116,13 +137,19 @@ export async function getSalesByDateRange(from: string, to: string) {
     };
 }
 
-// Get inventory value
+// Get inventory value - WITH TENANT FILTER
 export async function getInventoryValue() {
     const supabase = await createClient();
+    const tenantId = await getCurrentTenantId();
+
+    if (!tenantId) {
+        return { data: null, error: 'No autenticado' };
+    }
 
     const { data, error } = await supabase
         .from('products')
         .select('stock_on_hand, cost, price')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true);
 
     if (error) {
