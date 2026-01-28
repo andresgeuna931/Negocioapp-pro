@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
-import { getCurrentSession } from '@/lib/actions/auth';
+import { getCurrentSession, getTenantSettings } from '@/lib/actions/auth';
 import { getSalesSummary, getTopProducts } from '@/lib/actions/reports';
 import { getLowStockProducts } from '@/lib/actions/products';
+import { PLANS } from '@/lib/config/plans';
 import type { LowStockProduct } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,20 +25,28 @@ export default async function DashboardPage() {
   }
 
   // Fetch dashboard data
-  const [todaySummary, monthSummary, topProducts, lowStock] = await Promise.all([
+  const [todaySummary, monthSummary, topProducts, lowStock, tenant] = await Promise.all([
     getSalesSummary('today'),
     getSalesSummary('month'),
     getTopProducts(5, 'month'),
     getLowStockProducts(),
+    getTenantSettings()
   ]);
+
+  const planName = PLANS[tenant?.plan_type?.toUpperCase() as keyof typeof PLANS]?.name || 'Gratis';
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-          ¡Hola, {session.profile.full_name?.split(' ')[0] || 'Usuario'}!
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            ¡Hola, {session.profile.full_name?.split(' ')[0] || 'Usuario'}!
+          </h1>
+          <Badge variant={tenant?.plan_type === 'business' ? 'success' : tenant?.plan_type === 'professional' ? 'info' : 'default'}>
+            Plan {planName}
+          </Badge>
+        </div>
         <p className="text-slate-500 dark:text-slate-400">
           Bienvenido a {session.tenant.name}
         </p>
