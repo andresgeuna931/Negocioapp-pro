@@ -15,30 +15,20 @@ import { getDashboardData } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity, getStockStatus } from '@/lib/utils';
 
 // ... imports
-import { getTenantSettings } from '@/lib/actions/auth'; // Import action
-import { PLANS } from '@/lib/config/plans'; // Import plans config (assuming it's exported)
 
 export default async function DashboardPage() {
-    const [data, tenant] = await Promise.all([
-        getDashboardData(),
-        getTenantSettings()
-    ]);
+    const data = await getDashboardData();
 
-    const planName = PLANS[tenant?.plan_type?.toUpperCase() as keyof typeof PLANS]?.name || 'Gratis';
+
 
     return (
         <div className="space-y-6">
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                            Dashboard
-                        </h1>
-                        <Badge variant={tenant?.plan_type === 'business' ? 'default' : tenant?.plan_type === 'professional' ? 'secondary' : 'outline'}>
-                            Plan {planName}
-                        </Badge>
-                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Dashboard
+                    </h1>
                     <p className="text-slate-500">
                         Resumen de tu negocio
                     </p>
