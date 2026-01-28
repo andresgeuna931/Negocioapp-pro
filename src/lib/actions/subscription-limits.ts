@@ -41,7 +41,7 @@ export async function checkResourceLimit(resource: ResourceType): Promise<LimitC
 
     if (subscription && ['active', 'trialing'].includes(subscription.status)) {
         isAccessAllowed = true;
-        effectivePlanId = subscription.plan_id;
+        effectivePlanId = subscription?.plan_id || 'starter';
     } else {
         // No active subscription. Check implicit Trial (14 days from tenant creation)
         const createdAt = new Date(tenant.created_at);
