@@ -92,9 +92,16 @@ export function Scanner({ onScan, onClose }: ScannerProps) {
             await scanner.start(
                 cameraId,
                 {
-                    fps: 10,
-                    qrbox: { width: 280, height: 150 }, // Rectangular for barcodes
-                    aspectRatio: 1.0,
+                    fps: 15,
+                    qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+                        // Use 80% of the smaller dimension for a large scan area
+                        const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+                        const size = Math.floor(minDimension * 0.8);
+                        return {
+                            width: Math.min(size, viewfinderWidth - 20),
+                            height: Math.floor(size * 0.5) // Rectangular for barcodes
+                        };
+                    },
                 },
                 (decodedText, decodedResult) => {
                     if (hasScannedRef.current) return;
