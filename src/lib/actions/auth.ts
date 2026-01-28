@@ -169,9 +169,27 @@ export async function createStaffUser(
 export async function getTeamMembers() {
     const supabase = await createClient();
 
+    // First get current user's tenant_id
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return { data: null, error: 'No autenticado' };
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) {
+        return { data: null, error: 'Perfil no encontrado' };
+    }
+
+    // Now get only team members from the SAME tenant
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
+        .eq('tenant_id', profile.tenant_id)
         .order('role')
         .order('full_name');
 
