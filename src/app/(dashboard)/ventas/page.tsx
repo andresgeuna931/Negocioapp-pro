@@ -107,17 +107,33 @@ export default function SalesPage() {
 
     // Add product to cart
     const addToCart = (product: Product, qty: number = 1) => {
+        // Check stock availability
+        if (product.stock_on_hand <= 0) {
+            setError(`${product.name} no tiene stock disponible`);
+            return;
+        }
+
         const adjustedPrice = getAdjustedPrice(product);
         setCart((prev) => {
             const existing = prev.find((item) => item.product.id === product.id);
+            const currentQty = existing?.qty || 0;
+            const maxAvailable = product.stock_on_hand - currentQty;
+
+            if (maxAvailable <= 0) {
+                setError(`Ya agregaste todo el stock disponible de ${product.name}`);
+                return prev;
+            }
+
+            const qtyToAdd = Math.min(qty, maxAvailable);
+
             if (existing) {
                 return prev.map((item) =>
                     item.product.id === product.id
-                        ? { ...item, qty: item.qty + qty, adjustedPrice }
+                        ? { ...item, qty: item.qty + qtyToAdd, adjustedPrice }
                         : item
                 );
             }
-            return [...prev, { product, qty, adjustedPrice }];
+            return [...prev, { product, qty: qtyToAdd, adjustedPrice }];
         });
         setSearchQuery('');
         setSearchResults([]);
@@ -137,28 +153,39 @@ export default function SalesPage() {
         }
     }, [selectedPriceList]);
 
-    // Update quantity
+    // Update quantity with stock limit
     const updateQty = (productId: string, delta: number) => {
         setCart((prev) =>
             prev
-                .map((item) =>
-                    item.product.id === productId
-                        ? { ...item, qty: Math.max(0, item.qty + delta) }
-                        : item
-                )
+                .map((item) => {
+                    if (item.product.id === productId) {
+                        const newQty = item.qty + delta;
+                        // Limit to available stock
+                        const maxQty = item.product.stock_on_hand;
+                        const limitedQty = Math.min(Math.max(0, newQty), maxQty);
+                        return { ...item, qty: limitedQty };
+                    }
+                    return item;
+                })
                 .filter((item) => item.qty > 0)
         );
     };
 
-    // Set exact quantity
+    // Set exact quantity with stock limit
     const setQty = (productId: string, qty: number) => {
         if (qty <= 0) {
             setCart((prev) => prev.filter((item) => item.product.id !== productId));
         } else {
             setCart((prev) =>
-                prev.map((item) =>
-                    item.product.id === productId ? { ...item, qty } : item
-                )
+                prev.map((item) => {
+                    if (item.product.id === productId) {
+                        // Limit to available stock
+                        const maxQty = item.product.stock_on_hand;
+                        const limitedQty = Math.min(qty, maxQty);
+                        return { ...item, qty: limitedQty };
+                    }
+                    return item;
+                })
             );
         }
     };
@@ -379,18 +406,28 @@ export default function SalesPage() {
                                                     <Minus className="w-4 h-4" />
                                                 </button>
 
-                                                <input
-                                                    type="number"
-                                                    value={item.qty}
-                                                    onChange={(e) => setQty(item.product.id, parseFloat(e.target.value) || 0)}
-                                                    className="w-16 h-8 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                    step={item.product.unit_type === 'unit' ? 1 : 0.001}
-                                                    min={0}
-                                                />
+                                                <div className="flex flex-col items-center">
+                                                    <input
+                                                        type="number"
+                                                        value={item.qty}
+                                                        onChange={(e) => setQty(item.product.id, parseFloat(e.target.value) || 0)}
+                                                        className="w-16 h-8 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                                                        step={item.product.unit_type === 'unit' ? 1 : 0.001}
+                                                        min={0}
+                                                        max={item.product.stock_on_hand}
+                                                    />
+                                                    <span className="text-[10px] text-slate-400">
+                                                        máx: {item.product.stock_on_hand}
+                                                    </span>
+                                                </div>
 
                                                 <button
                                                     onClick={() => updateQty(item.product.id, 1)}
-                                                    className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center hover:bg-emerald-200 transition-colors"
+                                                    disabled={item.qty >= item.product.stock_on_hand}
+                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${item.qty >= item.product.stock_on_hand
+                                                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
+                                                            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200'
+                                                        }`}
                                                 >
                                                     <Plus className="w-4 h-4" />
                                                 </button>
