@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { PLANS, formatPrice, getPlanDetails } from '@/lib/config/plans';
 import { cn } from '@/lib/utils';
-// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface PricingCardProps {
     planId: string;
@@ -41,41 +40,67 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading }: Pricin
                 </CardTitle>
                 <CardDescription className="min-h-[40px]">{plan.description}</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 space-y-6">
+            <CardContent className="flex-1 space-y-4">
                 <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-bold">{formatPrice(plan.price)}</span>
                     <span className="text-slate-500">/mes</span>
                 </div>
 
-                <div className="space-y-3 text-sm">
-                    {/* Límites */}
-                    <div className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                        <span className="font-medium">
-                            {plan.limits.products === -1 ? 'Productos Ilimitados' : `Hasta ${plan.limits.products} productos`}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                        <span>
-                            {plan.limits.users === 1 ? '1 usuario' : `Hasta ${plan.limits.users} usuarios`}
-                        </span>
-                    </div>
+                <div className="space-y-2 text-sm">
+                    {/* Límites principales */}
+                    <FeatureRow
+                        included={true}
+                        text={plan.limits.products === -1 ? 'Productos Ilimitados' : `Hasta ${plan.limits.products.toLocaleString()} productos`}
+                        highlight={plan.limits.products === -1}
+                    />
+                    <FeatureRow
+                        included={true}
+                        text={plan.limits.users === 1 ? '1 usuario' : `Hasta ${plan.limits.users} usuarios`}
+                    />
 
-                    {/* Features Clave */}
+                    {/* Separador */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 my-3" />
+
+                    {/* Features principales */}
                     <FeatureRow
                         included={plan.features.current_account}
                         text="Cuentas Corrientes (Fiado)"
-                        tooltip="Permite vender a crédito y registrar deudas de clientes"
+                        tooltip="Vender a crédito y registrar deudas de clientes"
+                        highlight={plan.features.current_account}
+                    />
+                    <FeatureRow
+                        included={plan.features.multi_price_lists}
+                        text="Listas de precios múltiples"
+                        tooltip="Precios diferenciados por mayorista, minorista, etc."
+                    />
+                    <FeatureRow
+                        included={plan.features.bulk_products_update}
+                        text="Actualización masiva de precios"
+                        tooltip="Actualizar todos los precios por porcentaje"
+                    />
+                    <FeatureRow
+                        included={true}
+                        text={
+                            plan.features.reports === 'basic' ? 'Reportes básicos' :
+                                plan.features.reports === 'advanced' ? 'Reportes avanzados' :
+                                    'Reportes avanzados'
+                        }
+                    />
+                    <FeatureRow
+                        included={plan.features.excel_reports_export}
+                        text="Exportar a Excel"
+                        tooltip="Descargar reportes en formato Excel"
                     />
 
-
                     {/* Soporte - Diferenciador */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                         <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Soporte</p>
                         <div className="flex items-start gap-2">
                             <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                            <span className="text-slate-700 dark:text-slate-300">
+                            <span className={cn(
+                                "text-slate-700 dark:text-slate-300",
+                                plan.id === 'business' && "font-medium text-emerald-600 dark:text-emerald-400"
+                            )}>
                                 {plan.id === 'starter' && 'Chatbot IA (Autogestión)'}
                                 {plan.id === 'professional' && 'Chatbot + WhatsApp (Lun-Vie)'}
                                 {plan.id === 'business' && 'WhatsApp Prioritario VIP'}
@@ -101,17 +126,36 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading }: Pricin
     );
 }
 
-function FeatureRow({ included, text, tooltip }: { included: boolean; text: string; tooltip?: string }) {
+function FeatureRow({
+    included,
+    text,
+    tooltip,
+    highlight = false
+}: {
+    included: boolean;
+    text: string;
+    tooltip?: string;
+    highlight?: boolean;
+}) {
     return (
         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
             {included ? (
-                <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <Check className={cn(
+                    "w-4 h-4 flex-shrink-0",
+                    highlight ? "text-emerald-600" : "text-emerald-500"
+                )} />
             ) : (
                 <X className="w-4 h-4 text-slate-300 flex-shrink-0" />
             )}
             <div className="flex items-center gap-1">
                 <span
-                    className={included ? "text-slate-900 dark:text-slate-200" : "text-slate-400 line-through"}
+                    className={cn(
+                        included
+                            ? highlight
+                                ? "text-slate-900 dark:text-slate-100 font-medium"
+                                : "text-slate-700 dark:text-slate-300"
+                            : "text-slate-400 line-through"
+                    )}
                     title={tooltip}
                 >
                     {text}
