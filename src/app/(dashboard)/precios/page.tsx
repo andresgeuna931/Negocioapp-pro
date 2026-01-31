@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { getTenantSettings, getSubscriptionStatus } from '@/lib/actions/auth';
-import { PricingCard } from '@/components/subscriptions/pricing-card'; // We will create a client wrapper for interactivity
 import { PricingSection } from '@/components/subscriptions/pricing-section';
 
 export default async function PricingPage() {
@@ -13,9 +12,35 @@ export default async function PricingPage() {
         redirect('/login');
     }
 
-    // Determine current plan from subscription or tenant default
-    // If strict subscription logic is not fully active yet, fallback to tenant.plan_type
-    const currentPlanId = subscription?.subscription?.plan_id || tenant.plan_type || 'starter';
+    // Check if user is in trial period (14 days from account creation)
+    let isInTrial = false;
+    let trialDaysLeft = 0;
+
+    if (tenant.created_at) {
+        const createdAt = new Date(tenant.created_at);
+        const trialEndDate = new Date(createdAt);
+        trialEndDate.setDate(trialEndDate.getDate() + 14);
+        const now = new Date();
+
+        if (now < trialEndDate) {
+            isInTrial = true;
+            trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        }
+    }
+
+    // Determine current plan:
+    // - If in trial period → professional (trial gives access to all features)
+    // - If has active subscription → use subscription plan
+    // - Otherwise → fallback to tenant.plan_type or starter
+    let currentPlanId: string;
+
+    if (isInTrial) {
+        currentPlanId = 'professional';
+    } else if (subscription?.subscription?.plan_id) {
+        currentPlanId = subscription.subscription.plan_id;
+    } else {
+        currentPlanId = tenant.plan_type || 'starter';
+    }
 
     return (
         <div className="max-w-6xl mx-auto py-8 px-4">
@@ -27,9 +52,19 @@ export default async function PricingPage() {
                     Comenzá con una prueba gratuita de 14 días en nuestro plan Profesional.
                     Sin compromiso, cancelá cuando quieras.
                 </p>
+                {isInTrial && trialDaysLeft > 0 && (
+                    <div className="mt-4 inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        Te quedan {trialDaysLeft} días de prueba del Plan Profesional
+                    </div>
+                )}
             </div>
 
-            <PricingSection currentPlanId={currentPlanId} tenantId={tenant.id} />
+            <PricingSection
+                currentPlanId={currentPlanId}
+                tenantId={tenant.id}
+                isInTrial={isInTrial}
+            />
 
             <div className="mt-16 text-center">
                 <p className="text-slate-500 mb-4">¿Tenés preguntas sobre los planes?</p>

@@ -7,9 +7,10 @@ import { PLANS } from '@/lib/config/plans';
 interface PricingSectionProps {
     currentPlanId: string;
     tenantId: string;
+    isInTrial?: boolean;
 }
 
-export function PricingSection({ currentPlanId, tenantId }: PricingSectionProps) {
+export function PricingSection({ currentPlanId, tenantId, isInTrial }: PricingSectionProps) {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
