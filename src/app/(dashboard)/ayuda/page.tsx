@@ -193,8 +193,8 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Qué pasa si no pago?',
-                answer: 'Si no renovás, la cuenta pasa al plan Starter con funciones limitadas. Tus datos se mantienen pero algunas funciones como Fiado o exportar Excel se desactivan.',
-                keywords: ['pago', 'vence', 'expira', 'cancelar']
+                answer: 'Si tu suscripción vence y no renovás, el acceso al sistema se suspende hasta que regularices el pago. Tus datos se mantienen seguros, pero no podrás usar la aplicación hasta completar el pago.',
+                keywords: ['pago', 'vence', 'expira', 'cancelar', 'suspende']
             },
             {
                 question: '¿Cómo configuro los datos de mi negocio?',
