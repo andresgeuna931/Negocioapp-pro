@@ -1,257 +1,387 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
+    Search,
     HelpCircle,
     ShoppingCart,
     Package,
+    Users,
     BarChart3,
     Settings,
-    Plus,
-    AlertTriangle,
+    ChevronDown,
+    ChevronUp,
     ScanLine,
-    Edit,
-    Trash2,
-    Users,
-    FileText,
-    Usb
+    AlertTriangle,
+    CreditCard,
+    FileSpreadsheet,
+    MessageCircle
 } from 'lucide-react';
 
+interface FAQItem {
+    question: string;
+    answer: string;
+    keywords: string[];
+}
+
+interface FAQCategory {
+    id: string;
+    title: string;
+    icon: React.ReactNode;
+    color: string;
+    items: FAQItem[];
+}
+
+const faqData: FAQCategory[] = [
+    {
+        id: 'ventas',
+        title: 'Ventas',
+        icon: <ShoppingCart className="w-5 h-5" />,
+        color: 'emerald',
+        items: [
+            {
+                question: '¿Cómo hago una venta?',
+                answer: '1. Andá a "Venta Rápida" en el menú\n2. Escaneá el código de barras o buscá el producto por nombre\n3. Ajustá la cantidad con los botones + y -\n4. Tocá "Cobrar" y seleccioná el método de pago (Efectivo, Transferencia o Fiado)',
+                keywords: ['vender', 'cobrar', 'carrito', 'agregar']
+            },
+            {
+                question: '¿Por qué no puedo agregar más cantidad de un producto?',
+                answer: 'El sistema no permite vender más cantidad que el stock disponible. Debajo del campo de cantidad verás "máx: X" indicando cuántas unidades tenés. Si necesitás vender más, primero cargá stock en la sección de Inventario.',
+                keywords: ['stock', 'cantidad', 'máximo', 'limite', 'no puedo']
+            },
+            {
+                question: '¿Cómo uso el escáner de códigos de barras?',
+                answer: 'Tocá el botón "Escanear Producto" y apuntá la cámara al código de barras. El sistema detecta automáticamente el código y agrega el producto al carrito. Necesitás dar permiso de cámara cuando el navegador lo solicite.',
+                keywords: ['escanear', 'camara', 'codigo', 'barras', 'lector']
+            },
+            {
+                question: '¿Puedo usar un lector de códigos USB?',
+                answer: 'Sí, los lectores USB funcionan automáticamente. Solo conectalo a la computadora, poné el cursor en el campo de búsqueda y escaneá. El lector "escribe" el código y busca el producto automáticamente.',
+                keywords: ['usb', 'lector', 'pistola', 'computadora']
+            },
+            {
+                question: '¿Cómo aplico un descuento?',
+                answer: 'Podés crear listas de precios con descuentos en la sección Configuración > Listas de Precios. Al vender, seleccioná la lista correspondiente (ej: "Mayorista -10%") y los precios se ajustan automáticamente.',
+                keywords: ['descuento', 'precio', 'mayorista', 'lista']
+            }
+        ]
+    },
+    {
+        id: 'productos',
+        title: 'Productos',
+        icon: <Package className="w-5 h-5" />,
+        color: 'blue',
+        items: [
+            {
+                question: '¿Cómo agrego un producto nuevo?',
+                answer: 'Andá a Productos > "+ Nuevo Producto". Completá el nombre (obligatorio) y el precio. Podés escanear el código de barras tocando el ícono 📷 al lado del campo. El SKU es opcional.',
+                keywords: ['nuevo', 'agregar', 'crear', 'producto']
+            },
+            {
+                question: '¿Qué es el SKU?',
+                answer: 'SKU (Stock Keeping Unit) es un código interno que vos inventás para identificar productos. Por ejemplo: "COCA500" para Coca Cola 500ml. Es opcional y útil para productos sin código de barras o para buscar más rápido.',
+                keywords: ['sku', 'codigo', 'interno', 'identificar']
+            },
+            {
+                question: '¿Cómo edito o elimino un producto?',
+                answer: 'Andá a Productos, hacé click en cualquier producto y se abre un modal para editar todos los datos. Para eliminar, tocá el botón rojo "Eliminar" y confirmá.',
+                keywords: ['editar', 'modificar', 'eliminar', 'borrar', 'cambiar']
+            },
+            {
+                question: '¿Cómo actualizo los precios masivamente?',
+                answer: 'Andá a Productos > "Actualizar Precios". Podés aplicar un porcentaje de aumento o descuento a todos los productos o solo a una categoría específica.',
+                keywords: ['precios', 'masivo', 'porcentaje', 'inflacion', 'actualizar']
+            },
+            {
+                question: '¿Cómo importo productos desde Excel?',
+                answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.',
+                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla']
+            }
+        ]
+    },
+    {
+        id: 'clientes',
+        title: 'Clientes y Fiado',
+        icon: <Users className="w-5 h-5" />,
+        color: 'orange',
+        items: [
+            {
+                question: '¿Cómo creo un cliente?',
+                answer: 'Andá a Clientes > "+ Nuevo Cliente". Completá el nombre y opcionalmente teléfono/email. Esto permite llevar cuenta corriente (fiado) con ese cliente.',
+                keywords: ['cliente', 'nuevo', 'crear', 'agregar']
+            },
+            {
+                question: '¿Cómo hago una venta fiada?',
+                answer: 'Al momento de cobrar, seleccioná "Cuenta Corriente (Fiado)" como método de pago. Elegí el cliente de la lista y confirmá. La deuda queda registrada automáticamente.',
+                keywords: ['fiado', 'credito', 'cuenta corriente', 'deuda']
+            },
+            {
+                question: '¿Cómo veo cuánto debe un cliente?',
+                answer: 'Andá a Clientes. Ahí verás la lista con el saldo pendiente de cada uno. Tocá un cliente para ver el detalle de sus compras fiadas.',
+                keywords: ['deuda', 'saldo', 'debe', 'pendiente']
+            },
+            {
+                question: '¿Cómo registro un pago de un cliente?',
+                answer: 'Andá a Clientes, tocá el cliente que pagó, y usá el botón "Registrar Pago". Ingresá el monto y se descuenta de su deuda.',
+                keywords: ['pago', 'abono', 'registrar', 'cobrar']
+            }
+        ]
+    },
+    {
+        id: 'stock',
+        title: 'Stock e Inventario',
+        icon: <AlertTriangle className="w-5 h-5" />,
+        color: 'amber',
+        items: [
+            {
+                question: '¿Cómo cargo stock de un producto?',
+                answer: 'Andá a Inventario > "+ Nueva Entrada". Buscá el producto, ingresá la cantidad recibida y opcionalmente el costo. El stock se suma automáticamente.',
+                keywords: ['stock', 'cargar', 'entrada', 'reponer', 'inventario']
+            },
+            {
+                question: '¿Cómo funciona la alerta de stock bajo?',
+                answer: 'Cuando un producto baja de cierta cantidad (por defecto 5 unidades), aparece en la sección "Stock Bajo". Podés personalizar este umbral por producto o globalmente en Configuración.',
+                keywords: ['alerta', 'bajo', 'minimo', 'umbral', 'aviso']
+            },
+            {
+                question: '¿Cómo hago un ajuste de inventario?',
+                answer: 'Si el stock real no coincide con el sistema, editá el producto y modificá el campo "Stock actual". Esto corrige la diferencia.',
+                keywords: ['ajuste', 'diferencia', 'corregir', 'inventario']
+            }
+        ]
+    },
+    {
+        id: 'reportes',
+        title: 'Reportes',
+        icon: <BarChart3 className="w-5 h-5" />,
+        color: 'purple',
+        items: [
+            {
+                question: '¿Cómo veo las ventas del día?',
+                answer: 'En el Dashboard principal ves el resumen del día: total vendido, cantidad de ventas y ticket promedio. Para más detalle, andá a Reportes.',
+                keywords: ['ventas', 'dia', 'total', 'resumen']
+            },
+            {
+                question: '¿Cómo exporto reportes a Excel?',
+                answer: 'En la sección Reportes, usá el botón "Exportar Excel" para descargar el detalle de ventas. Esta función está disponible en los planes Profesional y Business.',
+                keywords: ['excel', 'exportar', 'descargar', 'reporte']
+            },
+            {
+                question: '¿Cómo veo qué productos se venden más?',
+                answer: 'En el Dashboard hay una sección "Top Productos del Mes" con los más vendidos. En Reportes podés ver estadísticas más detalladas.',
+                keywords: ['top', 'mas vendido', 'popular', 'ranking']
+            }
+        ]
+    },
+    {
+        id: 'cuenta',
+        title: 'Mi Cuenta y Suscripción',
+        icon: <CreditCard className="w-5 h-5" />,
+        color: 'indigo',
+        items: [
+            {
+                question: '¿Cuánto dura la prueba gratis?',
+                answer: 'La prueba gratis dura 14 días e incluye todas las funciones del Plan Profesional. No se requiere tarjeta de crédito para empezar.',
+                keywords: ['prueba', 'gratis', 'trial', 'dias']
+            },
+            {
+                question: '¿Cómo cambio de plan?',
+                answer: 'Andá a Configuración > Ver Planes, o tocá el banner azul del Dashboard. Elegí el plan que prefieras y seguí los pasos para pagar con MercadoPago.',
+                keywords: ['plan', 'cambiar', 'upgrade', 'suscripcion']
+            },
+            {
+                question: '¿Qué pasa si no pago?',
+                answer: 'Si no renovás, la cuenta pasa al plan Starter con funciones limitadas. Tus datos se mantienen pero algunas funciones como Fiado o exportar Excel se desactivan.',
+                keywords: ['pago', 'vence', 'expira', 'cancelar']
+            },
+            {
+                question: '¿Cómo configuro los datos de mi negocio?',
+                answer: 'Andá a Configuración. Ahí podés cambiar el nombre del negocio, dirección, teléfono y otros datos que aparecen en los tickets.',
+                keywords: ['configurar', 'negocio', 'datos', 'nombre']
+            }
+        ]
+    }
+];
+
 export default function AyudaPage() {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [expandedCategories, setExpandedCategories] = useState<string[]>(['ventas']);
+    const [expandedQuestions, setExpandedQuestions] = useState<string[]>([]);
+
+    const filteredData = useMemo(() => {
+        if (!searchQuery.trim()) {
+            return faqData;
+        }
+
+        const query = searchQuery.toLowerCase();
+
+        return faqData.map(category => ({
+            ...category,
+            items: category.items.filter(item =>
+                item.question.toLowerCase().includes(query) ||
+                item.answer.toLowerCase().includes(query) ||
+                item.keywords.some(k => k.includes(query))
+            )
+        })).filter(category => category.items.length > 0);
+    }, [searchQuery]);
+
+    const toggleCategory = (categoryId: string) => {
+        setExpandedCategories(prev =>
+            prev.includes(categoryId)
+                ? prev.filter(id => id !== categoryId)
+                : [...prev, categoryId]
+        );
+    };
+
+    const toggleQuestion = (questionId: string) => {
+        setExpandedQuestions(prev =>
+            prev.includes(questionId)
+                ? prev.filter(id => id !== questionId)
+                : [...prev, questionId]
+        );
+    };
+
+    const totalResults = filteredData.reduce((acc, cat) => acc + cat.items.length, 0);
+
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
+            {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <HelpCircle className="w-7 h-7 text-emerald-500" />
-                    Manual de Usuario
+                    Centro de Ayuda
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1">
-                    Guía completa para usar NegocioApp Pro
+                    Encontrá respuestas a las preguntas más frecuentes
                 </p>
             </div>
 
-            {/* Venta Rápida */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <ShoppingCart className="w-5 h-5 text-emerald-500" />
-                        Venta Rápida
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>¿Cómo hacer una venta?</strong></p>
-                    <ol className="list-decimal list-inside space-y-2 ml-2">
-                        <li><strong>Escanear código:</strong> Tocá "Escanear Producto" y apuntá la cámara al código de barras</li>
-                        <li><strong>Buscar manualmente:</strong> Escribí el nombre del producto en el buscador</li>
-                        <li><strong>Ajustar cantidad:</strong> Usá los botones + y - para cambiar la cantidad</li>
-                        <li><strong>Cobrar:</strong> Tocá "Cobrar" y seleccioná el método de pago (Efectivo, Transferencia, o Cuenta Corriente)</li>
-                    </ol>
-
-                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg">
-                        <p className="font-medium text-emerald-700 dark:text-emerald-400 mb-2">Control de Stock:</p>
-                        <ul className="text-emerald-600 dark:text-emerald-300 space-y-1 ml-2">
-                            <li>• El sistema no permite vender más cantidad que el stock disponible</li>
-                            <li>• Debajo de la cantidad verás "máx: X" indicando el stock disponible</li>
-                            <li>• El botón + se desactiva cuando llegás al máximo</li>
-                        </ul>
-                    </div>
-
-                    <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
-                        <p className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                            <AlertTriangle className="w-4 h-4" />
-                            <strong>Nota sobre el escáner:</strong>
-                        </p>
-                        <p className="text-amber-600 dark:text-amber-300 ml-6">
-                            El escáner necesita permisos de cámara. Cuando aparezca el mensaje, tocá "Permitir".
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Productos */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Package className="w-5 h-5 text-blue-500" />
-                        Productos
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>Gestión de productos:</strong></p>
-                    <ul className="list-disc list-inside space-y-2 ml-2">
-                        <li><strong>Ver productos:</strong> Andá a "Productos" en el menú lateral</li>
-                        <li><strong>Agregar nuevo:</strong> Tocá el botón "+ Nuevo Producto"</li>
-                        <li><strong>Buscar:</strong> Usá la barra de búsqueda por nombre o código</li>
-                        <li><strong>Filtrar:</strong> Seleccioná una categoría para ver solo esos productos</li>
-                    </ul>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                        <p className="flex items-center gap-2 font-medium text-blue-700 dark:text-blue-400 mb-2">
-                            <Edit className="w-4 h-4" />
-                            Editar o eliminar productos:
-                        </p>
-                        <p className="text-blue-600 dark:text-blue-300 ml-6">
-                            Hacé click en cualquier producto para abrir el editor. Podés modificar todos los datos o eliminarlo con el botón rojo.
-                        </p>
-                    </div>
-
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                        <p className="flex items-center gap-2 font-medium text-blue-700 dark:text-blue-400 mb-2">
-                            <ScanLine className="w-4 h-4" />
-                            Escanear código al crear producto:
-                        </p>
-                        <p className="text-blue-600 dark:text-blue-300 ml-6">
-                            Al crear un producto nuevo, tocá el ícono de escáner 📷 al lado del campo "Código de barras" para escanear automáticamente.
-                        </p>
-                    </div>
-
-                    <div className="border border-slate-200 dark:border-slate-700 p-3 rounded-lg">
-                        <p className="font-medium mb-2">Campos del producto:</p>
-                        <ul className="space-y-1">
-                            <li><strong>Nombre *:</strong> Nombre del producto (obligatorio)</li>
-                            <li><strong>Código de barras:</strong> El número que viene impreso en el producto</li>
-                            <li><strong>SKU (opcional):</strong> Código interno que vos inventás para identificar productos. Ejemplo: "COCA500" para Coca Cola 500ml. Útil para productos sin código de barras.</li>
-                            <li><strong>Precio *:</strong> Precio de venta (obligatorio)</li>
-                            <li><strong>Costo:</strong> Lo que te costó a vos (para calcular ganancia)</li>
-                            <li><strong>Stock:</strong> Cantidad disponible actualmente</li>
-                            <li><strong>Alerta stock bajo:</strong> Te avisamos cuando quede menos de esta cantidad</li>
-                        </ul>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Lector USB */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Usb className="w-5 h-5 text-indigo-500" />
-                        Lector de Códigos USB
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>¿Tenés computadora pero no escáner?</strong></p>
-                    <p>Podés comprar un lector de códigos USB económico ($10-20 USD). Funcionan así:</p>
-                    <ol className="list-decimal list-inside space-y-2 ml-2">
-                        <li>Conectá el lector USB a la computadora</li>
-                        <li>Poné el cursor en el campo de búsqueda de productos</li>
-                        <li>Escaneá el código de barras - el lector "escribe" el número automáticamente</li>
-                        <li>El producto aparece en el carrito</li>
-                    </ol>
-                    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg">
-                        <p className="text-indigo-600 dark:text-indigo-300">
-                            <strong>No requiere configuración:</strong> Los lectores USB funcionan como un teclado, conectás y listo.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Stock Bajo */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <AlertTriangle className="w-5 h-5 text-amber-500" />
-                        Stock Bajo
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>Alertas de stock:</strong></p>
-                    <ul className="list-disc list-inside space-y-2 ml-2">
-                        <li>Esta sección muestra productos que están por debajo del umbral mínimo</li>
-                        <li>El umbral por defecto es 5 unidades (podés cambiarlo en Configuración)</li>
-                        <li>Cada producto puede tener su propio umbral personalizado</li>
-                        <li>Revisá esta sección regularmente para reponer mercadería a tiempo</li>
-                    </ul>
-                </CardContent>
-            </Card>
-
-            {/* Clientes */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Users className="w-5 h-5 text-orange-500" />
-                        Clientes y Cuentas Corrientes
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>Gestión de fiados:</strong></p>
-                    <ul className="list-disc list-inside space-y-2 ml-2">
-                        <li><strong>Crear cliente:</strong> Andá a "Clientes" y tocá "+ Nuevo Cliente"</li>
-                        <li><strong>Venta fiada:</strong> Al cobrar, elegí "Cuenta Corriente (Fiado)" y seleccioná el cliente</li>
-                        <li><strong>Ver deuda:</strong> En la lista de clientes podés ver el saldo de cada uno</li>
-                        <li><strong>Registrar pago:</strong> Tocá el cliente para registrar un pago a cuenta</li>
-                    </ul>
-                </CardContent>
-            </Card>
-
-            {/* Reportes */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <BarChart3 className="w-5 h-5 text-purple-500" />
-                        Reportes
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>Estadísticas disponibles:</strong></p>
-                    <ul className="list-disc list-inside space-y-2 ml-2">
-                        <li><strong>Ventas del día:</strong> Total vendido hoy</li>
-                        <li><strong>Ventas del mes:</strong> Resumen mensual con gráfico</li>
-                        <li><strong>Top productos:</strong> Los más vendidos del mes</li>
-                        <li><strong>Resumen de inventario:</strong> Valor total del stock</li>
-                    </ul>
-                </CardContent>
-            </Card>
-
-            {/* Importar Productos */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <FileText className="w-5 h-5 text-teal-500" />
-                        Importar Productos desde Excel
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>¿Tenés muchos productos para cargar?</strong></p>
-                    <ol className="list-decimal list-inside space-y-2 ml-2">
-                        <li>Andá a "Productos" y tocá "Importar Excel"</li>
-                        <li>Descargá la plantilla de ejemplo</li>
-                        <li>Completá el Excel con tus productos (nombre, precio, código, etc.)</li>
-                        <li>Subí el archivo y confirmá la importación</li>
-                    </ol>
-                    <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-lg">
-                        <p className="text-teal-600 dark:text-teal-300">
-                            <strong>Tip:</strong> Podés importar hasta 500 productos de una vez.
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Configuración */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Settings className="w-5 h-5 text-slate-500" />
-                        Configuración
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                    <p><strong>Opciones disponibles:</strong></p>
-                    <ul className="list-disc list-inside space-y-2 ml-2">
-                        <li><strong>Datos del negocio:</strong> Nombre, dirección, teléfono</li>
-                        <li><strong>Umbral de stock:</strong> Ajustar el mínimo para alertas</li>
-                        <li><strong>Estado de suscripción:</strong> Ver plan actual y vencimiento</li>
-                        <li><strong>Equipo:</strong> Agregar empleados con acceso limitado</li>
-                    </ul>
-                </CardContent>
-            </Card>
-
-            {/* Soporte */}
-            <Card className="border-emerald-200 dark:border-emerald-800">
-                <CardContent className="p-6 text-center">
-                    <p className="text-slate-600 dark:text-slate-300">
-                        ¿Necesitás más ayuda? Contactanos:
+            {/* Search */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Input
+                    type="text"
+                    placeholder="Buscar: ¿Cómo hago una venta? ¿Qué es el SKU?..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12 text-base"
+                />
+                {searchQuery && (
+                    <p className="text-sm text-slate-500 mt-2">
+                        {totalResults} resultado{totalResults !== 1 ? 's' : ''} encontrado{totalResults !== 1 ? 's' : ''}
                     </p>
-                    <p className="text-emerald-600 dark:text-emerald-400 font-medium mt-2">
-                        amgdigital.ok@gmail.com
-                    </p>
+                )}
+            </div>
+
+            {/* FAQ Categories */}
+            <div className="space-y-4">
+                {filteredData.map((category) => (
+                    <Card key={category.id} className="overflow-hidden">
+                        {/* Category Header */}
+                        <button
+                            onClick={() => toggleCategory(category.id)}
+                            className={`w-full p-4 flex items-center justify-between text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg bg-${category.color}-100 dark:bg-${category.color}-900/30 text-${category.color}-600`}>
+                                    {category.icon}
+                                </div>
+                                <div>
+                                    <h2 className="font-semibold text-slate-900 dark:text-white">
+                                        {category.title}
+                                    </h2>
+                                    <p className="text-sm text-slate-500">
+                                        {category.items.length} pregunta{category.items.length !== 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                            </div>
+                            {expandedCategories.includes(category.id) ? (
+                                <ChevronUp className="w-5 h-5 text-slate-400" />
+                            ) : (
+                                <ChevronDown className="w-5 h-5 text-slate-400" />
+                            )}
+                        </button>
+
+                        {/* Questions */}
+                        {expandedCategories.includes(category.id) && (
+                            <CardContent className="pt-0 pb-4">
+                                <div className="space-y-2">
+                                    {category.items.map((item, idx) => {
+                                        const questionId = `${category.id}-${idx}`;
+                                        const isExpanded = expandedQuestions.includes(questionId);
+
+                                        return (
+                                            <div
+                                                key={questionId}
+                                                className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden"
+                                            >
+                                                <button
+                                                    onClick={() => toggleQuestion(questionId)}
+                                                    className="w-full p-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                >
+                                                    <span className="font-medium text-slate-800 dark:text-slate-200 pr-4">
+                                                        {item.question}
+                                                    </span>
+                                                    {isExpanded ? (
+                                                        <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                                    ) : (
+                                                        <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                                    )}
+                                                </button>
+                                                {isExpanded && (
+                                                    <div className="px-3 pb-3 text-sm text-slate-600 dark:text-slate-400 whitespace-pre-line bg-slate-50 dark:bg-slate-800/30">
+                                                        {item.answer}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        )}
+                    </Card>
+                ))}
+            </div>
+
+            {/* No results */}
+            {searchQuery && totalResults === 0 && (
+                <Card>
+                    <CardContent className="p-8 text-center">
+                        <Search className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                        <h3 className="font-medium text-slate-900 dark:text-white mb-2">
+                            No encontramos resultados
+                        </h3>
+                        <p className="text-slate-500 text-sm">
+                            Probá con otras palabras o contactanos directamente
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Contact Support */}
+            <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
+                <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                            <MessageCircle className="w-6 h-6 text-emerald-600" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                                ¿No encontrás lo que buscás?
+                            </h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">
+                                Nuestro equipo está para ayudarte. Escribinos y te respondemos a la brevedad.
+                            </p>
+                            <a
+                                href="mailto:amgdigital.ok@gmail.com"
+                                className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
+                            >
+                                amgdigital.ok@gmail.com
+                            </a>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>
