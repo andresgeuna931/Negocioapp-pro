@@ -147,7 +147,7 @@ export default function NewProductPage() {
                             </div>
                             <Input
                                 name="sku"
-                                label="SKU"
+                                label="SKU (opcional)"
                                 placeholder="Ej: CC500"
                             />
                         </div>

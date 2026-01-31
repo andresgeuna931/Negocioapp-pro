@@ -180,7 +180,7 @@ export function ProductCard({ product }: ProductCardProps) {
                                 onChange={(e) => setBarcode(e.target.value)}
                             />
                             <Input
-                                label="SKU"
+                                label="SKU (opcional)"
                                 value={sku}
                                 onChange={(e) => setSku(e.target.value)}
                             />
