@@ -1,11 +1,13 @@
 import Link from 'next/link';
-import { Plus, Package, DollarSign } from 'lucide-react';
+import { Plus, Package, DollarSign, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getProducts, getCategories } from '@/lib/actions/products';
+import { getCurrentSession } from '@/lib/actions/auth';
 import { ProductSearch } from '@/components/products/product-search';
 import { ProductsImportModal } from '@/components/products/ProductsImportModal';
 import { ProductCard } from '@/components/products/product-card';
+import { hasPermission } from '@/lib/permissions';
 
 export default async function ProductsPage({
     searchParams,
@@ -13,6 +15,8 @@ export default async function ProductsPage({
     searchParams: Promise<{ search?: string; category?: string }>;
 }) {
     const params = await searchParams;
+    const session = await getCurrentSession();
+    const canEdit = session ? hasPermission(session.profile.role, 'products:edit') : false;
     const { data: products } = await getProducts({
         search: params.search,
         category: params.category,
@@ -33,19 +37,28 @@ export default async function ProductsPage({
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <ProductsImportModal />
-                    <Link href="/productos/precios">
-                        <Button variant="secondary" className="w-full sm:w-auto">
-                            <DollarSign className="w-5 h-5 mr-2" />
-                            Actualizar Precios
-                        </Button>
-                    </Link>
-                    <Link href="/productos/nuevo">
-                        <Button className="w-full sm:w-auto">
-                            <Plus className="w-5 h-5 mr-2" />
-                            Nuevo Producto
-                        </Button>
-                    </Link>
+                    {canEdit ? (
+                        <>
+                            <ProductsImportModal />
+                            <Link href="/productos/precios">
+                                <Button variant="secondary" className="w-full sm:w-auto">
+                                    <DollarSign className="w-5 h-5 mr-2" />
+                                    Actualizar Precios
+                                </Button>
+                            </Link>
+                            <Link href="/productos/nuevo">
+                                <Button className="w-full sm:w-auto">
+                                    <Plus className="w-5 h-5 mr-2" />
+                                    Nuevo Producto
+                                </Button>
+                            </Link>
+                        </>
+                    ) : (
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <Lock className="w-4 h-4" />
+                            Solo el dueño puede editar productos
+                        </div>
+                    )}
                 </div>
             </div>
 

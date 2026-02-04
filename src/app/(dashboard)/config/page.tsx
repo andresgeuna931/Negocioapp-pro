@@ -1,20 +1,21 @@
-import { Settings, Store, Bell, Users, CreditCard, Tag, ChevronRight } from 'lucide-react';
+import { Store, Bell, CreditCard, Tag, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { getTenantSettings, getSubscriptionStatus, getTeamMembers } from '@/lib/actions/auth';
-import { formatCurrency, formatDate, getSubscriptionStatusLabel } from '@/lib/utils';
-import { TenantSettingsForm } from '@/components/config/tenant-settings-form';
+import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSession } from '@/lib/actions/auth';
+import { formatDate, getSubscriptionStatusLabel } from '@/lib/utils';
+import { TenantSettingsForm, TeamManagement } from '@/components/config';
 
 export default async function ConfigPage() {
-    const [tenant, subscriptionInfo, teamResult] = await Promise.all([
+    const [tenant, subscriptionInfo, teamResult, session] = await Promise.all([
         getTenantSettings(),
         getSubscriptionStatus(),
         getTeamMembers(),
+        getCurrentSession(),
     ]);
 
     const team = teamResult.data || [];
+    const isOwner = session?.profile.role === 'owner';
 
     return (
         <div className="space-y-6 max-w-4xl">
@@ -163,44 +164,12 @@ export default async function ConfigPage() {
                 </Card>
             </Link>
 
-            {/* Team */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Users className="w-5 h-5" />
-                        Equipo
-                    </CardTitle>
-                    <CardDescription>
-                        Usuarios con acceso al sistema
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
-                        {team.map((member) => (
-                            <div
-                                key={member.id}
-                                className="flex items-center gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800"
-                            >
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold">
-                                    {member.full_name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-medium text-slate-900 dark:text-white">
-                                        {member.full_name}
-                                    </p>
-                                    <p className="text-sm text-slate-500">{member.email}</p>
-                                </div>
-                                <Badge variant={member.role === 'owner' ? 'success' : 'default'}>
-                                    {member.role === 'owner' ? 'Dueño' : 'Empleado'}
-                                </Badge>
-                            </div>
-                        ))}
-                    </div>
-                    <p className="text-xs text-slate-400 mt-4">
-                        Para agregar nuevos usuarios, contactá al administrador del sistema.
-                    </p>
-                </CardContent>
-            </Card>
+            {/* Team Management */}
+            <TeamManagement
+                team={team}
+                currentUserId={session?.user.id || ''}
+                isOwner={isOwner}
+            />
         </div>
     );
 }
