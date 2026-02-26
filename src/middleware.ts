@@ -1,12 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Routes accessible without authentication
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/terminos', '/privacidad'];
+
 // Routes accessible even when subscription is expired
 const ALLOWED_ROUTES_WHEN_EXPIRED = [
     '/precios',
     '/suscripcion-vencida',
-    '/configuracion',
-    '/api',
+    '/config',
+    '/ayuda',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -37,18 +40,17 @@ export async function middleware(request: NextRequest) {
         }
     );
 
+    const pathname = request.nextUrl.pathname;
+
+    // Check if public route
+    const isPublicRoute = PUBLIC_ROUTES.some((route) =>
+        pathname.startsWith(route)
+    );
+
     // Get user session
     const {
         data: { user },
     } = await supabase.auth.getUser();
-
-    const pathname = request.nextUrl.pathname;
-
-    // Public routes that don't require authentication
-    const publicRoutes = ['/login', '/register', '/forgot-password'];
-    const isPublicRoute = publicRoutes.some((route) =>
-        pathname.startsWith(route)
-    );
 
     // If not authenticated and trying to access protected route
     if (!user && !isPublicRoute) {
@@ -59,68 +61,61 @@ export async function middleware(request: NextRequest) {
     }
 
     // If authenticated and trying to access login page
-    if (user && isPublicRoute) {
+    if (user && isPublicRoute && (pathname === '/login' || pathname === '/register')) {
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
     }
 
-    // Check subscription status for protected routes
+    // For authenticated users on protected routes, do a SIMPLE tenant check
     if (user && !isPublicRoute) {
-        // Check if current route is allowed when expired
         const isAllowedRoute = ALLOWED_ROUTES_WHEN_EXPIRED.some(route =>
             pathname.startsWith(route)
         );
 
-        // Get user profile with tenant and subscription
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select(`
-                tenant_id, 
-                role, 
-                tenant:tenants(status, created_at),
-                subscription:subscriptions(status, plan_id, current_period_end)
-            `)
-            .eq('id', user.id)
-            .single();
+        if (!isAllowedRoute) {
+            // Simple query - only tenant status and created_at (no heavy joins)
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('tenant_id, role, tenant:tenants(status, created_at)')
+                .eq('id', user.id)
+                .single();
 
-        if (profile && !isAllowedRoute) {
-            const tenantData = Array.isArray(profile.tenant) ? profile.tenant[0] : profile.tenant;
-            const subscriptionData = Array.isArray(profile.subscription) ? profile.subscription[0] : profile.subscription;
+            if (profile) {
+                const tenantData = Array.isArray(profile.tenant) ? profile.tenant[0] : profile.tenant;
+                const tenantStatus = (tenantData as { status: string; created_at: string } | null)?.status;
+                const tenantCreatedAt = (tenantData as { status: string; created_at: string } | null)?.created_at;
 
-            const tenantStatus = (tenantData as { status: string; created_at: string } | null)?.status;
-            const tenantCreatedAt = (tenantData as { status: string; created_at: string } | null)?.created_at;
+                // Check trial period (14 days from tenant creation)
+                let isInTrial = false;
+                if (tenantCreatedAt) {
+                    const createdAt = new Date(tenantCreatedAt);
+                    const trialEndDate = new Date(createdAt);
+                    trialEndDate.setDate(trialEndDate.getDate() + 14);
+                    isInTrial = new Date() < trialEndDate;
+                }
 
-            // Check subscription status
-            const subscriptionStatus = (subscriptionData as { status: string } | null)?.status;
-            const hasActiveSubscription = subscriptionStatus && ['active', 'trial'].includes(subscriptionStatus);
+                // Only block if tenant status clearly shows expired AND not in trial
+                const isActive = tenantStatus && ['trial', 'active'].includes(tenantStatus);
 
-            // Check trial period (14 days from tenant creation)
-            let isInTrial = false;
-            if (tenantCreatedAt) {
-                const createdAt = new Date(tenantCreatedAt);
-                const trialEndDate = new Date(createdAt);
-                trialEndDate.setDate(trialEndDate.getDate() + 14);
-                isInTrial = new Date() < trialEndDate;
-            }
+                if (!isActive && !isInTrial) {
+                    const url = request.nextUrl.clone();
+                    url.pathname = '/suscripcion-vencida';
+                    return NextResponse.redirect(url);
+                }
 
-            // Block access if no active subscription AND trial expired
-            if (!hasActiveSubscription && !isInTrial) {
-                const url = request.nextUrl.clone();
-                url.pathname = '/suscripcion-vencida';
-                return NextResponse.redirect(url);
-            }
-
-            // Also block if tenant is suspended (different from expired subscription)
-            const writeRoutes = ['/productos/nuevo', '/ventas', '/config'];
-            const isWriteRoute = writeRoutes.some((route) =>
-                pathname.startsWith(route)
-            );
-
-            if (tenantStatus === 'suspended' && isWriteRoute) {
-                const url = request.nextUrl.clone();
-                url.pathname = '/suspended';
-                return NextResponse.redirect(url);
+                // Block writes if suspended
+                if (tenantStatus === 'suspended') {
+                    const writeRoutes = ['/productos/nuevo', '/ventas'];
+                    const isWriteRoute = writeRoutes.some((route) =>
+                        pathname.startsWith(route)
+                    );
+                    if (isWriteRoute) {
+                        const url = request.nextUrl.clone();
+                        url.pathname = '/suscripcion-vencida';
+                        return NextResponse.redirect(url);
+                    }
+                }
             }
         }
     }
