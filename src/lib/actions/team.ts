@@ -5,12 +5,8 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentSession } from './auth';
 import { UserRole } from '@/lib/types';
 
-// Invite a new staff user to the tenant
-export async function inviteStaffUser(
-    email: string,
-    fullName: string,
-    role: UserRole = 'staff'
-) {
+// Generate an invite link for a new team member
+export async function generateInviteLink(role: UserRole = 'staff') {
     const supabase = await createClient();
 
     // Verify current user is owner
@@ -21,36 +17,13 @@ export async function inviteStaffUser(
 
     const tenantId = session.profile.tenant_id;
 
-    // Check if user already exists in this tenant
-    const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email)
-        .eq('tenant_id', tenantId)
-        .single();
-
-    if (existingProfile) {
-        return { error: 'Este email ya está registrado en tu negocio' };
-    }
-
-    // Check if user exists in auth but different tenant
-    const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('id, tenant_id')
-        .eq('email', email)
-        .single();
-
-    if (existingUser && existingUser.tenant_id !== tenantId) {
-        return { error: 'Este email ya está registrado en otro negocio' };
-    }
-
-    // Create invitation record
+    // Create invitation record (no email needed — the link is generic)
     const { data: invitation, error: inviteError } = await supabase
         .from('team_invitations')
         .insert({
             tenant_id: tenantId,
-            email: email.toLowerCase().trim(),
-            full_name: fullName.trim(),
+            email: 'pending', // Will be filled when employee registers
+            full_name: 'pending',
             role: role,
             invited_by: session.user.id,
             status: 'pending',
@@ -60,22 +33,131 @@ export async function inviteStaffUser(
         .single();
 
     if (inviteError) {
-        // Table might not exist yet, create simpler approach
-        // For MVP: Create user directly with temporary password
         console.error('Invitation error:', inviteError);
         return { error: 'Error al crear invitación. Contactá al soporte.' };
     }
 
-    // TODO: Send invitation email
-    // For now, we'll just create the invitation record
-    // The invited user will need to register and the system will link them
+    // Build the invite URL using the invitation UUID as token
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
+    const inviteUrl = `${baseUrl}/unirse/${invitation.id}`;
 
     revalidatePath('/config');
     return {
         error: null,
-        invitation,
-        message: 'Invitación creada. El usuario debe registrarse con este email.'
+        inviteUrl,
+        message: 'Link de invitación generado'
     };
+}
+
+// Get invitation details by token (for the join page)
+export async function getInvitationByToken(token: string) {
+    const supabase = await createClient();
+
+    const { data: invitation, error } = await supabase
+        .from('team_invitations')
+        .select('*, tenant:tenants(name)')
+        .eq('id', token)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+    if (error || !invitation) {
+        return { data: null, error: 'Invitación no encontrada o expirada' };
+    }
+
+    const tenantData = Array.isArray(invitation.tenant) ? invitation.tenant[0] : invitation.tenant;
+    const businessName = (tenantData as { name: string } | null)?.name || 'Negocio';
+
+    return {
+        data: {
+            id: invitation.id,
+            role: invitation.role,
+            businessName,
+            expires_at: invitation.expires_at,
+        },
+        error: null
+    };
+}
+
+// Register a new user via invite link and join the team
+export async function joinTeamViaInvite(data: {
+    token: string;
+    email: string;
+    password: string;
+    fullName: string;
+}) {
+    const supabase = await createClient();
+    const email = data.email.trim().toLowerCase();
+
+    // 1. Verify invitation is valid
+    const { data: invitation, error: invError } = await supabase
+        .from('team_invitations')
+        .select('*')
+        .eq('id', data.token)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+    if (invError || !invitation) {
+        return { error: 'La invitación ya no es válida o expiró.' };
+    }
+
+    // 2. Check if email already exists in this tenant
+    const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .eq('tenant_id', invitation.tenant_id)
+        .maybeSingle();
+
+    if (existingProfile) {
+        return { error: 'Este email ya está registrado en este negocio.' };
+    }
+
+    // 3. Create auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: data.password,
+        options: { data: { full_name: data.fullName } }
+    });
+
+    if (authError) {
+        return { error: authError.message };
+    }
+
+    if (!authData.user) {
+        return { error: 'Error al crear la cuenta.' };
+    }
+
+    // 4. Create profile linked to the owner's tenant
+    const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+            id: authData.user.id,
+            tenant_id: invitation.tenant_id,
+            role: invitation.role,
+            full_name: data.fullName.trim(),
+            email: email,
+            is_active: true
+        });
+
+    if (profileError) {
+        console.error('Error creating linked profile:', profileError);
+        return { error: 'Error al vincular con el equipo: ' + profileError.message };
+    }
+
+    // 5. Mark invitation as accepted and update with actual user info
+    await supabase
+        .from('team_invitations')
+        .update({
+            status: 'accepted',
+            email: email,
+            full_name: data.fullName.trim(),
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', invitation.id);
+
+    return { error: null };
 }
 
 // Toggle user active status
