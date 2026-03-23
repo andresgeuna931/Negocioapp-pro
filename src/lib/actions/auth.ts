@@ -252,11 +252,17 @@ export async function signUp(data: {
     businessType: BusinessType;
 }) {
     const supabase = await createClient();
+    const email = data.email.trim().toLowerCase();
 
     // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email.trim(),
+        email: email,
         password: data.password,
+        options: {
+            data: {
+                full_name: data.fullName,
+            }
+        }
     });
 
     if (authError) {
@@ -269,7 +275,48 @@ export async function signUp(data: {
 
     const userId = authData.user.id;
 
-    // 2. Create slug from business name
+    // 2. Check for pending invitations
+    const { data: invitation } = await supabase
+        .from('team_invitations')
+        .select('*')
+        .eq('email', email)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+    if (invitation) {
+        // FLOW: JOIN EXISTING TEAM
+        console.log('Invitation found! Linking user to tenant:', invitation.tenant_id);
+
+        // Create profile linked to existing tenant
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+                id: userId,
+                tenant_id: invitation.tenant_id,
+                role: invitation.role,
+                full_name: data.fullName,
+                email: email,
+                is_active: true
+            });
+
+        if (profileError) {
+            console.error('Error creating linked profile:', profileError);
+            return { error: 'Error al vincular con el equipo: ' + profileError.message };
+        }
+
+        // Mark invitation as accepted
+        await supabase
+            .from('team_invitations')
+            .update({ status: 'accepted', updated_at: new Date().toISOString() })
+            .eq('id', invitation.id);
+
+        revalidatePath('/');
+        return { error: null };
+    }
+
+    // FLOW: CREATE NEW BUSINESS (Legacy flow)
+    // 3. Create slug from business name
     const slug = data.businessName
         .toLowerCase()
         .normalize('NFD')
@@ -278,17 +325,16 @@ export async function signUp(data: {
         .replace(/(^-|-$)/g, '')
         + '-' + Date.now().toString(36);
 
-    // 3. Create tenant
-    // 3. Call RPC to create tenant, profile, subscription safely
+    // 4. Call RPC to create tenant, profile, subscription safely
     console.log('Calling register_new_tenant RPC with:', {
         p_user_id: userId,
-        p_email: data.email,
+        p_email: email,
         p_business_type: data.businessType
     });
 
     const { data: tenantId, error: rpcError } = await supabase.rpc('register_new_tenant', {
         p_user_id: userId,
-        p_email: data.email,
+        p_email: email,
         p_full_name: data.fullName,
         p_business_name: data.businessName,
         p_business_type: data.businessType,
@@ -297,17 +343,14 @@ export async function signUp(data: {
 
     if (rpcError) {
         console.error('RPC Error details:', rpcError);
-        // Warning: The user is created in Auth but DB setup failed. 
-        // In a real app we might want to clean up the auth user here.
         return { error: 'Error al registrar negocio (RPC): ' + rpcError.message };
     }
 
-    // 6. Seed initial data based on business type
-    // Import dynamically or ensure import is at top
-    // tenantId is returned directly from RPC
+    // 5. Seed initial data based on business type
     await seedTenantData(tenantId, data.businessType);
 
     revalidatePath('/');
     return { error: null };
 }
+
 
