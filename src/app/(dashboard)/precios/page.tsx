@@ -30,16 +30,21 @@ export default async function PricingPage() {
 
     // Determine current plan:
     // - If in trial period → professional (trial gives access to all features)
-    // - If has active subscription → use subscription plan
-    // - Otherwise → fallback to tenant.plan_type or starter
+    // - If has active paid subscription → use subscription plan
+    // - Otherwise → no current plan (let user choose)
     let currentPlanId: string;
 
     if (isInTrial) {
         currentPlanId = 'professional';
-    } else if (subscription?.subscription?.plan_id) {
+    } else if (
+        subscription?.subscription?.plan_id &&
+        !['free', 'trial'].includes(subscription.subscription.plan_id) &&
+        subscription.isActive
+    ) {
         currentPlanId = subscription.subscription.plan_id;
     } else {
-        currentPlanId = tenant.plan_type || 'starter';
+        // No active paid plan — don't mark anything as current
+        currentPlanId = 'none';
     }
 
     return (

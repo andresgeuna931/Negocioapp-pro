@@ -38,7 +38,7 @@ export default async function DashboardPage() {
   const subscription = subscriptionResult?.subscription;
 
   // Determine plan and trial status
-  let planName = 'Gratis';
+  let planName = 'Vencido';
   let isInTrial = false;
   let trialDaysLeft = 0;
 
