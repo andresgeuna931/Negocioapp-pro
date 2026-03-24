@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { differenceInDays } from 'date-fns';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { TrialBanner } from '@/components/subscriptions/trial-banner';
@@ -15,13 +14,20 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, session }: DashboardLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Calculate trial status
-    const isTrial = session?.tenant?.subscription_status === 'trial';
-    const trialEndsAt = session?.tenant?.trial_ends_at; // Use tenant status from migration
+    // Calculate trial status from created_at (consistent with layout.tsx and page.tsx)
+    const tenant = session?.tenant;
+    const createdAt = tenant?.created_at ? new Date(tenant.created_at) : null;
+    const isActive = tenant?.status && ['active'].includes(tenant.status);
 
+    let isTrial = false;
     let daysRemaining = 0;
-    if (trialEndsAt) {
-        daysRemaining = differenceInDays(new Date(trialEndsAt), new Date());
+
+    if (createdAt && !isActive) {
+        const trialEndDate = new Date(createdAt);
+        trialEndDate.setDate(trialEndDate.getDate() + 14);
+        const now = new Date();
+        daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        isTrial = tenant?.status === 'trial' && daysRemaining > 0;
     }
 
     return (
