@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Save, Trash2 } from 'lucide-react';
+import { Package, Save, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -27,11 +27,20 @@ const unitOptions = [
     { value: 'ml', label: 'Mililitro (ml)' },
 ];
 
+const unitLabels: Record<string, string> = {
+    unit: 'Unidad',
+    kg: 'Kilogramo (kg)',
+    g: 'Gramo (g)',
+    lt: 'Litro (lt)',
+    ml: 'Mililitro (ml)',
+};
+
 interface ProductCardProps {
     product: Product;
+    canEdit?: boolean;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, canEdit = true }: ProductCardProps) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -152,11 +161,18 @@ export function ProductCard({ product }: ProductCardProps) {
                 </CardContent>
             </Card>
 
-            {/* Edit Dialog */}
+            {/* Detail / Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Editar Producto</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            {canEdit ? 'Editar Producto' : (
+                                <>
+                                    <Eye className="w-5 h-5 text-slate-400" />
+                                    Detalle del Producto
+                                </>
+                            )}
+                        </DialogTitle>
                     </DialogHeader>
 
                     {error && (
@@ -165,84 +181,108 @@ export function ProductCard({ product }: ProductCardProps) {
                         </div>
                     )}
 
-                    <div className="space-y-4">
-                        <Input
-                            label="Nombre *"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-
-                        <div className="grid grid-cols-2 gap-3">
+                    {canEdit ? (
+                        /* ===== EDIT MODE (Owner) ===== */
+                        <div className="space-y-4">
                             <Input
-                                label="Código de barras"
-                                value={barcode}
-                                onChange={(e) => setBarcode(e.target.value)}
-                            />
-                            <Input
-                                label="SKU (opcional)"
-                                value={sku}
-                                onChange={(e) => setSku(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <Select
-                                label="Unidad"
-                                value={unitType}
-                                onChange={(e) => setUnitType(e.target.value as UnitType)}
-                                options={unitOptions}
-                            />
-                            <Input
-                                label="Categoría"
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input
-                                label="Precio *"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={price}
-                                onChange={(e) => setPrice(e.target.value)}
+                                label="Nombre *"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 required
                             />
-                            <Input
-                                label="Costo"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={cost}
-                                onChange={(e) => setCost(e.target.value)}
-                            />
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <Input
-                                label="Stock actual"
-                                type="number"
-                                step="0.001"
-                                min="0"
-                                value={stockOnHand}
-                                onChange={(e) => setStockOnHand(e.target.value)}
-                            />
-                            <Input
-                                label="Alerta stock bajo"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={threshold}
-                                onChange={(e) => setThreshold(e.target.value)}
-                                placeholder="Por defecto"
-                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                    label="Código de barras"
+                                    value={barcode}
+                                    onChange={(e) => setBarcode(e.target.value)}
+                                />
+                                <Input
+                                    label="SKU (opcional)"
+                                    value={sku}
+                                    onChange={(e) => setSku(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <Select
+                                    label="Unidad"
+                                    value={unitType}
+                                    onChange={(e) => setUnitType(e.target.value as UnitType)}
+                                    options={unitOptions}
+                                />
+                                <Input
+                                    label="Categoría"
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                    label="Precio *"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    required
+                                />
+                                <Input
+                                    label="Costo"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={cost}
+                                    onChange={(e) => setCost(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <Input
+                                    label="Stock actual"
+                                    type="number"
+                                    step="0.001"
+                                    min="0"
+                                    value={stockOnHand}
+                                    onChange={(e) => setStockOnHand(e.target.value)}
+                                />
+                                <Input
+                                    label="Alerta stock bajo"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={threshold}
+                                    onChange={(e) => setThreshold(e.target.value)}
+                                    placeholder="Por defecto"
+                                />
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        /* ===== READ-ONLY MODE (Staff) ===== */
+                        <div className="space-y-4">
+                            <DetailRow label="Nombre" value={product.name} />
+                            <div className="grid grid-cols-2 gap-3">
+                                <DetailRow label="Código de barras" value={product.barcode || '—'} />
+                                <DetailRow label="SKU" value={product.sku || '—'} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <DetailRow label="Unidad" value={unitLabels[product.unit_type] || product.unit_type} />
+                                <DetailRow label="Categoría" value={product.category || '—'} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <DetailRow label="Precio" value={formatCurrency(product.price)} highlight />
+                                <DetailRow label="Costo" value={product.cost ? formatCurrency(product.cost) : '—'} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <DetailRow label="Stock actual" value={formatQuantity(product.stock_on_hand, product.unit_type)} />
+                                <DetailRow label="Alerta stock bajo" value={product.low_stock_threshold_override?.toString() || 'Por defecto'} />
+                            </div>
+                        </div>
+                    )}
 
                     <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
-                        {!showDeleteConfirm ? (
+                        {canEdit && !showDeleteConfirm ? (
                             <>
                                 <Button
                                     type="button"
@@ -268,7 +308,7 @@ export function ProductCard({ product }: ProductCardProps) {
                                     Guardar
                                 </Button>
                             </>
-                        ) : (
+                        ) : canEdit && showDeleteConfirm ? (
                             <div className="w-full space-y-3">
                                 <p className="text-sm text-center text-red-600">
                                     ¿Seguro que querés eliminar este producto?
@@ -291,10 +331,31 @@ export function ProductCard({ product }: ProductCardProps) {
                                     </Button>
                                 </div>
                             </div>
+                        ) : (
+                            /* Staff: just a close button */
+                            <Button
+                                variant="outline"
+                                onClick={() => setOpen(false)}
+                                className="w-full"
+                            >
+                                Cerrar
+                            </Button>
                         )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
+    );
+}
+
+/* Helper: read-only detail row */
+function DetailRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+    return (
+        <div>
+            <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+            <p className={`text-sm font-medium ${highlight ? 'text-emerald-600 text-base' : 'text-slate-900 dark:text-white'}`}>
+                {value}
+            </p>
+        </div>
     );
 }
