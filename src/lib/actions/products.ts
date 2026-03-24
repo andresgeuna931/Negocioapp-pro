@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Product, ProductFormData } from '@/lib/types';
 import { checkResourceLimit } from '@/lib/actions/subscription-limits';
+import { getCurrentSession } from '@/lib/actions/auth';
+import { hasPermission } from '@/lib/permissions';
 
 // Get all products for current tenant
 export async function getProducts(options?: {
@@ -83,6 +85,13 @@ export async function getProductById(id: string) {
 
 // Create new product
 export async function createProduct(formData: ProductFormData) {
+    // 0. Check permissions
+    const session = await getCurrentSession();
+    if (!session) return { data: null, error: 'No autenticado' };
+    if (!hasPermission(session.profile.role, 'products:create')) {
+        return { data: null, error: 'No tenés permisos para crear productos' };
+    }
+
     // 1. Check Limits & Access
     const limitCheck = await checkResourceLimit('products');
     if (!limitCheck.success) {
@@ -90,12 +99,7 @@ export async function createProduct(formData: ProductFormData) {
     }
 
     const supabase = await createClient();
-
-    // Get current user's tenant_id
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { data: null, error: 'No autenticado' };
-    }
+    const user = session.user;
 
     const { data: profile } = await supabase
         .from('profiles')
@@ -135,6 +139,13 @@ export async function createProduct(formData: ProductFormData) {
 
 // Update product
 export async function updateProduct(id: string, formData: Partial<ProductFormData>) {
+    // Check permissions
+    const session = await getCurrentSession();
+    if (!session) return { data: null, error: 'No autenticado' };
+    if (!hasPermission(session.profile.role, 'products:edit')) {
+        return { data: null, error: 'No tenés permisos para editar productos' };
+    }
+
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -156,6 +167,13 @@ export async function updateProduct(id: string, formData: Partial<ProductFormDat
 
 // Delete product (soft delete - set is_active to false)
 export async function deleteProduct(id: string) {
+    // Check permissions
+    const session = await getCurrentSession();
+    if (!session) return { success: false, error: 'No autenticado' };
+    if (!hasPermission(session.profile.role, 'products:delete')) {
+        return { success: false, error: 'No tenés permisos para eliminar productos' };
+    }
+
     const supabase = await createClient();
 
     const { error } = await supabase
