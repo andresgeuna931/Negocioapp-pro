@@ -103,9 +103,8 @@ function LoginForm() {
 
                 {/* Footer */}
                 <div className="mt-6 text-center text-sm text-slate-500">
-                    ¿Problemas para ingresar?{' '}
-                    <a href="mailto:amgdigital.ok@gmail.com" className="text-emerald-400 hover:underline">
-                        Contactar soporte
+                    <a href="/forgot-password" className="text-emerald-400 hover:underline">
+                        ¿Olvidaste tu contraseña?
                     </a>
                 </div>
 
