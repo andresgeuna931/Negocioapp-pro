@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { TrialBanner } from '@/components/subscriptions/trial-banner';
+import { TawkToWidget } from '@/components/tawk-to';
 import type { UserSession } from '@/lib/types';
 
 interface DashboardLayoutProps {
@@ -53,6 +54,8 @@ export function DashboardLayout({ children, session }: DashboardLayoutProps) {
                     {children}
                 </main>
             </div>
+
+            <TawkToWidget />
         </div>
     );
 }
