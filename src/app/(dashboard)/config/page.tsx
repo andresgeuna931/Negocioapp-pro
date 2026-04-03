@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSession } from '@/lib/actions/auth';
-import { formatDate, getSubscriptionStatusLabel } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { TenantSettingsForm, TeamManagement } from '@/components/config';
 
 export default async function ConfigPage() {
@@ -30,67 +30,103 @@ export default async function ConfigPage() {
             </div>
 
             {/* Subscription Card */}
-            <Card className={
-                subscriptionInfo?.tenant.status === 'suspended'
-                    ? 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
-                    : subscriptionInfo?.tenant.status === 'past_due'
-                        ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
-                        : ''
-            }>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5" />
-                        Suscripción
-                    </CardTitle>
-                    <CardDescription>
-                        Estado de tu plan y facturación
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div>
-                            <p className="text-sm text-slate-500 mb-1">Estado</p>
-                            <Badge
-                                variant={
-                                    subscriptionInfo?.tenant.status === 'active' ? 'success' :
-                                        subscriptionInfo?.tenant.status === 'trial' ? 'info' :
-                                            subscriptionInfo?.tenant.status === 'past_due' ? 'warning' : 'danger'
-                                }
-                            >
-                                {getSubscriptionStatusLabel(subscriptionInfo?.tenant.status || '')}
-                            </Badge>
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-500 mb-1">Plan</p>
-                            <p className="font-semibold text-slate-900 dark:text-white">
-                                {subscriptionInfo?.subscription?.plan === 'basic' ? 'Básico' : 'Premium'}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-500 mb-1">Vencimiento</p>
-                            <p className="font-semibold text-slate-900 dark:text-white">
-                                {subscriptionInfo?.subscription?.current_period_end
-                                    ? formatDate(subscriptionInfo.subscription.current_period_end)
-                                    : '-'}
-                            </p>
-                            {subscriptionInfo?.daysRemaining !== undefined && subscriptionInfo.daysRemaining <= 7 && (
-                                <p className="text-xs text-amber-600">
-                                    {subscriptionInfo.daysRemaining} días restantes
-                                </p>
-                            )}
-                        </div>
-                    </div>
+            {(() => {
+                // Unified trial calculation (same as banner)
+                const tenantCreatedAt = tenant?.created_at ? new Date(tenant.created_at) : null;
+                const isActive = subscriptionInfo?.tenant.status === 'active';
+                let isTrial = false;
+                let trialDaysLeft = 0;
+                let planLabel = 'Sin plan';
+                let expiryLabel = '-';
 
-                    {subscriptionInfo?.tenant.status === 'suspended' && (
-                        <div className="mt-4 p-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
-                            <p className="font-medium">⚠️ Tu cuenta está suspendida</p>
-                            <p className="text-sm mt-1">
-                                No podés realizar ventas ni editar productos. Contactá al administrador para renovar tu suscripción.
-                            </p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                if (isActive && subscriptionInfo?.subscription?.plan) {
+                    // Active paid subscription
+                    const planMap: Record<string, string> = {
+                        starter: 'Starter', professional: 'Profesional', business: 'Business'
+                    };
+                    planLabel = planMap[subscriptionInfo.subscription.plan] || subscriptionInfo.subscription.plan;
+                    expiryLabel = subscriptionInfo.subscription.current_period_end
+                        ? formatDate(subscriptionInfo.subscription.current_period_end)
+                        : '-';
+                } else if (tenantCreatedAt) {
+                    // Trial: calculate from created_at + 14 days
+                    const trialEndDate = new Date(tenantCreatedAt);
+                    trialEndDate.setDate(trialEndDate.getDate() + 14);
+                    trialDaysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    isTrial = subscriptionInfo?.tenant.status === 'trial' && trialDaysLeft > 0;
+                    planLabel = isTrial ? 'Profesional (Prueba)' : 'Vencido';
+                    expiryLabel = isTrial
+                        ? trialEndDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : 'Expirado';
+                }
+
+                return (
+                    <Card className={
+                        subscriptionInfo?.tenant.status === 'suspended'
+                            ? 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800'
+                            : subscriptionInfo?.tenant.status === 'past_due'
+                                ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
+                                : ''
+                    }>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <CreditCard className="w-5 h-5" />
+                                Suscripción
+                            </CardTitle>
+                            <CardDescription>
+                                Estado de tu plan y facturación
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <div>
+                                    <p className="text-sm text-slate-500 mb-1">Estado</p>
+                                    <Badge
+                                        variant={
+                                            isActive ? 'success' :
+                                                isTrial ? 'info' :
+                                                    subscriptionInfo?.tenant.status === 'past_due' ? 'warning' : 'danger'
+                                        }
+                                    >
+                                        {isActive ? 'Activo' : isTrial ? 'Prueba' : subscriptionInfo?.tenant.status === 'past_due' ? 'Pago pendiente' : 'Vencido'}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-slate-500 mb-1">Plan</p>
+                                    <p className="font-semibold text-slate-900 dark:text-white">
+                                        {planLabel}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-slate-500 mb-1">Vencimiento</p>
+                                    <p className="font-semibold text-slate-900 dark:text-white">
+                                        {expiryLabel}
+                                    </p>
+                                    {isTrial && trialDaysLeft <= 7 && (
+                                        <p className="text-xs text-amber-600">
+                                            {trialDaysLeft} días restantes
+                                        </p>
+                                    )}
+                                    {!isActive && !isTrial && (
+                                        <Link href="/precios" className="text-xs text-emerald-600 hover:underline">
+                                            Ver planes →
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+
+                            {subscriptionInfo?.tenant.status === 'suspended' && (
+                                <div className="mt-4 p-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                                    <p className="font-medium">⚠️ Tu cuenta está suspendida</p>
+                                    <p className="text-sm mt-1">
+                                        No podés realizar ventas ni editar productos. Contactá al administrador para renovar tu suscripción.
+                                    </p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                );
+            })()}
 
             {/* Business Settings */}
             <Card>
