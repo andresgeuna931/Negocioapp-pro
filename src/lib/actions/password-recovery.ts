@@ -10,6 +10,15 @@ const supabaseAdmin = createClient(
 
 export async function sendPasswordRecoveryEmail(email: string) {
     try {
+        // Validate env vars
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            return { error: 'Error de configuración: faltan credenciales de Supabase' };
+        }
+
+        if (!process.env.RESEND_API_KEY) {
+            return { error: 'Error de configuración: falta RESEND_API_KEY' };
+        }
+
         // 1. Generate recovery link via Supabase Admin
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'recovery',
@@ -19,28 +28,27 @@ export async function sendPasswordRecoveryEmail(email: string) {
             },
         });
 
-        if (linkError || !linkData) {
+        if (linkError) {
             console.error('Error generating recovery link:', linkError);
-            return { error: 'No se pudo generar el link de recuperación' };
+            return { error: `Error Supabase: ${linkError.message}` };
         }
 
-        // The link contains the token - extract the hashed_token and build the proper URL
+        if (!linkData) {
+            return { error: 'Supabase no retornó datos para el link' };
+        }
+
+        // The link contains the token
         const actionLink = linkData.properties?.action_link;
         if (!actionLink) {
-            return { error: 'No se pudo generar el link' };
+            console.error('linkData structure:', JSON.stringify(linkData, null, 2));
+            return { error: 'No se encontró action_link en la respuesta' };
         }
 
         // 2. Send email via Resend HTTP API
-        const resendApiKey = process.env.RESEND_API_KEY;
-        if (!resendApiKey) {
-            console.error('RESEND_API_KEY not configured');
-            return { error: 'Servicio de email no configurado' };
-        }
-
         const response = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${resendApiKey}`,
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -90,12 +98,12 @@ export async function sendPasswordRecoveryEmail(email: string) {
         if (!response.ok) {
             const errorData = await response.json();
             console.error('Resend API error:', errorData);
-            return { error: 'Error al enviar el email' };
+            return { error: `Error Resend: ${errorData?.message || errorData?.name || response.status}` };
         }
 
         return { success: true };
     } catch (err) {
         console.error('Password recovery error:', err);
-        return { error: 'Error inesperado al enviar el email' };
+        return { error: `Error inesperado: ${err instanceof Error ? err.message : 'desconocido'}` };
     }
 }
