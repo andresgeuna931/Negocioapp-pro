@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
                                 </p>
                             </div>
                             <Link href="/login">
-                                <Button variant="outline" className="w-full mt-4 border-slate-600 text-slate-300 hover:bg-slate-700">
+                                <Button variant="outline" className="w-full mt-4 border-slate-500 text-white bg-slate-700/50 hover:bg-slate-600">
                                     <ArrowLeft className="w-4 h-4 mr-2" />
                                     Volver a iniciar sesión
                                 </Button>
