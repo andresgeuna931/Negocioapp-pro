@@ -20,21 +20,65 @@ export default function ResetPasswordPage() {
     const [sessionReady, setSessionReady] = useState(false);
 
     useEffect(() => {
-        // Supabase automatically handles the token from the URL hash
         const supabase = createClient();
-        supabase.auth.onAuthStateChange((event) => {
-            if (event === 'PASSWORD_RECOVERY') {
+
+        // Listen for PASSWORD_RECOVERY event
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
                 setSessionReady(true);
             }
         });
 
-        // Also check if there's already a session (in case the event already fired)
-        supabase.auth.getSession().then(({ data }) => {
-            if (data.session) {
-                setSessionReady(true);
+        // Parse hash from URL and try to set session
+        const handleHashToken = async () => {
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token')) {
+                // Parse the hash parameters
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
+
+                if (accessToken && refreshToken) {
+                    // Set the session with the tokens from the URL
+                    const { error } = await supabase.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                    });
+
+                    if (!error) {
+                        setSessionReady(true);
+                        return;
+                    }
+                    console.error('Error setting session:', error);
+                }
+
+                // Fallback: even with just access_token, try getSession
+                // Sometimes Supabase processes the hash automatically
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    setSessionReady(true);
+                    return;
+                }
+
+                // If still no session, mark as error
+                setError('El link de recuperación es inválido o expiró.');
+            } else {
+                // No hash token - check if there's already a session
+                const { data } = await supabase.auth.getSession();
+                if (data.session) {
+                    setSessionReady(true);
+                } else {
+                    setError('No se encontró un link de recuperación válido.');
+                }
             }
-        });
+        };
+
+        handleHashToken();
+
+        return () => subscription.unsubscribe();
     }, []);
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -109,17 +153,33 @@ export default function ResetPasswordPage() {
                         </div>
                     ) : !sessionReady ? (
                         <div className="text-center space-y-4">
-                            <div className="w-12 h-12 mx-auto rounded-full bg-slate-700 animate-pulse" />
-                            <p className="text-slate-400 text-sm">
-                                Verificando link de recuperación...
-                            </p>
-                            <p className="text-slate-500 text-xs">
-                                Si tarda mucho, el link puede haber expirado.{' '}
-                                <Link href="/forgot-password" className="text-emerald-400 hover:underline">
-                                    Pedí uno nuevo
-                                </Link>
-                            </p>
+                            {error ? (
+                                <>
+                                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                        {error}
+                                    </div>
+                                    <Link href="/forgot-password">
+                                        <Button variant="outline" className="w-full mt-2 border-slate-500 text-white bg-slate-700/50 hover:bg-slate-600">
+                                            Pedir un nuevo link
+                                        </Button>
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-12 h-12 mx-auto rounded-full bg-slate-700 animate-pulse" />
+                                    <p className="text-slate-400 text-sm">
+                                        Verificando link de recuperación...
+                                    </p>
+                                    <p className="text-slate-500 text-xs">
+                                        Si tarda mucho, el link puede haber expirado.{' '}
+                                        <Link href="/forgot-password" className="text-emerald-400 hover:underline">
+                                            Pedí uno nuevo
+                                        </Link>
+                                    </p>
+                                </>
+                            )}
                         </div>
+
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-5">
                             {error && (
