@@ -6,7 +6,7 @@ import { ShoppingCart, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/client';
+import { sendPasswordRecoveryEmail } from '@/lib/actions/password-recovery';
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState('');
@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
         e.preventDefault();
         setError('');
 
-        const cleanEmail = email.trim();
+        const cleanEmail = email.trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
             setError('Ingresá un email válido');
             return;
@@ -27,13 +27,10 @@ export default function ForgotPasswordPage() {
         setLoading(true);
 
         try {
-            const supabase = createClient();
-            const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-                redirectTo: `${window.location.origin}/reset-password`,
-            });
+            const result = await sendPasswordRecoveryEmail(cleanEmail);
 
-            if (resetError) {
-                setError('Error al enviar el email. Intentá de nuevo.');
+            if (result.error) {
+                setError(result.error);
             } else {
                 setSent(true);
             }
