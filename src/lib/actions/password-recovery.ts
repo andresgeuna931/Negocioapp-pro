@@ -15,8 +15,8 @@ export async function sendPasswordRecoveryEmail(email: string) {
             return { error: 'Error de configuración: faltan credenciales de Supabase' };
         }
 
-        if (!process.env.RESEND_API_KEY) {
-            return { error: 'Error de configuración: falta RESEND_API_KEY' };
+        if (!process.env.BREVO_API_KEY) {
+            return { error: 'Error de configuración: falta BREVO_API_KEY' };
         }
 
         // 1. Generate recovery link via Supabase Admin
@@ -44,18 +44,18 @@ export async function sendPasswordRecoveryEmail(email: string) {
             return { error: 'No se encontró action_link en la respuesta' };
         }
 
-        // 2. Send email via Resend HTTP API
-        const response = await fetch('https://api.resend.com/emails', {
+        // 2. Send email via Brevo (Sendinblue) HTTP API
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'api-key': process.env.BREVO_API_KEY,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                from: 'NegocioApp Pro <onboarding@resend.dev>',
-                to: [email],
+                sender: { name: 'NegocioApp Pro', email: 'no-reply@negocioapp.pro' },
+                to: [{ email }],
                 subject: 'Recuperar contraseña - NegocioApp Pro',
-                html: `
+                htmlContent: `
                     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #f8fafc;">
                         <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="text-align: center; margin-bottom: 24px;">
@@ -97,8 +97,8 @@ export async function sendPasswordRecoveryEmail(email: string) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Resend API error:', errorData);
-            return { error: `Error Resend: ${errorData?.message || errorData?.name || response.status}` };
+            console.error('Brevo API error:', errorData);
+            return { error: `Error Brevo: ${errorData?.message || errorData?.code || response.status}` };
         }
 
         return { success: true };
