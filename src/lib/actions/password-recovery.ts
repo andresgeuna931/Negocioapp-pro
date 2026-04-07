@@ -48,11 +48,11 @@ export async function sendPasswordRecoveryEmail(email: string) {
         const response = await fetch('https://api.brevo.com/v3/smtp/email', {
             method: 'POST',
             headers: {
-                'api-key': process.env.BREVO_API_KEY,
+                'api-key': process.env.BREVO_API_KEY!,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                sender: { name: 'NegocioApp Pro', email: 'no-reply@negocioapp.pro' },
+                sender: { name: 'NegocioApp Pro', email: 'andresgeuna931@gmail.com' },
                 to: [{ email }],
                 subject: 'Recuperar contraseña - NegocioApp Pro',
                 htmlContent: `
