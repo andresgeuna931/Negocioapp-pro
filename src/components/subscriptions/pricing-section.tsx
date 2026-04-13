@@ -8,18 +8,14 @@ interface PricingSectionProps {
     currentPlanId: string;
     tenantId: string;
     isInTrial?: boolean;
+    hasPaidSubscription?: boolean;
 }
 
-export function PricingSection({ currentPlanId, tenantId, isInTrial }: PricingSectionProps) {
+export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubscription }: PricingSectionProps) {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const handleSelectPlan = async (planId: string) => {
-        // Don't allow selecting the current plan
-        if (planId === currentPlanId) {
-            return;
-        }
-
         setLoadingPlan(planId);
         setError(null);
 
@@ -40,7 +36,6 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial }: PricingSe
             }
 
             // Redirect to Mercado Pago checkout
-            // Use sandbox_init_point for testing, init_point for production
             const checkoutUrl = data.init_point || data.sandbox_init_point;
 
             if (checkoutUrl) {
@@ -69,21 +64,26 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial }: PricingSe
                     currentPlanId={currentPlanId}
                     onSelect={handleSelectPlan}
                     loading={loadingPlan === 'starter'}
+                    isInTrial={isInTrial}
+                    hasPaidSubscription={hasPaidSubscription}
                 />
                 <PricingCard
                     planId="professional"
                     currentPlanId={currentPlanId}
                     onSelect={handleSelectPlan}
                     loading={loadingPlan === 'professional'}
+                    isInTrial={isInTrial}
+                    hasPaidSubscription={hasPaidSubscription}
                 />
                 <PricingCard
                     planId="business"
                     currentPlanId={currentPlanId}
                     onSelect={handleSelectPlan}
                     loading={loadingPlan === 'business'}
+                    isInTrial={isInTrial}
+                    hasPaidSubscription={hasPaidSubscription}
                 />
             </div>
         </div>
     );
 }
-

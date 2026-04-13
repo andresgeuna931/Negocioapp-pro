@@ -10,12 +10,16 @@ interface PricingCardProps {
     currentPlanId?: string;
     onSelect?: (planId: string) => void;
     loading?: boolean;
+    isInTrial?: boolean;
+    hasPaidSubscription?: boolean;
 }
 
-export function PricingCard({ planId, currentPlanId, onSelect, loading }: PricingCardProps) {
+export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTrial, hasPaidSubscription }: PricingCardProps) {
     const plan = getPlanDetails(planId);
     const isCurrent = currentPlanId === plan.id;
     const isPro = plan.id === 'professional';
+    // During trial, all plans are selectable. Only block the button if user has a PAID active subscription for this plan
+    const isDisabled = hasPaidSubscription && isCurrent;
 
     return (
         <Card className={cn(
@@ -115,11 +119,18 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading }: Pricin
                         "w-full",
                         isPro ? "bg-emerald-600 hover:bg-emerald-700" : ""
                     )}
-                    variant={isCurrent ? "outline" : undefined}
-                    disabled={isCurrent || loading}
+                    variant={isDisabled ? "outline" : undefined}
+                    disabled={isDisabled || loading}
                     onClick={() => onSelect?.(plan.id)}
                 >
-                    {isCurrent ? 'Plan Actual' : 'Elegir Plan'}
+                    {isDisabled
+                        ? 'Plan Actual'
+                        : isInTrial && isCurrent
+                            ? 'Suscribirme a este plan'
+                            : hasPaidSubscription
+                                ? 'Cambiar Plan'
+                                : 'Elegir Plan'
+                    }
                 </Button>
             </CardFooter>
         </Card>

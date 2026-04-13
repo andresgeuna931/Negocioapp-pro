@@ -84,6 +84,13 @@ export async function canPerformAction(): Promise<boolean> {
     // Active paid subscription → always allowed
     if (session.tenant.status === 'active') return true;
 
+    // Check if has a paid subscription (even if tenant status is still 'trial')
+    if (session.subscription?.status === 'active' &&
+        session.subscription?.plan_id &&
+        !['free', 'trial'].includes(session.subscription.plan_id)) {
+        return true;
+    }
+
     // Trial → check if within 14-day window
     if (session.tenant.status === 'trial' && session.tenant.created_at) {
         const createdAt = new Date(session.tenant.created_at);

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { X, Clock, AlertTriangle } from 'lucide-react';
+import { X, Clock, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -10,13 +10,56 @@ interface TrialBannerProps {
     daysRemaining: number;
     isTrial: boolean;
     isExpired?: boolean;
+    hasPaidSubscription?: boolean;
+    paidPlanName?: string;
+    subscriptionDaysLeft?: number;
 }
 
-export function TrialBanner({ daysRemaining, isTrial, isExpired = false }: TrialBannerProps) {
+export function TrialBanner({
+    daysRemaining,
+    isTrial,
+    isExpired = false,
+    hasPaidSubscription = false,
+    paidPlanName,
+    subscriptionDaysLeft,
+}: TrialBannerProps) {
     const [isVisible, setIsVisible] = useState(true);
 
-    // Expired banner — always visible, cannot be dismissed
-    if (isExpired) {
+    // STATE 5: Active paid subscription (not in trial anymore)
+    if (!isTrial && !isExpired && hasPaidSubscription) {
+        if (!isVisible) return null;
+        return (
+            <div className="w-full bg-emerald-600 text-white px-4 py-3 shadow-md relative z-40">
+                <div className="flex items-center justify-between container mx-auto max-w-7xl">
+                    <div className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 flex-shrink-0" />
+                        <span className="font-medium text-sm md:text-base">
+                            Plan {paidPlanName || 'Activo'} — {subscriptionDaysLeft !== undefined && subscriptionDaysLeft > 0
+                                ? `Se renueva en ${subscriptionDaysLeft} días`
+                                : 'Activo'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Link href="/precios">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                className="bg-white/20 text-white hover:bg-white/30 border-none font-medium text-xs h-7"
+                            >
+                                Gestionar plan
+                            </Button>
+                        </Link>
+                        <button onClick={() => setIsVisible(false)} className="text-white/80 hover:text-white p-1">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // STATE 4: Expired — no paid subscription — CANNOT be dismissed
+    if (isExpired && !hasPaidSubscription) {
         return (
             <div className="w-full bg-red-600 text-white px-4 py-4 shadow-md relative z-40">
                 <div className="flex items-center justify-between container mx-auto max-w-7xl">
@@ -45,10 +88,30 @@ export function TrialBanner({ daysRemaining, isTrial, isExpired = false }: Trial
         );
     }
 
-    // Trial banner — can be dismissed
+    // STATE 2: Trial + Already paid — show confirmation
+    if (isTrial && hasPaidSubscription) {
+        if (!isVisible) return null;
+        return (
+            <div className="w-full bg-emerald-600 text-white px-4 py-3 shadow-md relative z-40">
+                <div className="flex items-center justify-between container mx-auto max-w-7xl">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                        <span className="font-medium text-sm md:text-base">
+                            ✅ Suscripción confirmada — Plan {paidPlanName}.
+                            Tu plan pago arranca en {daysRemaining} días (al terminar la prueba).
+                        </span>
+                    </div>
+                    <button onClick={() => setIsVisible(false)} className="text-white/80 hover:text-white p-1">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // STATE 1 & 3: Trial active (no paid sub) — dismissible
     if (!isTrial || !isVisible) return null;
 
-    // Colors based on urgency
     const urgency =
         daysRemaining <= 3 ? 'danger' :
             daysRemaining <= 7 ? 'warning' : 'info';
@@ -65,9 +128,7 @@ export function TrialBanner({ daysRemaining, isTrial, isExpired = false }: Trial
                 <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5 flex-shrink-0 animate-pulse" />
                     <span className="font-medium text-sm md:text-base">
-                        {daysRemaining <= 0
-                            ? "Tu periodo de prueba ha finalizado."
-                            : `Te quedan ${daysRemaining} días de prueba gratuita del Plan Profesional.`}
+                        Te quedan {daysRemaining} días de prueba gratuita del Plan Profesional.
                     </span>
                 </div>
 

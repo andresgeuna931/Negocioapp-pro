@@ -46,9 +46,35 @@ export async function POST(request: NextRequest) {
                     return NextResponse.json({ error: "Missing tenant reference" }, { status: 400 });
                 }
 
-                // Calculate new subscription end date (30 days from now)
-                const currentPeriodEnd = new Date();
-                currentPeriodEnd.setDate(currentPeriodEnd.getDate() + 30);
+                // Check if tenant is still in trial
+                const { data: tenant } = await supabaseAdmin
+                    .from("tenants")
+                    .select("created_at, status")
+                    .eq("id", tenantId)
+                    .single();
+
+                let periodStart = new Date();
+                let periodEnd = new Date();
+
+                if (tenant && tenant.status === 'trial') {
+                    // If still in trial, subscription starts AFTER trial ends
+                    const trialEndDate = new Date(tenant.created_at);
+                    trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+                    if (new Date() < trialEndDate) {
+                        // Still in trial → subscription starts when trial ends
+                        periodStart = trialEndDate;
+                        periodEnd = new Date(trialEndDate);
+                        periodEnd.setDate(periodEnd.getDate() + 30);
+                        console.log(`🕐 Tenant ${tenantId} still in trial. Subscription starts ${trialEndDate.toISOString()}`);
+                    } else {
+                        // Trial already expired → start immediately
+                        periodEnd.setDate(periodEnd.getDate() + 30);
+                    }
+                } else {
+                    // Not in trial → start immediately (30 days from now)
+                    periodEnd.setDate(periodEnd.getDate() + 30);
+                }
 
                 // Update subscription in database
                 const { error: updateError } = await supabaseAdmin
@@ -57,7 +83,11 @@ export async function POST(request: NextRequest) {
                         tenant_id: tenantId,
                         status: "active",
                         plan_id: planId,
-                        current_period_end: currentPeriodEnd.toISOString(),
+                        current_period_start: periodStart.toISOString(),
+                        current_period_end: periodEnd.toISOString(),
+                        last_payment_at: new Date().toISOString(),
+                        last_payment_amount: paymentDetails.transaction_amount,
+                        payment_provider: 'mercadopago',
                         updated_at: new Date().toISOString(),
                     }, {
                         onConflict: "tenant_id"
@@ -68,10 +98,17 @@ export async function POST(request: NextRequest) {
                     return NextResponse.json({ error: "Database update failed" }, { status: 500 });
                 }
 
-                // Also update the tenant's plan_type for legacy compatibility
+                // Update the tenant's plan_type
+                // If still in trial, keep status as 'trial' (will auto-transition when trial ends)
+                // If trial expired, set status to 'active' immediately
+                const tenantUpdate: Record<string, string> = { plan_type: planId };
+                if (!tenant || tenant.status !== 'trial' || new Date() >= new Date(new Date(tenant.created_at).getTime() + 14 * 24 * 60 * 60 * 1000)) {
+                    tenantUpdate.status = 'active';
+                }
+
                 await supabaseAdmin
                     .from("tenants")
-                    .update({ plan_type: planId })
+                    .update(tenantUpdate)
                     .eq("id", tenantId);
 
                 console.log(`✅ Subscription activated for tenant ${tenantId} with plan ${planId}`);
@@ -92,4 +129,3 @@ export async function POST(request: NextRequest) {
 export async function GET() {
     return NextResponse.json({ status: "ok", message: "Webhook endpoint active" });
 }
-
