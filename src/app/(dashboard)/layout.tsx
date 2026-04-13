@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getCurrentSession } from '@/lib/actions/auth';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function DashboardRootLayout({
     children,
@@ -9,32 +10,50 @@ export default async function DashboardRootLayout({
 }) {
     const session = await getCurrentSession();
 
-    // If no session, middleware should have redirected, but just in case
     if (!session) {
         redirect('/login');
     }
 
-    // Calculate subscription state (passed down to components)
+    // Fetch subscription directly (more reliable than nested join)
+    const supabase = await createClient();
+    const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('tenant_id', session.tenant.id)
+        .single();
+
+    // Override session subscription with direct query result
+    if (subscription) {
+        session.subscription = subscription;
+    }
+
+    // Calculate subscription state
     const tenant = session.tenant;
     let isExpired = false;
     let daysRemaining = 0;
 
-    if (tenant) {
-        const now = new Date();
-        const createdAt = new Date(tenant.created_at);
-        const trialEndDate = new Date(createdAt);
-        trialEndDate.setDate(trialEndDate.getDate() + 14);
+    const now = new Date();
+    const createdAt = new Date(tenant.created_at);
+    const trialEndDate = new Date(createdAt);
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-        const isActive = tenant.status === 'active';
-        const isInTrial = tenant.status === 'trial' && now < trialEndDate;
+    const isActive = tenant.status === 'active';
+    const isInTrial = tenant.status === 'trial' && now < trialEndDate;
 
-        if (isInTrial) {
-            daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        }
-
-        // Expired = trial period over AND no active paid subscription
-        isExpired = !isActive && !isInTrial;
+    if (isInTrial) {
+        daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
+
+    // Check if has paid subscription
+    const hasPaidSub = !!(
+        subscription &&
+        subscription.status === 'active' &&
+        subscription.plan_id &&
+        !['free', 'trial'].includes(subscription.plan_id)
+    );
+
+    // Expired = trial over AND no active paid subscription
+    isExpired = !isActive && !isInTrial && !hasPaidSub;
 
     return (
         <DashboardLayout session={session} isExpired={isExpired} daysRemaining={daysRemaining}>
