@@ -223,7 +223,7 @@ function RegisterForm() {
                 {/* Trial info */}
                 <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                     <p className="text-emerald-400 text-sm">
-                        🎉 14 días de prueba gratis, sin tarjeta de crédito
+                        🎉 14 días de prueba gratis, sin compromiso
                     </p>
                 </div>
             </CardContent>
