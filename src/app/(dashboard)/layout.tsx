@@ -48,8 +48,8 @@ export default async function DashboardRootLayout({
     const hasPaidSub = !!(
         subscription &&
         subscription.status === 'active' &&
-        subscription.plan_id &&
-        !['free', 'trial'].includes(subscription.plan_id)
+        subscription.plan &&
+        !['free', 'trial'].includes(subscription.plan)
     );
 
     // Expired = trial over AND no active paid subscription

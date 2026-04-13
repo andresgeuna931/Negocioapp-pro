@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
                     .upsert({
                         tenant_id: tenantId,
                         status: "active",
-                        plan_id: planId,
+                        plan: planId,
                         current_period_start: periodStart.toISOString(),
                         current_period_end: periodEnd.toISOString(),
                         last_payment_at: new Date().toISOString(),

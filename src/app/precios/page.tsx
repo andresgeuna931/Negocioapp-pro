@@ -35,15 +35,15 @@ export default async function PricingPage() {
     const hasPaidSubscription = !!(
         subscription &&
         subscription.status === 'active' &&
-        subscription.plan_id &&
-        !['free', 'trial'].includes(subscription.plan_id)
+        subscription.plan &&
+        !['free', 'trial'].includes(subscription.plan)
     );
 
     // Determine current plan:
     let currentPlanId: string;
 
-    if (hasPaidSubscription && subscription?.plan_id) {
-        currentPlanId = subscription.plan_id;
+    if (hasPaidSubscription && subscription?.plan) {
+        currentPlanId = subscription.plan;
     } else if (isInTrial) {
         currentPlanId = 'professional'; // Trial uses Professional features
     } else {

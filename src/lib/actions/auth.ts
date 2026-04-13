@@ -86,8 +86,8 @@ export async function canPerformAction(): Promise<boolean> {
 
     // Check if has a paid subscription (even if tenant status is still 'trial')
     if (session.subscription?.status === 'active' &&
-        session.subscription?.plan_id &&
-        !['free', 'trial'].includes(session.subscription.plan_id)) {
+        session.subscription?.plan &&
+        !['free', 'trial'].includes(session.subscription.plan)) {
         return true;
     }
 

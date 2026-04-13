@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   let trialDaysLeft = 0;
 
   if (subscription && ['active', 'trial'].includes(subscription.status)) {
-    planName = PLANS[subscription.plan_id?.toUpperCase() as keyof typeof PLANS]?.name || 'Profesional';
+    planName = PLANS[subscription.plan?.toUpperCase() as keyof typeof PLANS]?.name || 'Profesional';
     isInTrial = subscription.status === 'trial';
   } else if (tenant?.created_at) {
     // Check implicit trial (14 days from registration)

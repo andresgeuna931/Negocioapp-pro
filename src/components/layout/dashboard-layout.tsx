@@ -41,13 +41,13 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
     const hasPaidSubscription = !!(
         subscription &&
         subscription.status === 'active' &&
-        subscription.plan_id &&
-        !['free', 'trial'].includes(subscription.plan_id)
+        subscription.plan &&
+        !['free', 'trial'].includes(subscription.plan)
     );
 
     // Get plan name for display
-    const paidPlanName = hasPaidSubscription && subscription?.plan_id
-        ? getPlanDetails(subscription.plan_id).name
+    const paidPlanName = hasPaidSubscription && subscription?.plan
+        ? getPlanDetails(subscription.plan).name
         : undefined;
 
     // Calculate subscription days remaining
