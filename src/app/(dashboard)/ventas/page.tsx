@@ -507,7 +507,7 @@ export default function SalesPage() {
                                         <Button
                                             size="lg"
                                             variant="outline"
-                                            className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                                            className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700"
                                             onClick={() => setShowCustomerSelect(true)}
                                             loading={processing}
                                         >

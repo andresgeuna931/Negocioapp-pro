@@ -25,8 +25,8 @@ export default async function DashboardRootLayout({
         const trialEndDate = new Date(createdAt);
         trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-        const isInTrial = now < trialEndDate;
-        const isActive = tenant.status && ['trial', 'active'].includes(tenant.status);
+        const isInTrial = tenant.status === 'trial' && now < trialEndDate;
+        const isActive = tenant.status === 'active';
 
         // Block if trial expired AND no active subscription
         if (!isActive && !isInTrial) {

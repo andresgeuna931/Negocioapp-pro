@@ -41,6 +41,7 @@ export default async function DashboardPage() {
   let planName = 'Vencido';
   let isInTrial = false;
   let trialDaysLeft = 0;
+  let isExpired = false;
 
   if (subscription && ['active', 'trial'].includes(subscription.status)) {
     planName = PLANS[subscription.plan_id?.toUpperCase() as keyof typeof PLANS]?.name || 'Profesional';
@@ -56,7 +57,14 @@ export default async function DashboardPage() {
       isInTrial = true;
       trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       planName = 'Profesional (Prueba)';
+    } else {
+      isExpired = true;
     }
+  }
+
+  // If trial expired and no active subscription, redirect to expired page
+  if (isExpired && tenant?.status !== 'active') {
+    redirect('/suscripcion-vencida');
   }
 
   return (
