@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
                     tenant_id: profile.tenant_id,
                 },
                 back_urls: {
-                    success: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/dashboard?payment=success`,
+                    success: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/?payment=success`,
                     failure: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/precios?payment=failed`,
-                    pending: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/precios?payment=pending`,
+                    pending: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/?payment=pending`,
                 },
                 auto_return: "approved",
                 notification_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/api/webhooks/mercadopago`,

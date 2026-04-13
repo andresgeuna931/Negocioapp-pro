@@ -146,17 +146,26 @@ function RegisterForm() {
                         </button>
                     </div>
 
-                    <Input
-                        type={showPassword ? 'text' : 'password'}
-                        name="confirmPassword"
-                        label="Confirmar contraseña"
-                        placeholder="••••••••"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        icon={<Lock className="w-5 h-5" />}
-                        required
-                        className="bg-slate-800/50 border-slate-700 text-white"
-                    />
+                    <div className="relative">
+                        <Input
+                            type={showPassword ? 'text' : 'password'}
+                            name="confirmPassword"
+                            label="Confirmar contraseña"
+                            placeholder="••••••••"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            icon={<Lock className="w-5 h-5" />}
+                            required
+                            className="bg-slate-800/50 border-slate-700 text-white pr-12"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[38px] text-slate-400 hover:text-white transition-colors"
+                        >
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                    </div>
 
                     <div className="border-t border-slate-700 my-4 pt-4">
                         <p className="text-sm text-slate-400 mb-3">Datos de tu negocio</p>
@@ -214,7 +223,7 @@ function RegisterForm() {
                 {/* Trial info */}
                 <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                     <p className="text-emerald-400 text-sm">
-                        🎉 30 días de prueba gratis, sin tarjeta de crédito
+                        🎉 14 días de prueba gratis, sin tarjeta de crédito
                     </p>
                 </div>
             </CardContent>
