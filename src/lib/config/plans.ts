@@ -2,7 +2,7 @@ export const PLANS = {
     STARTER: {
         id: 'starter',
         name: 'Starter',
-        price: 18000,
+        price: 1, // TODO: CAMBIAR A 18000 después del test
         limits: {
             products: 1000,
             users: 1,
@@ -21,7 +21,7 @@ export const PLANS = {
     PROFESSIONAL: {
         id: 'professional',
         name: 'Profesional',
-        price: 35000,
+        price: 1, // TODO: CAMBIAR A 35000 después del test
         limits: {
             products: 5000,
             users: 2,
@@ -40,7 +40,7 @@ export const PLANS = {
     BUSINESS: {
         id: 'business',
         name: 'Business',
-        price: 49990,
+        price: 1, // TODO: CAMBIAR A 49990 después del test
         limits: {
             products: -1, // Ilimitado
             users: 5, // ✅ AUMENTADO: De 3 a 5 para cubrir turnos rotativos
