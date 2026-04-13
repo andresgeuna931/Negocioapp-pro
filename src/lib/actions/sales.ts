@@ -10,6 +10,13 @@ import { updateCashSessionFromSale } from './cash';
 export async function createSale(saleData: CreateSaleData) {
     const supabase = await createClient();
 
+    // Check subscription status
+    const { canPerformAction } = await import('./auth');
+    const allowed = await canPerformAction();
+    if (!allowed) {
+        return { data: null, error: 'Tu período de prueba ha finalizado. Suscribite para seguir vendiendo.' };
+    }
+
     // Validate items
     if (!saleData.items || saleData.items.length === 0) {
         return { data: null, error: 'La venta debe tener al menos un producto' };

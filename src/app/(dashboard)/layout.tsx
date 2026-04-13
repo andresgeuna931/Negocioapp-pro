@@ -2,9 +2,6 @@ import { redirect } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getCurrentSession } from '@/lib/actions/auth';
 
-// Routes allowed even when subscription is expired
-const ALLOWED_WHEN_EXPIRED = ['/precios', '/suscripcion-vencida', '/config', '/ayuda'];
-
 export default async function DashboardRootLayout({
     children,
 }: {
@@ -17,29 +14,31 @@ export default async function DashboardRootLayout({
         redirect('/login');
     }
 
-    // Check subscription/trial status
+    // Calculate subscription state (passed down to components)
     const tenant = session.tenant;
+    let isExpired = false;
+    let daysRemaining = 0;
+
     if (tenant) {
         const now = new Date();
         const createdAt = new Date(tenant.created_at);
         const trialEndDate = new Date(createdAt);
         trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-        const isInTrial = tenant.status === 'trial' && now < trialEndDate;
         const isActive = tenant.status === 'active';
+        const isInTrial = tenant.status === 'trial' && now < trialEndDate;
 
-        // Block if trial expired AND no active subscription
-        if (!isActive && !isInTrial) {
-            // We can't check pathname here directly, so the redirect page 
-            // itself should be outside the (dashboard) group or handled separately
-            redirect('/suscripcion-vencida');
+        if (isInTrial) {
+            daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         }
+
+        // Expired = trial period over AND no active paid subscription
+        isExpired = !isActive && !isInTrial;
     }
 
     return (
-        <DashboardLayout session={session}>
+        <DashboardLayout session={session} isExpired={isExpired} daysRemaining={daysRemaining}>
             {children}
         </DashboardLayout>
     );
 }
-
