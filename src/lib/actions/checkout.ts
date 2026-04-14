@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Payment } from "mercadopago";
 
 export async function verifyMercadoPagoPayment(paymentId: string) {
@@ -62,7 +63,7 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
         }
 
         // We use service role key to bypass RLS since users might not have permissions to upsert subscriptions
-        const supabaseServiceRole = createClient(
+        const supabaseServiceRole = createSupabaseAdmin(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
