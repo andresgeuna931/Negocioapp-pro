@@ -17,8 +17,20 @@ import {
   Clock
 } from 'lucide-react';
 import Link from 'next/link';
+import { verifyMercadoPagoPayment } from '@/lib/actions/checkout';
 
-export default async function DashboardPage() {
+interface PageProps {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
+export default async function DashboardPage({ searchParams }: PageProps) {
+  // Check for MercadoPago redirect
+  const paymentId = searchParams?.payment_id as string;
+  if (paymentId) {
+    // Attempt verification instantly
+    await verifyMercadoPagoPayment(paymentId);
+  }
+
   const session = await getCurrentSession();
 
   if (!session) {
