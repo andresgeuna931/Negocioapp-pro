@@ -17,10 +17,11 @@ export async function GET() {
             for (const oldPlan of existingPlans.results) {
                 if (oldPlan.status !== 'cancelled') {
                     try {
-                        await mpPlan.update({ 
+                        const updateData: any = { 
                             id: oldPlan.id as string, 
                             status: 'cancelled' 
-                        });
+                        };
+                        await mpPlan.update(updateData);
                         console.log(`Cancelled plan: ${oldPlan.id}`);
                     } catch (e) {
                         console.error(`Status update failed for ${oldPlan.id}`);
