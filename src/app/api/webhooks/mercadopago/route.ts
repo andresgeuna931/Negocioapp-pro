@@ -49,13 +49,19 @@ export async function POST(request: NextRequest) {
             } else if (topic === "preapproval") {
                 // Fetch subscription (preapproval) details
                 const preApproval = new PreApproval(mpClient);
-                const details = await preApproval.get({ id: resourceId });
+                const details: any = await preApproval.get({ id: resourceId });
                 console.log("PreApproval details:", JSON.stringify(details, null, 2));
                 
                 if (details.status === "authorized") {
                     tenantId = details.external_reference;
-                    // We can derive current plan from the preapproval_plan_id if needed, 
-                    // but for now we follow the external ref.
+                    
+                    // Map MP Plan ID back to our internal IDs
+                    const mpId = details.preapproval_plan_id;
+                    if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_TEST) planId = 'test';
+                    else if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) planId = 'starter';
+                    else if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) planId = 'professional';
+                    else if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) planId = 'business';
+                    
                     status = "active";
                 }
             }

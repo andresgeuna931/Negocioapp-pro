@@ -108,6 +108,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                                 {plan.id === 'starter' && 'Chatbot IA (Autogestión)'}
                                 {plan.id === 'professional' && 'Chatbot + WhatsApp (Lun-Vie)'}
                                 {plan.id === 'business' && 'WhatsApp Prioritario VIP'}
+                                {plan.id === 'test' && 'Soporte Desarrollador (Pruebas)'}
                             </span>
                         </div>
                     </div>

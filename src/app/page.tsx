@@ -50,24 +50,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const subscription = subscriptionResult?.subscription;
 
   // Determine plan and trial status
-  let planName = 'Vencido';
+  let planName = 'Pendiente de Pago';
   let isInTrial = false;
+  let trialStatus = 'unknown';
   let trialDaysLeft = 0;
 
-  if (subscription && ['active', 'trial'].includes(subscription.status)) {
-    planName = PLANS[subscription.plan?.toUpperCase() as keyof typeof PLANS]?.name || 'Profesional';
-    isInTrial = subscription.status === 'trial';
-  } else if (tenant?.created_at) {
-    // Check implicit trial (14 days from registration)
-    const createdAt = new Date(tenant.created_at);
+  if (subscription && subscription.status === 'active') {
+    const planKey = subscription.plan?.toUpperCase() as keyof typeof PLANS;
+    planName = PLANS[planKey]?.name || 'Profesional';
+    isInTrial = false; // It's an active paid plan
+  } else {
+    // Check trial status from tenant creation
+    const createdAt = new Date(tenant?.created_at || new Date());
     const trialEndDate = new Date(createdAt);
     trialEndDate.setDate(trialEndDate.getDate() + 14);
     const now = new Date();
 
     if (now < trialEndDate) {
       isInTrial = true;
+      trialStatus = 'trial';
       trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      planName = 'Profesional (Prueba)';
+      planName = 'Prueba Gratis';
+    } else {
+      planName = 'Suscripción Necesaria';
     }
   }
 
