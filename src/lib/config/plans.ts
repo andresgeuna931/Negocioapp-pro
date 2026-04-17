@@ -2,7 +2,8 @@ export const PLANS = {
     STARTER: {
         id: 'starter',
         name: 'Starter',
-        price: 1, // TODO: CAMBIAR A 18000 después del test
+        price: 18000,
+        mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_STARTER, 
         limits: {
             products: 1000,
             users: 1,
@@ -11,17 +12,18 @@ export const PLANS = {
             multi_price_lists: true,
             cash_control: true,
             reports: 'basic',
-            support: 'chatbot', // Autogestión 100%
+            support: 'chatbot',
             current_account: false,
-            bulk_products_update: true, // ✅ CRITICO: Permitir actualizar precios por inflación
-            excel_reports_export: false, // ❌ GANCHO: No pueden sacar la data para el contador
+            bulk_products_update: true,
+            excel_reports_export: false,
         },
         description: 'Ideal para kioscos pequeños que recién empiezan.'
     },
     PROFESSIONAL: {
         id: 'professional',
         name: 'Profesional',
-        price: 1, // TODO: CAMBIAR A 35000 después del test
+        price: 35000,
+        mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL,
         limits: {
             products: 5000,
             users: 2,
@@ -30,8 +32,8 @@ export const PLANS = {
             multi_price_lists: true,
             cash_control: true,
             reports: 'advanced',
-            support: 'whatsapp_business', // Horario comercial
-            current_account: true, // ✅ FEATURE ESTRELLA
+            support: 'whatsapp_business',
+            current_account: true,
             bulk_products_update: true,
             excel_reports_export: true,
         },
@@ -40,21 +42,22 @@ export const PLANS = {
     BUSINESS: {
         id: 'business',
         name: 'Business',
-        price: 1, // TODO: CAMBIAR A 49990 después del test
+        price: 49990,
+        mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS,
         limits: {
-            products: -1, // Ilimitado
-            users: 5, // ✅ AUMENTADO: De 3 a 5 para cubrir turnos rotativos
+            products: -1,
+            users: 5,
         },
         features: {
-            multi_branch: true, // ✅ CRITICO: Multi-sucursal incluido (Shopify cobra extra)
+            multi_branch: true,
             multi_price_lists: true,
             cash_control: true,
             reports: 'advanced_excel',
-            support: 'priority', // Prioridad en respuesta
+            support: 'priority',
             current_account: true,
             bulk_products_update: true,
             excel_reports_export: true,
-            audit_logs: true, // ✅ SEGURIDAD: Control de dueños ausentes
+            audit_logs: true,
         },
         description: 'Gestión total sin límites para comercios establecidos.'
     }
