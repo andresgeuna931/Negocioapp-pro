@@ -17,14 +17,7 @@ export async function GET() {
             const response = await mpPlan.create({
                 body: {
                     reason: `Suscripción NegocioApp Pro - Plan ${plan.name}`,
-                    auto_setup: true,
                     back_url: "https://negocioapp-pro.vercel.app/dashboard",
-                    payment_methods_allowed: {
-                        payment_types: [
-                            { id: "credit_card" },
-                            { id: "debit_card" }
-                        ]
-                    },
                     auto_recurring: {
                         frequency: 1,
                         frequency_type: "months",
@@ -47,7 +40,7 @@ export async function GET() {
 
         return NextResponse.json({ 
             message: "Planes creados exitosamente en MercadoPago",
-            instrucciones: "Copia los IDs 'mp_id' y ponelos en las variables de entorno de Vercel como NEXT_PUBLIC_MP_PLAN_STARTER, etc.",
+            instrucciones: "Copia los IDs 'mp_id' y ponelos en las variables de entorno de Vercel.",
             planes: results 
         });
 
