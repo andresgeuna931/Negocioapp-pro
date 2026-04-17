@@ -19,7 +19,7 @@ export async function GET() {
                     try {
                         await mpPlan.update({ 
                             id: oldPlan.id as string, 
-                            body: { status: 'cancelled' } 
+                            status: 'cancelled' 
                         });
                         console.log(`Cancelled plan: ${oldPlan.id}`);
                     } catch (e) {
