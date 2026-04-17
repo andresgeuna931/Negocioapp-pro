@@ -54,8 +54,14 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
     return (
         <div>
             {error && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
-                    {error}
+                <div className="mb-10 p-6 bg-red-50 border-2 border-red-100 rounded-xl text-red-700 shadow-sm max-w-2xl mx-auto">
+                    <div className="flex items-center justify-center gap-2 mb-2 font-bold text-lg">
+                        ⚠️ Error al conectar con MercadoPago
+                    </div>
+                    <p className="text-center">{error}</p>
+                    <p className="text-xs text-center mt-3 opacity-70 italic">
+                        Tip: Verificá que los IDs de los planes en Vercel coincidan con los que generamos recién.
+                    </p>
                 </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">

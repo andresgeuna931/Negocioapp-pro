@@ -11,64 +11,72 @@ export async function POST(request: NextRequest) {
     try {
         const supabase = await createClient();
 
-        // Validate session
+        // 1. Check Auth
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
-            return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+            console.error("Checkout Auth Error:", authError);
+            return NextResponse.json({ error: "No autenticado. Por favor, reingresá a tu cuenta." }, { status: 401 });
         }
 
-        // Get tenant ID from profile
-        const { data: profile } = await supabase
+        // 2. Check Profile
+        const { data: profile, error: profileError } = await supabase
             .from("profiles")
             .select("tenant_id")
             .eq("id", user.id)
             .single();
 
-        if (!profile?.tenant_id) {
-            return NextResponse.json({ error: "Tenant no encontrado" }, { status: 400 });
+        if (profileError || !profile?.tenant_id) {
+            console.error("Checkout Profile Error:", profileError);
+            return NextResponse.json({ error: "Tu perfil de usuario no tiene un negocio asociado." }, { status: 400 });
         }
 
-        // Get requested plan
+        // 3. Check Plan
         const body = await request.json();
         const { planId } = body;
+        if (!planId) return NextResponse.json({ error: "No se especificó un plan." }, { status: 400 });
 
-        if (!planId) {
-            return NextResponse.json({ error: "Plan no especificado" }, { status: 400 });
-        }
-
-        // Find the PLAN object to get the mercadopago_plan_id
         const planKey = planId.toUpperCase() as keyof typeof PLANS;
         const plan = PLANS[planKey];
 
         if (!plan || !plan.mercadopago_plan_id) {
-            console.error(`Plan not found or missing MP ID for: ${planId}`);
-            return NextResponse.json({ error: "Configuración de plan inválida" }, { status: 400 });
+            console.error(`Checkout Plan Config Error: ${planId}`, plan);
+            return NextResponse.json({ 
+                error: `El ID de MercadoPago para el plan '${planId}' no está configurado.` 
+            }, { status: 400 });
         }
 
-        // Create MercadoPago PreApproval (Subscription)
+        // 4. MercadoPago Call
+        console.log(`Starting MP checkout for plan ${planId} (MP ID: ${plan.mercadopago_plan_id})...`);
         const preApproval = new PreApproval(client);
         
-        const result: any = await preApproval.create({
-            body: {
-                preapproval_plan_id: plan.mercadopago_plan_id,
-                reason: `NegocioApp Pro - Plan ${plan.name}`,
-                external_reference: profile.tenant_id,
-                payer_email: user.email,
-                back_url: "https://negocioapp-pro.vercel.app/",
-                status: "authorized"
-            }
-        });
+        try {
+            const result: any = await preApproval.create({
+                body: {
+                    preapproval_plan_id: plan.mercadopago_plan_id,
+                    reason: `NegocioApp Pro - Plan ${plan.name}`,
+                    external_reference: profile.tenant_id,
+                    payer_email: user.email,
+                    back_url: "https://negocioapp-pro.vercel.app/",
+                    status: "authorized"
+                }
+            });
 
-        // For PreApproval, we use init_point just like Preferences
-        return NextResponse.json({
-            init_point: result.init_point,
-            sandbox_init_point: result.sandbox_init_point || null,
-        });
+            return NextResponse.json({
+                init_point: result.init_point,
+                sandbox_init_point: result.sandbox_init_point || null,
+            });
+        } catch (mpError: any) {
+            console.error("MercadoPago SDK Error:", mpError);
+            return NextResponse.json({ 
+                error: "MercadoPago rechazó la suscripción.",
+                details: mpError.message || "Error desconocido del SDK"
+            }, { status: 500 });
+        }
 
     } catch (error: any) {
-        console.error("Error creating subscription:", error);
+        console.error("Global Checkout Error:", error);
         return NextResponse.json(
-            { error: "Error interno al crear el flujo de suscripción", details: error.message },
+            { error: "Fallo crítico en el servidor", details: error.message },
             { status: 500 }
         );
     }

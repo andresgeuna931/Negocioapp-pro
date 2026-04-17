@@ -23,9 +23,11 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
 
     return (
         <Card className={cn(
-            "relative flex flex-col h-full transition-all duration-200",
-            isPro ? "border-emerald-500 shadow-lg scale-105 z-10" : "border-slate-200 dark:border-slate-800 hover:border-emerald-200",
-            isCurrent ? "bg-slate-50 dark:bg-slate-900/50" : "bg-white dark:bg-slate-900"
+            "relative flex flex-col h-full transition-all duration-300 border-2",
+            isPro 
+                ? "border-emerald-600 shadow-xl scale-105 z-10 bg-white" 
+                : "border-slate-100 shadow-md hover:shadow-lg hover:border-emerald-200 bg-white",
+            isCurrent && !isPro ? "bg-slate-50 border-emerald-400" : ""
         )}>
             {isPro && (
                 <div className="absolute -top-3 left-0 right-0 flex justify-center">
@@ -117,8 +119,8 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
             <CardFooter>
                 <Button
                     className={cn(
-                        "w-full",
-                        isPro ? "bg-emerald-600 hover:bg-emerald-700" : ""
+                        "w-full transition-all duration-300 shadow-sm hover:shadow-md",
+                        isPro ? "bg-emerald-700 hover:bg-emerald-800 text-white border-none" : "bg-slate-800 hover:bg-slate-900 text-white"
                     )}
                     variant={isDisabled ? "outline" : undefined}
                     disabled={isDisabled || loading}

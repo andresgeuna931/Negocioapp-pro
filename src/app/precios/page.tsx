@@ -75,8 +75,8 @@ export default async function PricingPage() {
                         }
                     </p>
                     {isInTrial && trialDaysLeft > 0 && !hasPaidSubscription && (
-                        <div className="mt-4 inline-flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium">
-                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                        <div className="mt-6 inline-flex items-center gap-3 bg-slate-900 text-slate-100 px-6 py-2.5 rounded-full text-sm font-semibold shadow-xl border border-slate-800">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
                             Te quedan {trialDaysLeft} días de prueba del Plan Profesional
                         </div>
                     )}
