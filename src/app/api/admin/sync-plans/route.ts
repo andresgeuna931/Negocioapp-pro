@@ -8,15 +8,35 @@ const client = new MercadoPagoConfig({
 
 export async function GET() {
     try {
-        const results = [];
         const mpPlan = new PreApprovalPlan(client);
 
+        // 1. CLEANUP: Fetch and cancel all existing plans to avoid duplicates
+        console.log("Cleaning up old plans...");
+        const existingPlans = await mpPlan.search({});
+        if (existingPlans.results) {
+            for (const oldPlan of existingPlans.results) {
+                if (oldPlan.status !== 'cancelled') {
+                    try {
+                        await mpPlan.update({ 
+                            id: oldPlan.id as string, 
+                            body: { status: 'cancelled' } 
+                        });
+                        console.log(`Cancelled plan: ${oldPlan.id}`);
+                    } catch (e) {
+                        console.error(`Status update failed for ${oldPlan.id}`);
+                    }
+                }
+            }
+        }
+
+        // 2. CREATE: Create the 4 fresh plans
+        const results = [];
         for (const [key, plan] of Object.entries(PLANS)) {
-            console.log(`Creating plan for ${plan.name}...`);
+            console.log(`Creating fresh plan for ${plan.name}...`);
             
             const response = await mpPlan.create({
                 body: {
-                    reason: `Suscripción NegocioApp Pro - Plan ${plan.name}`,
+                    reason: `NegocioApp Pro - Plan ${plan.name}`,
                     back_url: "https://negocioapp-pro.vercel.app/dashboard",
                     auto_recurring: {
                         frequency: 1,

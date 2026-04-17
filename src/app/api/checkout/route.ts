@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
                 external_reference: profile.tenant_id,
                 payer_email: user.email,
                 back_url: "https://negocioapp-pro.vercel.app/",
-                auto_return: "approved",
                 status: "authorized"
             }
         });
