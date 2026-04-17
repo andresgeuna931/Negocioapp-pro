@@ -12,9 +12,7 @@ export async function GET() {
 
         // 1. CLEANUP: Fetch and cancel all existing plans to avoid duplicates
         console.log("Cleaning up old plans (fetching up to 100)...");
-        const existingPlans = await mpPlan.search({
-            qs: { limit: 100 }
-        });
+        const existingPlans = await mpPlan.search({ limit: 100 } as any);
         if (existingPlans.results) {
             for (const oldPlan of existingPlans.results) {
                 if (oldPlan.status !== 'cancelled') {
