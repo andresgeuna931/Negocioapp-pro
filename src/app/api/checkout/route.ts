@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         // Create MercadoPago PreApproval (Subscription)
         const preApproval = new PreApproval(client);
         
-        const result = await preApproval.create({
+        const result: any = await preApproval.create({
             body: {
                 preapproval_plan_id: plan.mercadopago_plan_id,
                 reason: `NegocioApp Pro - Plan ${plan.name}`,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         // For PreApproval, we use init_point just like Preferences
         return NextResponse.json({
             init_point: result.init_point,
-            sandbox_init_point: result.sandbox_init_point,
+            sandbox_init_point: result.sandbox_init_point || null,
         });
 
     } catch (error: any) {
