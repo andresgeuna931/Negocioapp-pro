@@ -1,9 +1,7 @@
-"use server";
-
 import { NextRequest, NextResponse } from "next/server";
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import { MercadoPagoConfig, PreApproval } from "mercadopago";
 import { createClient } from "@/lib/supabase/server";
-import { getPlanDetails } from "@/lib/config/plans";
+import { PLANS } from "@/lib/config/plans";
 
 const client = new MercadoPagoConfig({
     accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
@@ -38,47 +36,40 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Plan no especificado" }, { status: 400 });
         }
 
-        const plan = getPlanDetails(planId);
+        // Find the PLAN object to get the mercadopago_plan_id
+        const planKey = planId.toUpperCase() as keyof typeof PLANS;
+        const plan = PLANS[planKey];
 
-        // Create MercadoPago Preference
-        const preference = new Preference(client);
-        const result = await preference.create({
+        if (!plan || !plan.mercadopago_plan_id) {
+            console.error(`Plan not found or missing MP ID for: ${planId}`);
+            return NextResponse.json({ error: "Configuración de plan inválida" }, { status: 400 });
+        }
+
+        // Create MercadoPago PreApproval (Subscription)
+        const preApproval = new PreApproval(client);
+        
+        const result = await preApproval.create({
             body: {
-                items: [
-                    {
-                        id: planId,
-                        title: `NegocioApp Pro - Plan ${plan.name}`,
-                        description: plan.description,
-                        quantity: 1,
-                        unit_price: plan.price,
-                        currency_id: "ARS",
-                    },
-                ],
+                preapproval_plan_id: plan.mercadopago_plan_id,
+                reason: `NegocioApp Pro - Plan ${plan.name}`,
                 external_reference: profile.tenant_id,
-                metadata: {
-                    plan_id: planId,
-                    tenant_id: profile.tenant_id,
-                },
-                back_urls: {
-                    success: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/?payment=success`,
-                    failure: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/precios?payment=failed`,
-                    pending: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/?payment=pending`,
-                },
+                payer_email: user.email,
+                back_url: "https://negocioapp-pro.vercel.app/",
                 auto_return: "approved",
-                notification_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app'}/api/webhooks/mercadopago`,
-            },
+                status: "authorized"
+            }
         });
 
-        // Return the init_point URL for redirect
+        // For PreApproval, we use init_point just like Preferences
         return NextResponse.json({
             init_point: result.init_point,
             sandbox_init_point: result.sandbox_init_point,
         });
 
-    } catch (error) {
-        console.error("Error creating checkout preference:", error);
+    } catch (error: any) {
+        console.error("Error creating subscription:", error);
         return NextResponse.json(
-            { error: "Error interno al crear preferencia de pago" },
+            { error: "Error interno al crear el flujo de suscripción", details: error.message },
             { status: 500 }
         );
     }

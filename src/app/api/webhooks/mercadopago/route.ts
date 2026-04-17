@@ -21,32 +21,51 @@ export async function POST(request: NextRequest) {
         console.log("Webhook received:", JSON.stringify(body, null, 2));
 
         // MercadoPago sends different notification types
-        // We care about payment notifications
-        if (body.type === "payment" || body.action === "payment.created" || body.action === "payment.updated") {
+        if (body.type === "payment" || body.type === "preapproval" || body.action?.includes("subscription") || body.action?.includes("payment")) {
             const paymentId = body.data?.id;
+            const resourceId = body.data?.id;
+            const topic = body.type || body.topic;
 
-            if (!paymentId) {
-                console.log("No payment ID in webhook body");
+            if (!resourceId) {
+                console.log("No resource ID in webhook body");
                 return NextResponse.json({ received: true }, { status: 200 });
             }
 
-            // Fetch payment details from MercadoPago
-            const payment = new Payment(mpClient);
-            const paymentDetails = await payment.get({ id: paymentId });
+            let tenantId: string | undefined;
+            let planId: string | undefined;
+            let status: string = 'pending';
+            let transactionAmount: number = 0;
 
-            console.log("Payment details:", JSON.stringify(paymentDetails, null, 2));
-
-            // Check if payment is approved
-            if (paymentDetails.status === "approved") {
-                const tenantId = paymentDetails.external_reference;
-                const planId = paymentDetails.metadata?.plan_id || "professional";
-
-                if (!tenantId) {
-                    console.error("No tenant ID in external_reference");
-                    return NextResponse.json({ error: "Missing tenant reference" }, { status: 400 });
+            if (topic === "payment") {
+                // Fetch payment details
+                const payment = new Payment(mpClient);
+                const details = await payment.get({ id: resourceId });
+                if (details.status === "approved") {
+                    tenantId = details.external_reference;
+                    planId = details.metadata?.plan_id || "professional";
+                    status = "active";
+                    transactionAmount = details.transaction_amount || 0;
                 }
+            } else if (topic === "preapproval") {
+                // Fetch subscription (preapproval) details
+                const preApproval = new PreApproval(mpClient);
+                const details = await preApproval.get({ id: resourceId });
+                console.log("PreApproval details:", JSON.stringify(details, null, 2));
+                
+                if (details.status === "authorized") {
+                    tenantId = details.external_reference;
+                    // We can derive current plan from the preapproval_plan_id if needed, 
+                    // but for now we follow the external ref.
+                    status = "active";
+                }
+            }
 
-                // Check if tenant is still in trial
+            if (tenantId && status === "active") {
+                // Determine plan name from DB or logic
+                // For simplicity, we keep the plan mapping
+                const finalPlan = planId || "professional";
+
+                // Check tenant trial
                 const { data: tenant } = await supabaseAdmin
                     .from("tenants")
                     .select("created_at, status")
@@ -57,22 +76,17 @@ export async function POST(request: NextRequest) {
                 let periodEnd = new Date();
 
                 if (tenant && tenant.status === 'trial') {
-                    // If still in trial, subscription starts AFTER trial ends
                     const trialEndDate = new Date(tenant.created_at);
                     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
                     if (new Date() < trialEndDate) {
-                        // Still in trial → subscription starts when trial ends
                         periodStart = trialEndDate;
                         periodEnd = new Date(trialEndDate);
                         periodEnd.setDate(periodEnd.getDate() + 30);
-                        console.log(`🕐 Tenant ${tenantId} still in trial. Subscription starts ${trialEndDate.toISOString()}`);
                     } else {
-                        // Trial already expired → start immediately
                         periodEnd.setDate(periodEnd.getDate() + 30);
                     }
                 } else {
-                    // Not in trial → start immediately (30 days from now)
                     periodEnd.setDate(periodEnd.getDate() + 30);
                 }
 
@@ -82,11 +96,11 @@ export async function POST(request: NextRequest) {
                     .upsert({
                         tenant_id: tenantId,
                         status: "active",
-                        plan: planId,
+                        plan: finalPlan,
                         current_period_start: periodStart.toISOString(),
                         current_period_end: periodEnd.toISOString(),
                         last_payment_at: new Date().toISOString(),
-                        last_payment_amount: paymentDetails.transaction_amount,
+                        last_payment_amount: transactionAmount,
                         payment_provider: 'mercadopago',
                         updated_at: new Date().toISOString(),
                     }, {
@@ -95,23 +109,15 @@ export async function POST(request: NextRequest) {
 
                 if (updateError) {
                     console.error("Error updating subscription:", updateError);
-                    return NextResponse.json({ error: "Database update failed" }, { status: 500 });
                 }
 
-                // Update the tenant's plan_type
-                // If still in trial, keep status as 'trial' (will auto-transition when trial ends)
-                // If trial expired, set status to 'active' immediately
-                const tenantUpdate: Record<string, string> = { plan_type: planId };
-                if (!tenant || tenant.status !== 'trial' || new Date() >= new Date(new Date(tenant.created_at).getTime() + 14 * 24 * 60 * 60 * 1000)) {
-                    tenantUpdate.status = 'active';
-                }
-
+                const tenantUpdate: Record<string, string> = { plan_type: finalPlan, status: 'active' };
                 await supabaseAdmin
                     .from("tenants")
                     .update(tenantUpdate)
                     .eq("id", tenantId);
 
-                console.log(`✅ Subscription activated for tenant ${tenantId} with plan ${planId}`);
+                console.log(`✅ Subscription/Payment processed for tenant ${tenantId}`);
             }
         }
 

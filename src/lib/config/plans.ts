@@ -60,6 +60,26 @@ export const PLANS = {
             audit_logs: true,
         },
         description: 'Gestión total sin límites para comercios establecidos.'
+    },
+    TEST: {
+        id: 'test',
+        name: 'Plan de Prueba',
+        price: 10,
+        mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_TEST,
+        limits: {
+            products: 10,
+            users: 1,
+        },
+        features: {
+            multi_price_lists: true,
+            cash_control: true,
+            reports: 'basic',
+            support: 'chatbot',
+            current_account: false,
+            bulk_products_update: true,
+            excel_reports_export: false,
+        },
+        description: 'Usa este plan para probar el sistema de cobro real por solo $10.'
     }
 } as const;
 
