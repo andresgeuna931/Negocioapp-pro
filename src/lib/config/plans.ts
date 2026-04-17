@@ -64,7 +64,7 @@ export const PLANS = {
     TEST: {
         id: 'test',
         name: 'Plan de Prueba',
-        price: 10,
+        price: 20,
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_TEST,
         limits: {
             products: 10,
