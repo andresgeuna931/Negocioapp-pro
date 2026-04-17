@@ -58,7 +58,7 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                     {error}
                 </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
                 <PricingCard
                     planId="starter"
                     currentPlanId={currentPlanId}
@@ -80,6 +80,14 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                     currentPlanId={currentPlanId}
                     onSelect={handleSelectPlan}
                     loading={loadingPlan === 'business'}
+                    isInTrial={isInTrial}
+                    hasPaidSubscription={hasPaidSubscription}
+                />
+                <PricingCard
+                    planId="test"
+                    currentPlanId={currentPlanId}
+                    onSelect={handleSelectPlan}
+                    loading={loadingPlan === 'test'}
                     isInTrial={isInTrial}
                     hasPaidSubscription={hasPaidSubscription}
                 />
