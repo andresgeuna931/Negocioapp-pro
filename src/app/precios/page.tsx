@@ -15,29 +15,29 @@ export default async function PricingPage() {
     }
 
     // Check if user is in trial period (14 days from account creation)
+    // We check by date only — does NOT depend on tenant.status being exactly 'trial'
     let isInTrial = false;
     let trialDaysLeft = 0;
 
-    if (tenant.created_at) {
+    const subscription = subscriptionStatus?.subscription;
+    const hasPaidSubscription = !!(
+        subscription &&
+        subscription.status === 'active'
+    );
+
+    if (!hasPaidSubscription && tenant.created_at) {
         const createdAt = new Date(tenant.created_at);
         const trialEndDate = new Date(createdAt);
         trialEndDate.setDate(trialEndDate.getDate() + 14);
         const now = new Date();
 
-        if (tenant.status === 'trial' && now < trialEndDate) {
+        if (now < trialEndDate) {
             isInTrial = true;
             trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         }
     }
 
-    // Check if user has an active PAID subscription (not trial)
-    const subscription = subscriptionStatus?.subscription;
-    const hasPaidSubscription = !!(
-        subscription &&
-        subscription.status === 'active' &&
-        subscription.plan &&
-        !['free', 'trial'].includes(subscription.plan)
-    );
+    // hasPaidSubscription already calculated above
 
     // Determine current plan:
     let currentPlanId: string;
@@ -51,7 +51,7 @@ export default async function PricingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="min-h-screen bg-slate-50">
             {/* Back button */}
             <div className="max-w-6xl mx-auto pt-6 px-4">
                 <Link
@@ -65,10 +65,10 @@ export default async function PricingPage() {
 
             <div className="max-w-6xl mx-auto py-8 px-4">
                 <div className="text-center mb-12">
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
+                    <h1 className="text-3xl font-bold text-slate-900 mb-4">
                         Elegí el plan perfecto para tu negocio
                     </h1>
-                    <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                    <p className="text-lg text-slate-600 max-w-2xl mx-auto">
                         {hasPaidSubscription
                             ? 'Gestioná tu suscripción o cambiá de plan.'
                             : 'Comenzá con una prueba gratuita de 14 días en nuestro plan Profesional. Sin compromiso, cancelá cuando quieras.'

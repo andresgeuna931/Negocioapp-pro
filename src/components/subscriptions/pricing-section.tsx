@@ -32,7 +32,11 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Error al crear el checkout');
+                // If there's detailed info, we want to know it
+                const errorMsg = data.details 
+                    ? `${data.error} (${data.details})` 
+                    : (data.error || 'Error al crear el checkout');
+                throw new Error(errorMsg);
             }
 
             // Redirect to Mercado Pago checkout
@@ -55,12 +59,12 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
         <div>
             {error && (
                 <div className="mb-10 p-6 bg-red-50 border-2 border-red-100 rounded-xl text-red-700 shadow-sm max-w-2xl mx-auto">
-                    <div className="flex items-center justify-center gap-2 mb-2 font-bold text-lg">
+                    <div className="flex items-center justify-center gap-2 mb-2 font-bold text-lg text-red-800">
                         ⚠️ Error al conectar con MercadoPago
                     </div>
-                    <p className="text-center">{error}</p>
-                    <p className="text-xs text-center mt-3 opacity-70 italic">
-                        Tip: Verificá que los IDs de los planes en Vercel coincidan con los que generamos recién.
+                    <p className="text-center font-medium">{error}</p>
+                    <p className="text-xs text-center mt-4 opacity-70 italic border-t border-red-200 pt-4">
+                        💡 **Tip para pruebas**: No podés usar tu propio mail de MercadoPago para suscribirte. Usá un mail distinto (ej. el de tu hermano).
                     </p>
                 </div>
             )}

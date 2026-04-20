@@ -65,7 +65,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                     />
 
                     {/* Separador */}
-                    <div className="border-t border-slate-100 dark:border-slate-800 my-3" />
+                    <div className="border-t border-slate-100 my-3" />
 
                     {/* Features principales */}
                     <FeatureRow
@@ -99,13 +99,13 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                     />
 
                     {/* Soporte - Diferenciador */}
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <div className="pt-3 border-t border-slate-100">
                         <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Soporte</p>
                         <div className="flex items-start gap-2">
                             <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
                             <span className={cn(
-                                "text-slate-700 dark:text-slate-300",
-                                plan.id === 'business' && "font-medium text-emerald-600 dark:text-emerald-400"
+                                "text-slate-700",
+                                plan.id === 'business' && "font-medium text-emerald-700"
                             )}>
                                 {plan.id === 'starter' && 'Chatbot IA (Autogestión)'}
                                 {plan.id === 'professional' && 'Chatbot + WhatsApp (Lun-Vie)'}
@@ -119,20 +119,26 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
             <CardFooter>
                 <Button
                     className={cn(
-                        "w-full transition-all duration-300 shadow-sm hover:shadow-md",
-                        isPro ? "bg-emerald-700 hover:bg-emerald-800 text-white border-none" : "bg-slate-800 hover:bg-slate-900 text-white"
+                        "w-full transition-all duration-300 font-semibold",
+                        isDisabled
+                            ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                            : isPro
+                                ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+                                : "bg-slate-800 hover:bg-slate-900 text-white"
                     )}
-                    variant={isDisabled ? "outline" : undefined}
+                    variant="ghost"
                     disabled={isDisabled || loading}
                     onClick={() => onSelect?.(plan.id)}
                 >
-                    {isDisabled
-                        ? 'Plan Actual'
-                        : isInTrial && isCurrent
-                            ? 'Suscribirme a este plan'
-                            : hasPaidSubscription
-                                ? 'Cambiar Plan'
-                                : 'Elegir Plan'
+                    {loading
+                        ? 'Procesando...'
+                        : isDisabled
+                            ? 'Plan Actual'
+                            : isInTrial && isCurrent
+                                ? 'Suscribirme a este plan'
+                                : hasPaidSubscription
+                                    ? 'Cambiar Plan'
+                                    : 'Elegir Plan'
                     }
                 </Button>
             </CardFooter>
@@ -152,7 +158,7 @@ function FeatureRow({
     highlight?: boolean;
 }) {
     return (
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-2 text-slate-600">
             {included ? (
                 <Check className={cn(
                     "w-4 h-4 flex-shrink-0",
@@ -166,8 +172,8 @@ function FeatureRow({
                     className={cn(
                         included
                             ? highlight
-                                ? "text-slate-900 dark:text-slate-100 font-medium"
-                                : "text-slate-700 dark:text-slate-300"
+                                ? "text-slate-900 font-medium"
+                                : "text-slate-700"
                             : "text-slate-400 line-through"
                     )}
                     title={tooltip}

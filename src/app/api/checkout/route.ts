@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
                     preapproval_plan_id: plan.mercadopago_plan_id,
                     reason: `NegocioApp Pro - Plan ${plan.name}`,
                     external_reference: profile.tenant_id,
-                    payer_email: user.email,
                     back_url: "https://negocioapp-pro.vercel.app/",
                     status: "authorized"
                 }
