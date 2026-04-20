@@ -51,12 +51,12 @@ export default async function PricingPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-900">
             {/* Back button */}
             <div className="max-w-6xl mx-auto pt-6 px-4">
                 <Link
                     href="/"
-                    className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                    className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Volver al inicio
@@ -65,24 +65,24 @@ export default async function PricingPage() {
 
             <div className="max-w-6xl mx-auto py-8 px-4">
                 <div className="text-center mb-12">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-4">
+                    <h1 className="text-3xl font-bold text-white mb-4">
                         Elegí el plan perfecto para tu negocio
                     </h1>
-                    <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                    <p className="text-lg text-slate-400 max-w-2xl mx-auto">
                         {hasPaidSubscription
                             ? 'Gestioná tu suscripción o cambiá de plan.'
                             : 'Comenzá con una prueba gratuita de 14 días en nuestro plan Profesional. Sin compromiso, cancelá cuando quieras.'
                         }
                     </p>
                     {isInTrial && trialDaysLeft > 0 && !hasPaidSubscription && (
-                        <div className="mt-6 inline-flex items-center gap-3 bg-slate-900 text-slate-100 px-6 py-2.5 rounded-full text-sm font-semibold shadow-xl border border-slate-800">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                        <div className="mt-6 inline-flex items-center gap-3 bg-slate-800 text-slate-100 px-6 py-2.5 rounded-full text-sm font-semibold border border-slate-700">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                             Te quedan {trialDaysLeft} días de prueba del Plan Profesional
                         </div>
                     )}
                     {isInTrial && hasPaidSubscription && (
-                        <div className="mt-4 inline-flex items-center gap-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 rounded-full text-sm font-medium">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full" />
+                        <div className="mt-4 inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-full text-sm font-semibold">
+                            <span className="w-2 h-2 bg-emerald-400 rounded-full" />
                             ✅ Suscripción confirmada. Tu plan pago arranca cuando termine la prueba.
                         </div>
                     )}
@@ -99,12 +99,12 @@ export default async function PricingPage() {
                     <p className="text-slate-500 mb-4">¿Tenés preguntas sobre los planes?</p>
                     <div className="flex justify-center gap-8 text-sm">
                         <div className="text-left">
-                            <p className="font-semibold text-slate-900 dark:text-white">¿Puedo cambiar de plan después?</p>
-                            <p className="text-slate-500 max-w-xs">Sí, podés subir o bajar de plan en cualquier momento desde esta misma página.</p>
+                            <p className="font-semibold text-white">¿Puedo cambiar de plan después?</p>
+                            <p className="text-slate-400 max-w-xs">Sí, podés subir o bajar de plan en cualquier momento desde esta misma página.</p>
                         </div>
                         <div className="text-left">
-                            <p className="font-semibold text-slate-900 dark:text-white">¿Qué medios de pago aceptan?</p>
-                            <p className="text-slate-500 max-w-xs">Aceptamos todas las tarjetas de crédito y débito a través de MercadoPago.</p>
+                            <p className="font-semibold text-white">¿Qué medios de pago aceptan?</p>
+                            <p className="text-slate-400 max-w-xs">Aceptamos todas las tarjetas de crédito y débito a través de MercadoPago.</p>
                         </div>
                     </div>
                 </div>
