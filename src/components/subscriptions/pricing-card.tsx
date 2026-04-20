@@ -19,7 +19,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
 
     return (
         <div className={cn(
-            "relative flex flex-col rounded-2xl border transition-all duration-300 overflow-hidden",
+            "relative flex flex-col h-full rounded-2xl border transition-all duration-300 overflow-hidden",
             isPro
                 ? "border-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.15)] scale-105 z-10 bg-slate-800"
                 : "border-slate-700 bg-slate-800 hover:border-slate-500"

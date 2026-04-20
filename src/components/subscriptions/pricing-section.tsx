@@ -68,7 +68,7 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                     </p>
                 </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
                 <PricingCard
                     planId="starter"
                     currentPlanId={currentPlanId}
