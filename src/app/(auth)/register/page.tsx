@@ -142,7 +142,7 @@ function RegisterForm() {
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-[38px] text-slate-400 hover:text-white transition-colors"
                         >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                         </button>
                     </div>
 
@@ -163,7 +163,7 @@ function RegisterForm() {
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-[38px] text-slate-400 hover:text-white transition-colors"
                         >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
                         </button>
                     </div>
 

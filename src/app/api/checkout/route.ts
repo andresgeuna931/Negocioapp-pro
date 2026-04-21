@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
                     reason: `NegocioApp Pro - Plan ${plan.name}`,
                     external_reference: profile.tenant_id,
                     back_url: "https://negocioapp-pro.vercel.app/",
-                    status: "authorized"
                 }
             });
 
