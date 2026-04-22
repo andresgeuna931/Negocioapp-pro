@@ -1,17 +1,23 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { getTenantSettings, getSubscriptionStatus } from '@/lib/actions/auth';
+import { getTenantSettings, getSubscriptionStatus, getCurrentSession } from '@/lib/actions/auth';
 import { PricingSection } from '@/components/subscriptions/pricing-section';
 
 export default async function PricingPage() {
-    const [tenant, subscriptionStatus] = await Promise.all([
+    const [session, tenant, subscriptionStatus] = await Promise.all([
+        getCurrentSession(),
         getTenantSettings(),
         getSubscriptionStatus()
     ]);
 
     if (!tenant) {
         redirect('/login');
+    }
+
+    // Only owners can manage subscriptions
+    if (session?.profile?.role !== 'owner') {
+        redirect('/');
     }
 
     // Check if user is in trial period (14 days from account creation)
