@@ -71,7 +71,7 @@ export default async function PricingPage() {
                     <p className="text-lg text-slate-400 max-w-2xl mx-auto">
                         {hasPaidSubscription
                             ? 'Gestioná tu suscripción o cambiá de plan.'
-                            : 'Comenzá con una prueba gratuita de 14 días en nuestro plan Profesional. Sin compromiso, cancelá cuando quieras.'
+                            : 'Comenzá con una prueba gratuita en nuestro plan Profesional. Sin compromiso, cancelá cuando quieras.'
                         }
                     </p>
                     {isInTrial && trialDaysLeft > 0 && !hasPaidSubscription && (
