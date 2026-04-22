@@ -107,6 +107,11 @@ export default async function ConfigPage() {
                                             {trialDaysLeft} días restantes
                                         </p>
                                     )}
+                                    {isActive && (
+                                        <Link href="/precios" className="text-xs text-emerald-500 hover:text-emerald-400 hover:underline font-medium mt-1 inline-block">
+                                            Cambiar de plan →
+                                        </Link>
+                                    )}
                                     {!isActive && !isTrial && (
                                         <Link href="/precios" className="text-xs text-emerald-600 hover:underline">
                                             Ver planes →

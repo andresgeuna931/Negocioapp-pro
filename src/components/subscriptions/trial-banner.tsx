@@ -25,63 +25,10 @@ export function TrialBanner({
 }: TrialBannerProps) {
     const [isVisible, setIsVisible] = useState(true);
 
-    // STATE 5: Active paid subscription (not in trial anymore)
+    // STATE 5: Active paid subscription — no banner needed.
+    // Subscription is auto-renewing. User manages plan from Config page.
     if (!isTrial && !isExpired && hasPaidSubscription) {
-        if (!isVisible) return null;
-
-        const isExpiringSoon = subscriptionDaysLeft !== undefined && subscriptionDaysLeft <= 7;
-        const isExpiringVerySoon = subscriptionDaysLeft !== undefined && subscriptionDaysLeft <= 3;
-        
-        const bannerColor = isExpiringVerySoon 
-            ? 'bg-red-600' 
-            : isExpiringSoon 
-                ? 'bg-amber-600' 
-                : 'bg-emerald-600';
-                
-        const Icon = isExpiringSoon ? AlertTriangle : CreditCard;
-        const iconClass = isExpiringSoon ? "w-5 h-5 flex-shrink-0 animate-pulse" : "w-5 h-5 flex-shrink-0";
-
-        return (
-            <div className={cn("w-full text-white px-4 py-3 shadow-md relative z-40 transition-colors duration-300", bannerColor)}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between container mx-auto max-w-7xl gap-3 sm:gap-0">
-                    <div className="flex items-center gap-2">
-                        <Icon className={iconClass} />
-                        <span className="font-medium text-sm md:text-base">
-                            {isExpiringSoon ? (
-                                <>
-                                    <strong>¡Atención!</strong> Tu Plan {paidPlanName} vence en {subscriptionDaysLeft} {subscriptionDaysLeft === 1 ? 'día' : 'días'}.
-                                </>
-                            ) : (
-                                <>
-                                    Plan {paidPlanName || 'Activo'} — {subscriptionDaysLeft !== undefined && subscriptionDaysLeft > 0
-                                        ? `Termina en ${subscriptionDaysLeft} días`
-                                        : 'Activo'}
-                                </>
-                            )}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-3 self-end sm:self-auto">
-                        <Link href="/precios">
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                className={cn(
-                                    "border-none font-medium text-xs h-8 sm:h-7 transition-colors",
-                                    isExpiringSoon 
-                                        ? "bg-white text-slate-900 hover:bg-slate-100 font-bold px-4" 
-                                        : "bg-white/20 text-white hover:bg-white/30"
-                                )}
-                            >
-                                {isExpiringSoon ? 'Renovar ahora' : 'Gestionar plan'}
-                            </Button>
-                        </Link>
-                        <button onClick={() => setIsVisible(false)} className="text-white/80 hover:text-white p-1">
-                            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
+        return null;
     }
 
     // STATE 4: Expired — no paid subscription — CANNOT be dismissed
