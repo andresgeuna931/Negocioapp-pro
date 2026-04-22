@@ -120,7 +120,7 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
             >
                 <CardContent className="p-4">
                     {/* Product Image Placeholder */}
-                    <div className="aspect-square rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center mb-4 relative overflow-hidden">
+                    <div className="aspect-square rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center mb-4 relative overflow-hidden">
                         <Package className="w-12 h-12 text-slate-400" />
 
                         {/* Stock badge */}

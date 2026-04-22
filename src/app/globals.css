@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4.
+   Without this, dark: variants use prefers-color-scheme instead of the .dark class.
+   This ONE line makes every dark: variant in the entire app respond to class="dark" on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Force dark theme globally — consistent across all devices and OS settings */
 :root {
   --background: #0f172a;
