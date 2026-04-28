@@ -3,31 +3,16 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSession } from '@/lib/actions/auth';
-import { verifySubscriptionWithMP } from '@/lib/actions/verify-subscription';
 import { formatDate } from '@/lib/utils';
 import { TenantSettingsForm, TeamManagement } from '@/components/config';
 
 export default async function ConfigPage() {
-    let [tenant, subscriptionInfo, teamResult, session] = await Promise.all([
+    const [tenant, subscriptionInfo, teamResult, session] = await Promise.all([
         getTenantSettings(),
         getSubscriptionStatus(),
         getTeamMembers(),
         getCurrentSession(),
     ]);
-
-    // BACKUP VERIFICATION: If tenant is still in 'trial', check directly with MP
-    // This catches cases where the webhook failed or hasn't arrived yet
-    if (session?.tenant?.status === 'trial' && session.tenant.id) {
-        const verification = await verifySubscriptionWithMP(session.tenant.id);
-        if (verification.found && verification.status === 'active') {
-            // Reload data after DB update
-            [tenant, subscriptionInfo, session] = await Promise.all([
-                getTenantSettings(),
-                getSubscriptionStatus(),
-                getCurrentSession(),
-            ]);
-        }
-    }
 
     const team = teamResult.data || [];
     const isOwner = session?.profile.role === 'owner';

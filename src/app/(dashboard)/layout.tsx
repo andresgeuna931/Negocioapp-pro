@@ -2,13 +2,14 @@ import { redirect } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getCurrentSession } from '@/lib/actions/auth';
 import { createClient } from '@/lib/supabase/server';
+import { verifySubscriptionWithMP } from '@/lib/actions/verify-subscription';
 
 export default async function DashboardRootLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const session = await getCurrentSession();
+    let session = await getCurrentSession();
 
     if (!session) {
         redirect('/login');
@@ -16,7 +17,7 @@ export default async function DashboardRootLayout({
 
     // Fetch subscription directly (more reliable than nested join)
     const supabase = await createClient();
-    const { data: subscription } = await supabase
+    let { data: subscription } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('tenant_id', session.tenant.id)
@@ -26,6 +27,30 @@ export default async function DashboardRootLayout({
     if (subscription) {
         session.subscription = subscription;
     }
+
+    // ─── BACKUP VERIFICATION ───────────────────────────────────────
+    // If tenant is still in 'trial', check directly with MercadoPago API.
+    // This catches cases where the webhook failed or hasn't arrived yet.
+    // Only runs while tenant is in trial — once activated, this is skipped.
+    if (session.tenant.status === 'trial') {
+        const verification = await verifySubscriptionWithMP(session.tenant.id);
+        if (verification.found && verification.status === 'active') {
+            // DB was updated by verifySubscriptionWithMP. Re-fetch fresh data.
+            session = (await getCurrentSession())!;
+            if (session) {
+                const { data: freshSub } = await supabase
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('tenant_id', session.tenant.id)
+                    .single();
+                if (freshSub) {
+                    subscription = freshSub;
+                    session.subscription = freshSub;
+                }
+            }
+        }
+    }
+    // ────────────────────────────────────────────────────────────────
 
     // Calculate subscription state
     const tenant = session.tenant;
