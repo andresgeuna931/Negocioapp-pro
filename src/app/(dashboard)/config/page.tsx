@@ -6,6 +6,8 @@ import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSes
 import { formatDate } from '@/lib/utils';
 import { TenantSettingsForm, TeamManagement } from '@/components/config';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ConfigPage() {
     const [tenant, subscriptionInfo, teamResult, session] = await Promise.all([
         getTenantSettings(),
@@ -31,7 +33,7 @@ export default async function ConfigPage() {
 
             {/* Subscription Card */}
             {(() => {
-                // Unified trial calculation (same as banner)
+                // Unified trial calculation (same as dashboard)
                 const tenantCreatedAt = tenant?.created_at ? new Date(tenant.created_at) : null;
                 const isActive = subscriptionInfo?.tenant.status === 'active';
                 let isTrial = false;
@@ -39,17 +41,26 @@ export default async function ConfigPage() {
                 let planLabel = 'Sin plan';
                 let expiryLabel = '-';
 
-                if (isActive && subscriptionInfo?.subscription?.plan) {
-                    // Active paid subscription
+                if (isActive) {
+                    // Try to get plan from settings, then from plan_type/plan
+                    const settings = tenant?.settings as any;
+                    const planId = settings?.plan_id || tenant?.plan_type || subscriptionInfo?.subscription?.plan || 'starter';
+                    
                     const planMap: Record<string, string> = {
-                        starter: 'Starter', professional: 'Profesional', business: 'Business'
+                        starter: 'Starter', 
+                        professional: 'Profesional', 
+                        business: 'Business',
+                        test: 'de Prueba',
+                        basic: 'Starter',
+                        premium: 'Profesional'
                     };
-                    planLabel = planMap[subscriptionInfo.subscription.plan] || subscriptionInfo.subscription.plan;
-                    expiryLabel = subscriptionInfo.subscription.current_period_end
+                    
+                    planLabel = planMap[planId] || planId;
+                    expiryLabel = subscriptionInfo?.subscription?.current_period_end
                         ? formatDate(subscriptionInfo.subscription.current_period_end)
                         : '-';
                 } else if (tenantCreatedAt) {
-                    // Trial: calculate from created_at + 14 days
+                    // Trial logic
                     const trialEndDate = new Date(tenantCreatedAt);
                     trialEndDate.setDate(trialEndDate.getDate() + 14);
                     trialDaysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
