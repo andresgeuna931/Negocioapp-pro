@@ -4,6 +4,9 @@ import { getCurrentSession } from '@/lib/actions/auth';
 import { createClient } from '@/lib/supabase/server';
 import { verifySubscriptionWithMP } from '@/lib/actions/verify-subscription';
 
+// Prevent Next.js from caching this layout — subscription status must always be fresh
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardRootLayout({
     children,
 }: {
@@ -70,7 +73,8 @@ export default async function DashboardRootLayout({
     }
 
     // Check if has paid subscription
-    const hasPaidSub = !!(
+    // Either: subscription has a real plan, OR tenant status was set to 'active' (by webhook/verification)
+    const hasPaidSub = isActive || !!(
         subscription &&
         subscription.status === 'active' &&
         subscription.plan &&

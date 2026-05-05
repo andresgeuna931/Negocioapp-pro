@@ -37,8 +37,9 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
         }
     }
 
-    // Check if user has a PAID subscription (active subscription with a real plan)
-    const hasPaidSubscription = !!(
+    // Check if user has a PAID subscription
+    // tenant.status === 'active' means payment was verified (by webhook or MP API check)
+    const hasPaidSubscription = isActive || !!(
         subscription &&
         subscription.status === 'active' &&
         subscription.plan &&
