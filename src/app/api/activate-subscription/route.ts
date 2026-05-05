@@ -133,3 +133,8 @@ export async function POST() {
         return NextResponse.json({ error: error.message, log }, { status: 500 });
     }
 }
+
+// Also allow GET so user can simply visit the URL in browser
+export async function GET() {
+    return POST();
+}
