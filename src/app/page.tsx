@@ -62,14 +62,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (isActive || (subscription && subscription.status === 'active')) {
     isInTrial = false;
     
-    // Map DB enum values back to UI plan keys
-    // DB 'basic' -> 'STARTER', DB 'premium' -> 'PROFESSIONAL'
-    let planKey: string = (tenant?.plan_type || subscription?.plan || 'starter').toUpperCase();
+    // 1. Try to get real plan ID from tenant settings (our new bypass)
+    // 2. Fallback to plan_type or subscription plan
+    const settings = tenant?.settings as any;
+    let planKey: string = (settings?.plan_id || tenant?.plan_type || subscription?.plan || 'starter').toUpperCase();
     
     if (planKey === 'BASIC') planKey = 'STARTER';
     if (planKey === 'PREMIUM') planKey = 'PROFESSIONAL';
     
-    // Fallback if the mapped key doesn't exist in PLANS
     const finalPlanKey = (planKey as keyof typeof PLANS) in PLANS ? (planKey as keyof typeof PLANS) : 'STARTER';
     planName = PLANS[finalPlanKey]?.name || 'Profesional';
   } else {
