@@ -4,6 +4,8 @@ import { getSalesSummary, getTopProducts } from '@/lib/actions/reports';
 import { getLowStockProducts } from '@/lib/actions/products';
 import { PLANS } from '@/lib/config/plans';
 import type { LowStockProduct } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
@@ -55,10 +57,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   let trialStatus = 'unknown';
   let trialDaysLeft = 0;
 
-  if (subscription && subscription.status === 'active') {
-    const planKey = subscription.plan?.toUpperCase() as keyof typeof PLANS;
+  const isActive = tenant?.status === 'active';
+
+  if (isActive || (subscription && subscription.status === 'active')) {
+    const planKey = (subscription?.plan?.toUpperCase() || 'STARTER') as keyof typeof PLANS;
     planName = PLANS[planKey]?.name || 'Profesional';
-    isInTrial = false; // It's an active paid plan
+    isInTrial = false;
   } else {
     // Check trial status from tenant creation
     const createdAt = new Date(tenant?.created_at || new Date());
