@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
                     
                     // Map MP Plan ID back to our internal IDs
                     const mpId = details.preapproval_plan_id;
-                    if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_TEST) planId = 'test';
+                    if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_TEST) planId = 'starter';
                     else if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) planId = 'starter';
                     else if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) planId = 'professional';
                     else if (mpId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) planId = 'business';

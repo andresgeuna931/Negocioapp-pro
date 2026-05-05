@@ -46,7 +46,7 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
         // Map plan
         const mpPlanId = activeSub.preapproval_plan_id;
         let planId = 'professional';
-        if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST) planId = 'test';
+        if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST) planId = 'starter';
         else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) planId = 'starter';
         else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) planId = 'professional';
         else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) planId = 'business';
