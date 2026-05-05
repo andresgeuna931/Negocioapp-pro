@@ -60,9 +60,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const isActive = tenant?.status === 'active';
 
   if (isActive || (subscription && subscription.status === 'active')) {
-    const planKey = (subscription?.plan?.toUpperCase() || 'STARTER') as keyof typeof PLANS;
-    planName = PLANS[planKey]?.name || 'Profesional';
     isInTrial = false;
+    
+    // Map DB enum values back to UI plan keys
+    // DB 'basic' -> 'STARTER', DB 'premium' -> 'PROFESSIONAL'
+    let planKey: string = (tenant?.plan_type || subscription?.plan || 'starter').toUpperCase();
+    
+    if (planKey === 'BASIC') planKey = 'STARTER';
+    if (planKey === 'PREMIUM') planKey = 'PROFESSIONAL';
+    
+    // Fallback if the mapped key doesn't exist in PLANS
+    const finalPlanKey = (planKey as keyof typeof PLANS) in PLANS ? (planKey as keyof typeof PLANS) : 'STARTER';
+    planName = PLANS[finalPlanKey]?.name || 'Profesional';
   } else {
     // Check trial status from tenant creation
     const createdAt = new Date(tenant?.created_at || new Date());
