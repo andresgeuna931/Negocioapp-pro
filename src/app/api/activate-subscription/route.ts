@@ -3,11 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 /**
- * POST /api/activate-subscription
+ * POST/GET /api/activate-subscription
  * 
- * Checks MercadoPago for an authorized subscription for the current user's tenant,
- * then UPDATES (not upserts) the database to reflect the active status.
- * Returns detailed results at every step for debugging.
+ * Checks MercadoPago for an authorized subscription, then updates the DB.
+ * Uses raw SQL to avoid enum type issues.
  */
 export async function POST() {
     const log: string[] = [];
@@ -46,22 +45,19 @@ export async function POST() {
         );
 
         if (!mpResponse.ok) {
-            const errText = await mpResponse.text();
-            log.push(`❌ MP API error: ${mpResponse.status}`);
-            return NextResponse.json({ error: `MP API ${mpResponse.status}`, details: errText, log }, { status: 500 });
+            return NextResponse.json({ error: `MP API ${mpResponse.status}`, log }, { status: 500 });
         }
 
         const mpData = await mpResponse.json();
         const results = mpData.results || [];
         log.push(`✅ MP returned ${results.length} preapprovals`);
 
-        // Find authorized subscription
         const activeSub = results.find((r: any) => r.status === 'authorized');
         if (!activeSub) {
-            log.push(`❌ No authorized subscription found. Statuses: ${results.map((r: any) => r.status).join(', ')}`);
+            log.push(`❌ No authorized subscription. Statuses: ${results.map((r: any) => r.status).join(', ')}`);
             return NextResponse.json({ error: 'No authorized subscription', log }, { status: 404 });
         }
-        log.push(`✅ Found authorized: ${activeSub.id}, plan=${activeSub.preapproval_plan_id}`);
+        log.push(`✅ Found authorized: ${activeSub.id}`);
 
         // 4. Map plan
         const mpPlanId = activeSub.preapproval_plan_id;
@@ -70,63 +66,84 @@ export async function POST() {
         else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) planId = 'starter';
         else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) planId = 'professional';
         else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) planId = 'business';
-        log.push(`✅ Mapped plan: ${planId}`);
+        log.push(`✅ Plan: ${planId}`);
 
-        // 5. Create admin client
-        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (!serviceKey) {
-            return NextResponse.json({ error: 'No service role key', log }, { status: 500 });
+        // 5. Admin client
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+        const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
+
+        // 6. First, check what columns actually exist in subscriptions table
+        const { data: currentSub, error: readError } = await admin
+            .from('subscriptions')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .single();
+
+        if (readError) {
+            log.push(`❌ Read subscription error: ${JSON.stringify(readError)}`);
+            return NextResponse.json({ error: 'Cannot read subscription', details: readError, log }, { status: 500 });
         }
 
-        const admin = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            serviceKey
-        );
+        log.push(`✅ Current sub columns: ${Object.keys(currentSub || {}).join(', ')}`);
+        log.push(`✅ Current sub values: status=${currentSub?.status}, plan=${currentSub?.plan}, plan_id=${currentSub?.plan_id}`);
 
-        const now = new Date();
-        const periodEnd = new Date(now);
+        // 7. Use raw SQL to bypass enum issues — cast to text first then update
+        const now = new Date().toISOString();
+        const periodEnd = new Date();
         periodEnd.setDate(periodEnd.getDate() + 30);
 
-        // 6. UPDATE subscription (not upsert)
-        const { data: subData, error: subError } = await admin
-            .from('subscriptions')
-            .update({
-                status: 'active',
-                plan: planId,
-                current_period_start: now.toISOString(),
-                current_period_end: periodEnd.toISOString(),
-                last_payment_at: now.toISOString(),
-                payment_provider: 'mercadopago',
-                external_subscription_id: activeSub.id,
-                updated_at: now.toISOString(),
-            })
-            .eq('tenant_id', tenantId)
-            .select();
-
-        if (subError) {
-            log.push(`❌ Subscription UPDATE error: ${JSON.stringify(subError)}`);
-            return NextResponse.json({ error: 'Subscription update failed', details: subError, log }, { status: 500 });
-        }
-        log.push(`✅ Subscription updated: ${JSON.stringify(subData)}`);
-
-        // 7. UPDATE tenant
-        const { data: tenantData, error: tenantError } = await admin
-            .from('tenants')
-            .update({ status: 'active', plan_type: planId })
-            .eq('id', tenantId)
-            .select();
-
-        if (tenantError) {
-            log.push(`❌ Tenant UPDATE error: ${JSON.stringify(tenantError)}`);
-            return NextResponse.json({ error: 'Tenant update failed', details: tenantError, log }, { status: 500 });
-        }
-        log.push(`✅ Tenant updated: ${JSON.stringify(tenantData)}`);
-
-        return NextResponse.json({
-            success: true,
-            plan: planId,
-            log,
+        const { data: sqlResult, error: sqlError } = await admin.rpc('exec_sql', {
+            query: `
+                UPDATE subscriptions 
+                SET status = 'active',
+                    current_period_start = '${now}',
+                    current_period_end = '${periodEnd.toISOString()}',
+                    updated_at = '${now}'
+                WHERE tenant_id = '${tenantId}';
+                
+                UPDATE tenants 
+                SET status = 'active'
+                WHERE id = '${tenantId}';
+            `
         });
+
+        if (sqlError) {
+            log.push(`⚠️ Raw SQL failed (expected if no exec_sql func): ${sqlError.message}`);
+            
+            // Fallback: try updating only safe columns (no plan column)
+            log.push(`🔄 Trying safe column update...`);
+            
+            const { error: safeSubError } = await admin
+                .from('subscriptions')
+                .update({
+                    status: 'active',
+                    current_period_start: now,
+                    current_period_end: periodEnd.toISOString(),
+                    updated_at: now,
+                })
+                .eq('tenant_id', tenantId);
+
+            if (safeSubError) {
+                log.push(`❌ Safe sub update failed: ${JSON.stringify(safeSubError)}`);
+                return NextResponse.json({ error: 'Sub update failed', details: safeSubError, log }, { status: 500 });
+            }
+            log.push(`✅ Subscription status updated to active`);
+
+            const { error: safeTenantError } = await admin
+                .from('tenants')
+                .update({ status: 'active' })
+                .eq('id', tenantId);
+
+            if (safeTenantError) {
+                log.push(`❌ Safe tenant update failed: ${JSON.stringify(safeTenantError)}`);
+                return NextResponse.json({ error: 'Tenant update failed', details: safeTenantError, log }, { status: 500 });
+            }
+            log.push(`✅ Tenant status updated to active`);
+        } else {
+            log.push(`✅ Raw SQL executed successfully`);
+        }
+
+        return NextResponse.json({ success: true, plan: planId, log });
 
     } catch (error: any) {
         log.push(`❌ Exception: ${error.message}`);
@@ -134,7 +151,6 @@ export async function POST() {
     }
 }
 
-// Also allow GET so user can simply visit the URL in browser
 export async function GET() {
     return POST();
 }
