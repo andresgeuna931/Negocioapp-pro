@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Payment } from "mercadopago";
 
+/**
+ * Verifies a one-off payment or instant payment verification from MercadoPago.
+ */
 export async function verifyMercadoPagoPayment(paymentId: string) {
     if (!paymentId) return { success: false, error: 'No payment ID' };
 
@@ -20,7 +23,7 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
         }
 
         const tenantId = paymentDetails.external_reference;
-        const planId = paymentDetails.metadata?.plan_id || "professional";
+        const mpPlanId = paymentDetails.metadata?.plan_id;
 
         if (!tenantId) {
             return { success: false, error: 'Payment is missing tenant reference' };
@@ -28,15 +31,7 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
 
         const supabaseAdmin = await createClient();
 
-        // Validate if already processed
-        const { data: existingSub } = await supabaseAdmin
-            .from('subscriptions')
-            .select('last_payment_at, status')
-            .eq('tenant_id', tenantId)
-            .single();
-            
-        // If it's already active, we don't strictly need to do it, but we can update to make sure it's correct.
-
+        // Check if tenant exists
         const { data: tenant } = await supabaseAdmin
             .from("tenants")
             .select("created_at, status")
@@ -62,45 +57,73 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
             periodEnd.setDate(periodEnd.getDate() + 30);
         }
 
-        // We use service role key to bypass RLS since users might not have permissions to upsert subscriptions
+        // --- ENUM MAPPING FIX ---
+        // Map to DB-valid enum values
+        let dbSubPlan = 'premium'; 
+        let dbTenantPlan = 'professional';
+        let internalPlanId = 'professional';
+
+        // Check plan mapping based on MP Plan ID or metadata
+        if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST || mpPlanId === 'test' || mpPlanId === 'starter') {
+            dbSubPlan = 'basic';
+            dbTenantPlan = 'starter';
+            internalPlanId = mpPlanId === 'test' ? 'test' : 'starter';
+        } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL || mpPlanId === 'professional') {
+            dbSubPlan = 'premium';
+            dbTenantPlan = 'professional';
+            internalPlanId = 'professional';
+        } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS || mpPlanId === 'business') {
+            dbSubPlan = 'premium';
+            dbTenantPlan = 'business';
+            internalPlanId = 'business';
+        }
+
         const supabaseServiceRole = createSupabaseAdmin(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        // Update DB
-        // NOTE: we use fetch to the API route to reuse the exact same logic, or we just do it here. 
-        // We do it directly via service role client here:
-        const { error: updateError } = await supabaseServiceRole
+        const now = new Date().toISOString();
+
+        // Update Subscription
+        const { error: subError } = await supabaseServiceRole
             .from("subscriptions")
             .upsert({
                 tenant_id: tenantId,
                 status: "active",
-                plan: planId,
+                plan: dbSubPlan, // Correct enum value
                 current_period_start: periodStart.toISOString(),
                 current_period_end: periodEnd.toISOString(),
-                last_payment_at: new Date().toISOString(),
+                last_payment_at: now,
                 last_payment_amount: paymentDetails.transaction_amount,
                 payment_provider: 'mercadopago',
-                updated_at: new Date().toISOString(),
+                updated_at: now,
             }, {
                 onConflict: "tenant_id"
             });
 
-        if (updateError) {
-            console.error("Manual verify DB error:", updateError);
-            return { success: false, error: 'Database update failed' };
+        if (subError) {
+            console.error("Manual verify Sub DB error:", subError);
+            return { success: false, error: 'Database update failed (sub)' };
         }
 
-        const tenantUpdate: Record<string, string> = { plan_type: planId };
-        if (!tenant || tenant.status !== 'trial' || new Date() >= new Date(new Date(tenant.created_at).getTime() + 14 * 24 * 60 * 60 * 1000)) {
-            tenantUpdate.status = 'active';
-        }
-
-        await supabaseServiceRole
+        // Update Tenant
+        const { error: tenantError } = await supabaseServiceRole
             .from("tenants")
-            .update(tenantUpdate)
+            .update({ 
+                status: 'active',
+                plan_type: dbTenantPlan, // Correct enum value
+                settings: {
+                    plan_id: internalPlanId, // Display bypass
+                    last_sync_at: now
+                }
+            })
             .eq("id", tenantId);
+
+        if (tenantError) {
+            console.error("Manual verify Tenant DB error:", tenantError);
+            return { success: false, error: 'Database update failed (tenant)' };
+        }
 
         return { success: true };
     } catch (e) {
