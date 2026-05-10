@@ -1,6 +1,7 @@
 'use client';
 
-import { Menu, Bell, User, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { Menu, Bell, User, LogOut, ShieldCheck } from 'lucide-react';
 import { signOut } from '@/lib/actions/auth';
 import { Badge } from '@/components/ui/badge';
 import type { UserSession } from '@/lib/types';
@@ -49,6 +50,17 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                                 session.tenant.status === 'trial' ? 'Prueba' :
                                     session.tenant.status === 'past_due' ? 'Vencido' : 'Suspendido'}
                         </Badge>
+                    )}
+
+                    {/* Admin Link */}
+                    {session?.profile?.role === 'admin' && (
+                        <Link 
+                            href="/admin" 
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 transition-colors mr-2"
+                        >
+                            <ShieldCheck className="w-4 h-4" />
+                            <span className="hidden md:inline">Admin Panel</span>
+                        </Link>
                     )}
 
                     {/* Notifications */}
