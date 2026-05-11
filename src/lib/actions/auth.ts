@@ -99,6 +99,9 @@ export async function canPerformAction(): Promise<boolean> {
         return new Date() < trialEndDate;
     }
 
+    return false;
+}
+
 // Check if user is a system admin (super admin)
 export async function isAdmin(): Promise<boolean> {
     const session = await getCurrentSession();
@@ -112,9 +115,6 @@ export async function requireAdmin() {
         redirect('/');
     }
     return session;
-}
-
-return false;
 }
 
 // Get current tenant settings
