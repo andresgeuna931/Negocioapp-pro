@@ -76,7 +76,8 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                                 {session?.profile?.full_name || 'Usuario'}
                             </p>
                             <p className="text-xs text-slate-500">
-                                {session?.profile?.role === 'owner' ? 'Dueño' : 'Empleado'}
+                                {session?.profile?.role === 'admin' ? 'Administrador' : 
+                                 session?.profile?.role === 'owner' ? 'Dueño' : 'Empleado'}
                             </p>
                         </div>
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
