@@ -36,7 +36,7 @@ export default async function AdminTenantsPage() {
                                                 <Badge variant={tenant.status === 'active' ? 'success' : tenant.status === 'trial' ? 'info' : 'danger'}>
                                                     Estado: {tenant.status.toUpperCase()}
                                                 </Badge>
-                                                <Badge variant="outline" className="border-slate-300">
+                                                <Badge variant="default" className="border-slate-300">
                                                     Plan: {(tenant.plan_type || 'Starter').toUpperCase()}
                                                 </Badge>
                                             </div>
