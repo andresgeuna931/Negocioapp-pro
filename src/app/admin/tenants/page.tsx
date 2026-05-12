@@ -43,6 +43,11 @@ export default async function AdminTenantsPage() {
                         trialEnd.setDate(trialEnd.getDate() + 14);
                         expiryDate = trialEnd.toISOString();
                     }
+                    
+                    // --- REFINED EMAIL LOGIC ---
+                    // Use business email first, then fallback to the owner's registration email
+                    const ownerProfile = tenant.profiles?.find((p: any) => p.role === 'owner' || p.role === 'admin');
+                    const displayEmail = tenant.email || ownerProfile?.email || 'Sin email';
 
                     return (
                         <Card key={tenant.id} className="overflow-hidden hover:border-purple-300 transition-all border-slate-200 dark:border-slate-800">
@@ -62,7 +67,7 @@ export default async function AdminTenantsPage() {
                                                 )}
                                             </div>
                                             <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
-                                                <Mail className="w-3 h-3" /> {tenant.email || 'Sin email'}
+                                                <Mail className="w-3 h-3" /> {displayEmail}
                                             </p>
                                             <div className="flex flex-wrap gap-2 mt-3">
                                                 <Badge variant={tenant.status === 'active' ? 'success' : tenant.status === 'trial' ? 'info' : 'danger'}>

@@ -35,7 +35,8 @@ export async function getAllTenants(page = 1, limit = 20) {
         .from('tenants')
         .select(`
             *,
-            subscriptions(*)
+            subscriptions(*),
+            profiles(*)
         `)
         .order('created_at', { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
