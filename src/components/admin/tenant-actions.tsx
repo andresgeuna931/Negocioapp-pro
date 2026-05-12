@@ -39,7 +39,7 @@ export function TenantActions({ tenantId, tenantName }: { tenantId: string; tena
                     <MoreHorizontal className="w-5 h-5 text-slate-500" />
                 </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl z-[110]">
                 <DropdownMenuLabel>Acciones de Gestión</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 

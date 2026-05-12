@@ -23,8 +23,26 @@ export default async function AdminTenantsPage() {
                 {tenants.map((tenant) => {
                     const sub = tenant.subscriptions?.[0];
                     const settings = tenant.settings as any;
-                    const planDisplay = settings?.plan_id || tenant.plan_type || 'Starter';
+                    
+                    // --- REFINED PLAN LOGIC ---
+                    // 1. If manually activated or has settings, use that.
+                    // 2. If in TRIAL, they are trying the PROFESSIONAL plan.
+                    // 3. Fallback to STARTER.
+                    let planDisplay = settings?.plan_id || tenant.plan_type || 'starter';
+                    if (tenant.status === 'trial') {
+                        planDisplay = 'profesional (prueba)';
+                    }
+                    
                     const isManual = sub?.payment_provider === 'manual_admin';
+
+                    // --- REFINED EXPIRY LOGIC ---
+                    // If no sub record but in trial, calculate created_at + 14 days
+                    let expiryDate = sub?.current_period_end;
+                    if (!expiryDate && tenant.status === 'trial') {
+                        const trialEnd = new Date(tenant.created_at);
+                        trialEnd.setDate(trialEnd.getDate() + 14);
+                        expiryDate = trialEnd.toISOString();
+                    }
 
                     return (
                         <Card key={tenant.id} className="overflow-hidden hover:border-purple-300 transition-all border-slate-200 dark:border-slate-800">
@@ -69,7 +87,7 @@ export default async function AdminTenantsPage() {
                                                 <CreditCard className="w-3 h-3" /> Vence
                                             </p>
                                             <p className="text-sm font-medium">
-                                                {sub?.current_period_end ? formatDate(sub.current_period_end) : '-'}
+                                                {expiryDate ? formatDate(expiryDate) : '-'}
                                             </p>
                                         </div>
                                         <div className="flex items-center justify-end">
