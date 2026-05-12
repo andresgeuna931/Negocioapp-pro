@@ -1,8 +1,9 @@
 import { getAllTenants } from '@/lib/actions/admin';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
-import { Building2, Mail, Calendar, CreditCard } from 'lucide-react';
+import { Building2, Mail, Calendar, CreditCard, ShieldCheck } from 'lucide-react';
+import { TenantActions } from '@/components/admin/tenant-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,16 +12,22 @@ export default async function AdminTenantsPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Negocios / Clientes</h1>
-                <p className="text-slate-500 mt-1">Lista completa de negocios registrados en el sistema</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Negocios / Clientes</h1>
+                    <p className="text-slate-500 mt-1">Lista completa de negocios registrados en el sistema</p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
                 {tenants.map((tenant) => {
                     const sub = tenant.subscriptions?.[0];
+                    const settings = tenant.settings as any;
+                    const planDisplay = settings?.plan_id || tenant.plan_type || 'Starter';
+                    const isManual = sub?.payment_provider === 'manual_admin';
+
                     return (
-                        <Card key={tenant.id} className="overflow-hidden hover:border-purple-300 transition-all">
+                        <Card key={tenant.id} className="overflow-hidden hover:border-purple-300 transition-all border-slate-200 dark:border-slate-800">
                             <CardContent className="p-6">
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                     <div className="flex items-start gap-4">
@@ -28,40 +35,45 @@ export default async function AdminTenantsPage() {
                                             <Building2 className="w-6 h-6 text-slate-500" />
                                         </div>
                                         <div>
-                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{tenant.name}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">{tenant.name}</h3>
+                                                {isManual && (
+                                                    <Badge variant="info" size="sm" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                                                        Manual
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
                                                 <Mail className="w-3 h-3" /> {tenant.email || 'Sin email'}
                                             </p>
                                             <div className="flex flex-wrap gap-2 mt-3">
                                                 <Badge variant={tenant.status === 'active' ? 'success' : tenant.status === 'trial' ? 'info' : 'danger'}>
-                                                    Estado: {tenant.status.toUpperCase()}
+                                                    {tenant.status.toUpperCase()}
                                                 </Badge>
-                                                <Badge variant="default" className="border-slate-300">
-                                                    Plan: {(tenant.plan_type || 'Starter').toUpperCase()}
+                                                <Badge variant="default" className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700">
+                                                    PLAN: {planDisplay.toUpperCase()}
                                                 </Badge>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 lg:flex lg:items-center gap-8 border-t lg:border-t-0 pt-6 lg:pt-0">
+                                    <div className="grid grid-cols-2 lg:flex lg:items-center gap-10 border-t lg:border-t-0 pt-6 lg:pt-0">
                                         <div>
-                                            <p className="text-xs text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1 font-bold">
                                                 <Calendar className="w-3 h-3" /> Creado
                                             </p>
                                             <p className="text-sm font-medium">{formatDate(tenant.created_at)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                                <CreditCard className="w-3 h-3" /> Suscripción
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1 font-bold">
+                                                <CreditCard className="w-3 h-3" /> Vence
                                             </p>
                                             <p className="text-sm font-medium">
-                                                {sub ? (sub.status === 'active' ? 'Pagada' : 'Pendiente') : 'Sin datos'}
+                                                {sub?.current_period_end ? formatDate(sub.current_period_end) : '-'}
                                             </p>
                                         </div>
-                                        <div className="col-span-2 lg:col-span-1">
-                                            <button className="w-full lg:w-auto px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 transition-colors">
-                                                Ver Detalle
-                                            </button>
+                                        <div className="flex items-center justify-end">
+                                            <TenantActions tenantId={tenant.id} tenantName={tenant.name} />
                                         </div>
                                     </div>
                                 </div>
