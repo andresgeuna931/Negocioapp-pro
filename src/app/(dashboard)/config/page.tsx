@@ -33,42 +33,62 @@ export default async function ConfigPage() {
 
             {/* Subscription Card */}
             {(() => {
-                // Unified trial calculation (same as dashboard)
                 const tenantCreatedAt = tenant?.created_at ? new Date(tenant.created_at) : null;
                 const isActive = subscriptionInfo?.tenant.status === 'active';
+                const isTenantTrial = subscriptionInfo?.tenant.status === 'trial';
+                
+                // Check if user has a real paid subscription (even while in trial)
+                const hasPaidSub = !!(
+                    subscriptionInfo?.subscription?.status === 'active' &&
+                    subscriptionInfo?.subscription?.plan &&
+                    !['free', 'trial'].includes(subscriptionInfo.subscription.plan)
+                );
+
                 let isTrial = false;
                 let trialDaysLeft = 0;
                 let planLabel = 'Sin plan';
                 let expiryLabel = '-';
+                let statusLabel = 'Vencido';
+                let statusVariant: 'success' | 'info' | 'warning' | 'danger' = 'danger';
 
-                if (isActive) {
-                    // Try to get plan from settings, then from plan_type/plan
-                    const settings = tenant?.settings as any;
-                    const planId = settings?.plan_id || tenant?.plan_type || subscriptionInfo?.subscription?.plan || 'starter';
-                    
-                    const planMap: Record<string, string> = {
-                        starter: 'Starter', 
-                        professional: 'Profesional', 
-                        business: 'Business',
-                        test: 'de Prueba',
-                        basic: 'Starter',
-                        premium: 'Profesional'
-                    };
-                    
+                // Get plan name from settings (most accurate) or fallback
+                const settings = tenant?.settings as any;
+                const planId = settings?.plan_id || tenant?.plan_type || subscriptionInfo?.subscription?.plan || 'starter';
+                const planMap: Record<string, string> = {
+                    starter: 'Starter',
+                    professional: 'Profesional',
+                    business: 'Business',
+                    test: 'de Prueba',
+                    basic: 'Starter',
+                    premium: 'Profesional'
+                };
+
+                if (isActive || hasPaidSub) {
+                    // User has paid — show active state
+                    statusLabel = 'Activo';
+                    statusVariant = 'success';
                     planLabel = planMap[planId] || planId;
                     expiryLabel = subscriptionInfo?.subscription?.current_period_end
                         ? formatDate(subscriptionInfo.subscription.current_period_end)
                         : '-';
-                } else if (tenantCreatedAt) {
-                    // Trial logic
+                } else if (isTenantTrial && tenantCreatedAt) {
+                    // Pure trial (no payment yet)
                     const trialEndDate = new Date(tenantCreatedAt);
                     trialEndDate.setDate(trialEndDate.getDate() + 14);
                     trialDaysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                    isTrial = subscriptionInfo?.tenant.status === 'trial' && trialDaysLeft > 0;
-                    planLabel = isTrial ? 'Profesional (Prueba)' : 'Vencido';
-                    expiryLabel = isTrial
-                        ? trialEndDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : 'Expirado';
+                    isTrial = trialDaysLeft > 0;
+                    
+                    if (isTrial) {
+                        statusLabel = 'Prueba';
+                        statusVariant = 'info';
+                        planLabel = 'Profesional (Prueba)';
+                        expiryLabel = trialEndDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+                    } else {
+                        statusLabel = 'Vencido';
+                        statusVariant = 'danger';
+                        planLabel = 'Vencido';
+                        expiryLabel = 'Expirado';
+                    }
                 }
 
                 return (
@@ -92,14 +112,8 @@ export default async function ConfigPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div>
                                     <p className="text-sm text-slate-500 mb-1">Estado</p>
-                                    <Badge
-                                        variant={
-                                            isActive ? 'success' :
-                                                isTrial ? 'info' :
-                                                    subscriptionInfo?.tenant.status === 'past_due' ? 'warning' : 'danger'
-                                        }
-                                    >
-                                        {isActive ? 'Activo' : isTrial ? 'Prueba' : subscriptionInfo?.tenant.status === 'past_due' ? 'Pago pendiente' : 'Vencido'}
+                                    <Badge variant={statusVariant}>
+                                        {statusLabel}
                                     </Badge>
                                 </div>
                                 <div>
@@ -109,7 +123,7 @@ export default async function ConfigPage() {
                                     </p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-slate-500 mb-1">{isActive ? 'Próximo cobro' : 'Vencimiento'}</p>
+                                    <p className="text-sm text-slate-500 mb-1">{(isActive || hasPaidSub) ? 'Próximo cobro' : 'Vencimiento'}</p>
                                     <p className="font-semibold text-slate-900 dark:text-white">
                                         {expiryLabel}
                                     </p>

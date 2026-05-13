@@ -25,20 +25,23 @@ export default async function AdminTenantsPage() {
                     const settings = tenant.settings as any;
                     
                     // --- REFINED PLAN LOGIC ---
-                    // 1. If manually activated or has settings, use that.
-                    // 2. If in TRIAL, they are trying the PROFESSIONAL plan.
-                    // 3. Fallback to STARTER.
+                    const hasSub = sub?.status === 'active' && sub?.plan && !['free', 'trial'].includes(sub.plan);
                     let planDisplay = settings?.plan_id || tenant.plan_type || 'starter';
-                    if (tenant.status === 'trial') {
+                    
+                    if (tenant.status === 'trial' && !hasSub) {
+                        // Pure trial, no payment yet
                         planDisplay = 'profesional (prueba)';
+                    } else if (hasSub) {
+                        // Has paid - use the real plan from settings
+                        planDisplay = settings?.plan_id || tenant.plan_type || 'professional';
                     }
                     
                     const isManual = sub?.payment_provider === 'manual_admin';
 
                     // --- REFINED EXPIRY LOGIC ---
-                    // If no sub record but in trial, calculate created_at + 14 days
                     let expiryDate = sub?.current_period_end;
                     if (!expiryDate && tenant.status === 'trial') {
+                        // No subscription record, show trial end date
                         const trialEnd = new Date(tenant.created_at);
                         trialEnd.setDate(trialEnd.getDate() + 14);
                         expiryDate = trialEnd.toISOString();

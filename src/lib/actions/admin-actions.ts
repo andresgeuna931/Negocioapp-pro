@@ -17,8 +17,29 @@ export async function activateTenantManual(tenantId: string, planId: string) {
     );
 
     const now = new Date();
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 30); // Default to 30 days
+    let periodStart = now;
+    let periodEnd = new Date();
+
+    // Check if tenant is in trial — preserve remaining trial days
+    const { data: tenantData } = await supabaseServiceRole
+        .from('tenants')
+        .select('created_at, status')
+        .eq('id', tenantId)
+        .single();
+
+    if (tenantData?.status === 'trial' && tenantData.created_at) {
+        const trialEnd = new Date(tenantData.created_at);
+        trialEnd.setDate(trialEnd.getDate() + 14);
+        if (trialEnd > now) {
+            periodStart = trialEnd;
+            periodEnd = new Date(trialEnd);
+            periodEnd.setDate(periodEnd.getDate() + 30);
+        } else {
+            periodEnd.setDate(periodEnd.getDate() + 30);
+        }
+    } else {
+        periodEnd.setDate(periodEnd.getDate() + 30);
+    }
 
     // Map plan internal ID to DB enums
     let dbSubPlan = 'premium';
@@ -32,11 +53,34 @@ export async function activateTenantManual(tenantId: string, planId: string) {
         dbTenantPlan = 'business';
     }
 
-    // 1. Update Tenant
+    // 1. Upsert Subscription
+    const { error: subError } = await supabaseServiceRole
+        .from('subscriptions')
+        .upsert({
+            tenant_id: tenantId,
+            status: 'active',
+            plan: dbSubPlan,
+            current_period_start: periodStart.toISOString(),
+            current_period_end: periodEnd.toISOString(),
+            last_payment_at: now.toISOString(),
+            payment_provider: 'manual_admin',
+            updated_at: now.toISOString()
+        }, { onConflict: 'tenant_id' });
+
+    if (subError) throw new Error(`Error updating subscription: ${subError.message}`);
+
+    // 2. Update Tenant — keep trial if still in trial period
+    const newStatus = (tenantData?.status === 'trial' && tenantData.created_at) ?
+        (() => {
+            const trialEnd = new Date(tenantData.created_at);
+            trialEnd.setDate(trialEnd.getDate() + 14);
+            return trialEnd > now ? 'trial' : 'active';
+        })() : 'active';
+
     const { error: tenantError } = await supabaseServiceRole
         .from('tenants')
         .update({
-            status: 'active',
+            status: newStatus,
             plan_type: dbTenantPlan,
             settings: {
                 plan_id: planId,
@@ -47,22 +91,6 @@ export async function activateTenantManual(tenantId: string, planId: string) {
         .eq('id', tenantId);
 
     if (tenantError) throw new Error(`Error updating tenant: ${tenantError.message}`);
-
-    // 2. Upsert Subscription
-    const { error: subError } = await supabaseServiceRole
-        .from('subscriptions')
-        .upsert({
-            tenant_id: tenantId,
-            status: 'active',
-            plan: dbSubPlan,
-            current_period_start: now.toISOString(),
-            current_period_end: expiryDate.toISOString(),
-            last_payment_at: now.toISOString(),
-            payment_provider: 'manual_admin',
-            updated_at: now.toISOString()
-        }, { onConflict: 'tenant_id' });
-
-    if (subError) throw new Error(`Error updating subscription: ${subError.message}`);
 
     revalidatePath('/admin/tenants');
     return { success: true };

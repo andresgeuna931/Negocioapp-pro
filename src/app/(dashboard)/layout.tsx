@@ -72,8 +72,7 @@ export default async function DashboardRootLayout({
         daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Check if has paid subscription
-    // Either: subscription has a real plan, OR tenant status was set to 'active' (by webhook/verification)
+    // Check if has paid subscription (independently of tenant status)
     const hasPaidSub = isActive || !!(
         subscription &&
         subscription.status === 'active' &&

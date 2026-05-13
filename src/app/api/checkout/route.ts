@@ -63,6 +63,10 @@ export async function POST(request: NextRequest) {
         const checkoutUrl = new URL("https://www.mercadopago.com.ar/subscriptions/checkout");
         checkoutUrl.searchParams.set("preapproval_plan_id", plan.mercadopago_plan_id);
         checkoutUrl.searchParams.set("external_reference", profile.tenant_id);
+        
+        // Redirect to dashboard after payment (not config)
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
+        checkoutUrl.searchParams.set("back_url", baseUrl);
 
         console.log(`Redirecting to MP checkout: ${checkoutUrl.toString()}`);
 

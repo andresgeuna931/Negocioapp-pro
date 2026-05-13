@@ -48,23 +48,54 @@ export async function POST(request: NextRequest) {
 
             if (tenantId && status === "active") {
                 // Map to DB-valid enum values
-                let dbSubPlan = 'premium'; // default
-                let dbTenantPlan = 'professional'; // default
+                let dbSubPlan = 'premium';
+                let dbTenantPlan = 'professional';
+                let internalPlanId = 'professional';
 
                 if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST || mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) {
                     dbSubPlan = 'basic';
                     dbTenantPlan = 'starter';
+                    internalPlanId = mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST ? 'test' : 'starter';
                 } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) {
                     dbSubPlan = 'premium';
                     dbTenantPlan = 'professional';
+                    internalPlanId = 'professional';
                 } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) {
                     dbSubPlan = 'premium';
                     dbTenantPlan = 'business';
+                    internalPlanId = 'business';
                 }
 
+                // --- TRIAL-AWARE EXPIRY CALCULATION ---
+                // Fetch tenant to check trial status
+                const { data: tenantData } = await supabaseAdmin
+                    .from('tenants')
+                    .select('created_at, status')
+                    .eq('id', tenantId)
+                    .single();
+
                 const now = new Date();
-                const periodEnd = new Date();
-                periodEnd.setDate(periodEnd.getDate() + 30);
+                let periodStart = now;
+                let periodEnd = new Date();
+
+                if (tenantData?.status === 'trial' && tenantData.created_at) {
+                    // User is subscribing during trial — preserve remaining trial days
+                    const trialEnd = new Date(tenantData.created_at);
+                    trialEnd.setDate(trialEnd.getDate() + 14);
+
+                    if (trialEnd > now) {
+                        // Trial still active: paid period starts AFTER trial ends
+                        periodStart = trialEnd;
+                        periodEnd = new Date(trialEnd);
+                        periodEnd.setDate(periodEnd.getDate() + 30);
+                    } else {
+                        // Trial already expired
+                        periodEnd.setDate(periodEnd.getDate() + 30);
+                    }
+                } else {
+                    // Not in trial or renewing
+                    periodEnd.setDate(periodEnd.getDate() + 30);
+                }
 
                 // Update subscription
                 await supabaseAdmin
@@ -73,7 +104,7 @@ export async function POST(request: NextRequest) {
                         tenant_id: tenantId,
                         status: "active",
                         plan: dbSubPlan,
-                        current_period_start: now.toISOString(),
+                        current_period_start: periodStart.toISOString(),
                         current_period_end: periodEnd.toISOString(),
                         last_payment_at: now.toISOString(),
                         last_payment_amount: transactionAmount,
@@ -81,16 +112,27 @@ export async function POST(request: NextRequest) {
                         updated_at: now.toISOString(),
                     }, { onConflict: "tenant_id" });
 
-                // Update tenant
+                // Update tenant — keep 'trial' if still in trial period, else 'active'
+                const newTenantStatus = (tenantData?.status === 'trial' && tenantData.created_at) ?
+                    (() => {
+                        const trialEnd = new Date(tenantData.created_at);
+                        trialEnd.setDate(trialEnd.getDate() + 14);
+                        return trialEnd > now ? 'trial' : 'active';
+                    })() : 'active';
+
                 await supabaseAdmin
                     .from("tenants")
                     .update({ 
-                        status: 'active',
-                        plan_type: dbTenantPlan
+                        status: newTenantStatus,
+                        plan_type: dbTenantPlan,
+                        settings: {
+                            plan_id: internalPlanId,
+                            last_sync_at: now.toISOString()
+                        }
                     })
                     .eq("id", tenantId);
 
-                console.log(`✅ Webhook processed: tenant ${tenantId} activated`);
+                console.log(`✅ Webhook processed: tenant ${tenantId}, status=${newTenantStatus}, plan=${internalPlanId}, expires=${periodEnd.toISOString()}`);
             }
         }
 
