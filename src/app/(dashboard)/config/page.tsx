@@ -68,9 +68,16 @@ export default async function ConfigPage() {
                     statusLabel = 'Activo';
                     statusVariant = 'success';
                     planLabel = planMap[planId] || planId;
-                    expiryLabel = subscriptionInfo?.subscription?.current_period_end
-                        ? formatDate(subscriptionInfo.subscription.current_period_end)
-                        : '-';
+                    if (subscriptionInfo?.subscription?.current_period_end) {
+                        expiryLabel = formatDate(subscriptionInfo.subscription.current_period_end);
+                    } else if (isActive) {
+                        // Fallback for active accounts without sub record (manual/new)
+                        const baseDate = settings?.activated_at ? new Date(settings.activated_at) : new Date();
+                        baseDate.setDate(baseDate.getDate() + 30);
+                        expiryLabel = formatDate(baseDate.toISOString());
+                    } else {
+                        expiryLabel = '-';
+                    }
                 } else if (isTenantTrial && tenantCreatedAt) {
                     // Pure trial (no payment yet)
                     const trialEndDate = new Date(tenantCreatedAt);
