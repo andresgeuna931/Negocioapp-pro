@@ -68,39 +68,21 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                     </p>
                 </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
-                <PricingCard
-                    planId="starter"
-                    currentPlanId={currentPlanId}
-                    onSelect={handleSelectPlan}
-                    loading={loadingPlan === 'starter'}
-                    isInTrial={isInTrial}
-                    hasPaidSubscription={hasPaidSubscription}
-                />
-                <PricingCard
-                    planId="professional"
-                    currentPlanId={currentPlanId}
-                    onSelect={handleSelectPlan}
-                    loading={loadingPlan === 'professional'}
-                    isInTrial={isInTrial}
-                    hasPaidSubscription={hasPaidSubscription}
-                />
-                <PricingCard
-                    planId="business"
-                    currentPlanId={currentPlanId}
-                    onSelect={handleSelectPlan}
-                    loading={loadingPlan === 'business'}
-                    isInTrial={isInTrial}
-                    hasPaidSubscription={hasPaidSubscription}
-                />
-                <PricingCard
-                    planId="test"
-                    currentPlanId={currentPlanId}
-                    onSelect={handleSelectPlan}
-                    loading={loadingPlan === 'test'}
-                    isInTrial={isInTrial}
-                    hasPaidSubscription={hasPaidSubscription}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
+                {(Object.keys(PLANS) as Array<keyof typeof PLANS>).map((key) => {
+                    const plan = PLANS[key];
+                    return (
+                        <PricingCard
+                            key={plan.id}
+                            planId={plan.id}
+                            currentPlanId={currentPlanId}
+                            onSelect={handleSelectPlan}
+                            loading={loadingPlan === plan.id}
+                            isInTrial={isInTrial}
+                            hasPaidSubscription={hasPaidSubscription}
+                        />
+                    );
+                })}
             </div>
         </div>
     );
