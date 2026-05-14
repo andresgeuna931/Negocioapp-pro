@@ -77,36 +77,11 @@ export async function POST(request: NextRequest) {
                     internalPlanId = 'professional';
                 }
 
-                // --- TRIAL-AWARE EXPIRY CALCULATION ---
-                // Fetch tenant to check trial status
-                const { data: tenantData } = await supabaseAdmin
-                    .from('tenants')
-                    .select('created_at, status')
-                    .eq('id', tenantId)
-                    .single();
-
+                // --- INDUSTRY STANDARD: Paid period starts NOW ---
                 const now = new Date();
                 let periodStart = now;
                 let periodEnd = new Date();
-
-                if (tenantData?.status === 'trial' && tenantData.created_at) {
-                    // User is subscribing during trial — preserve remaining trial days
-                    const trialEnd = new Date(tenantData.created_at);
-                    trialEnd.setDate(trialEnd.getDate() + 14);
-
-                    if (trialEnd > now) {
-                        // Trial still active: paid period starts AFTER trial ends
-                        periodStart = trialEnd;
-                        periodEnd = new Date(trialEnd);
-                        periodEnd.setDate(periodEnd.getDate() + 30);
-                    } else {
-                        // Trial already expired
-                        periodEnd.setDate(periodEnd.getDate() + 30);
-                    }
-                } else {
-                    // Not in trial or renewing
-                    periodEnd.setDate(periodEnd.getDate() + 30);
-                }
+                periodEnd.setDate(periodEnd.getDate() + 30);
 
                 // Update subscription
                 await supabaseAdmin

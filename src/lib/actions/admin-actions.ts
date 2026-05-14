@@ -16,30 +16,11 @@ export async function activateTenantManual(tenantId: string, planId: string) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // --- INDUSTRY STANDARD: Paid period starts NOW ---
     const now = new Date();
     let periodStart = now;
     let periodEnd = new Date();
-
-    // Check if tenant is in trial — preserve remaining trial days
-    const { data: tenantData } = await supabaseServiceRole
-        .from('tenants')
-        .select('created_at, status')
-        .eq('id', tenantId)
-        .single();
-
-    if (tenantData?.status === 'trial' && tenantData.created_at) {
-        const trialEnd = new Date(tenantData.created_at);
-        trialEnd.setDate(trialEnd.getDate() + 14);
-        if (trialEnd > now) {
-            periodStart = trialEnd;
-            periodEnd = new Date(trialEnd);
-            periodEnd.setDate(periodEnd.getDate() + 30);
-        } else {
-            periodEnd.setDate(periodEnd.getDate() + 30);
-        }
-    } else {
-        periodEnd.setDate(periodEnd.getDate() + 30);
-    }
+    periodEnd.setDate(periodEnd.getDate() + 30);
 
     // Map plan internal ID to DB enums
     let dbSubPlan = 'premium';
