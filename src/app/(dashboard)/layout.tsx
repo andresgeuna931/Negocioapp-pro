@@ -68,7 +68,6 @@ export default async function DashboardRootLayout({
     // ────────────────────────────────────────────────────────────────
 
     // Calculate subscription state
-    const tenant = session.tenant;
     let isExpired = false;
     let daysRemaining = 0;
 
