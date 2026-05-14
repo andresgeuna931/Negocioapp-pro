@@ -18,22 +18,35 @@ export default async function DashboardRootLayout({
         redirect('/login');
     }
 
-    // Fetch tenant AND subscription directly from DB (bypass stale session data)
+    // --- FRESH DATA FETCH (Reliable for re-registration) ---
     const supabase = await createClient();
     
+    // 1. Get fresh profile (to get correct tenant_id)
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
+
+    if (!profile?.tenant_id) {
+        redirect('/login');
+    }
+
+    // 2. Get fresh tenant data
     const { data: tenant } = await supabase
         .from('tenants')
         .select('*')
-        .eq('id', session.tenant.id)
+        .eq('id', profile.tenant_id)
         .single();
 
+    // 3. Get fresh subscription data
     let { data: subscription } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('tenant_id', session.tenant.id)
+        .eq('tenant_id', profile.tenant_id)
         .single();
 
-    // Update session object with fresh DB data for the rest of the layout
+    // Update session object for the rest of the app
     if (tenant) {
         session.tenant = tenant;
     }
