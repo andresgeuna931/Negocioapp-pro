@@ -32,15 +32,19 @@ export async function POST(request: NextRequest) {
                 const details = await payment.get({ id: resourceId });
                 if (details.status === "approved") {
                     tenantId = details.external_reference;
-                    mpPlanId = details.metadata?.plan_id;
+                    // Try to find plan ID in metadata or external_reference
+                    mpPlanId = details.metadata?.plan_id || details.external_reference;
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
                 }
             } else if (topic === "preapproval") {
                 const preApproval = new PreApproval(mpClient);
                 const details: any = await preApproval.get({ id: resourceId });
+                console.log("PreApproval Details:", JSON.stringify(details, null, 2));
+                
                 if (details.status === "authorized") {
-                    tenantId = details.external_reference;
+                    // Try different fields for tenantId
+                    tenantId = details.external_reference || details.external_id || details.metadata?.tenant_id;
                     mpPlanId = details.preapproval_plan_id;
                     status = "active";
                 }
@@ -52,18 +56,25 @@ export async function POST(request: NextRequest) {
                 let dbTenantPlan = 'professional';
                 let internalPlanId = 'professional';
 
-                if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST || mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) {
+                // Improved matching logic
+                const starterId = process.env.NEXT_PUBLIC_MP_PLAN_STARTER;
+                const profId = process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL;
+                const busId = process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS;
+                const testId = process.env.NEXT_PUBLIC_MP_PLAN_TEST;
+
+                if (mpPlanId === testId || mpPlanId === starterId) {
                     dbSubPlan = 'basic';
                     dbTenantPlan = 'starter';
-                    internalPlanId = mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST ? 'test' : 'starter';
-                } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) {
-                    dbSubPlan = 'premium';
-                    dbTenantPlan = 'professional';
-                    internalPlanId = 'professional';
-                } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) {
+                    internalPlanId = mpPlanId === testId ? 'test' : 'starter';
+                } else if (mpPlanId === busId) {
                     dbSubPlan = 'premium';
                     dbTenantPlan = 'business';
                     internalPlanId = 'business';
+                } else {
+                    // Default to professional if it matches or as fallback for paid status
+                    dbSubPlan = 'premium';
+                    dbTenantPlan = 'professional';
+                    internalPlanId = 'professional';
                 }
 
                 // --- TRIAL-AWARE EXPIRY CALCULATION ---
