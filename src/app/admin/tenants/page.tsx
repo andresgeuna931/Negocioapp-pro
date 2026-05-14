@@ -1,6 +1,8 @@
 import { getAllTenants } from '@/lib/actions/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { formatDate } from '@/lib/utils';
 import { Building2, Mail, Calendar, CreditCard, ShieldCheck } from 'lucide-react';
 import { TenantActions } from '@/components/admin/tenant-actions';
