@@ -91,12 +91,15 @@ export default async function AdminTenantsPage() {
                                             <p className="text-sm font-medium">{formatDate(tenant.created_at)}</p>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1 font-bold">
-                                                <CreditCard className="w-3 h-3" /> Vence
-                                            </p>
-                                            <p className="text-sm font-medium">
-                                                {expiryDate ? formatDate(expiryDate) : '-'}
-                                            </p>
+                                            <div className="flex flex-col items-end">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {tenant.status === 'active' ? 'Próximo Cobro' : 'Vence Prueba'}
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                    {expiryDate ? format(new Date(expiryDate), 'd/M/yy', { locale: es }) : '-'}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="flex items-center justify-end">
                                             <TenantActions tenantId={tenant.id} tenantName={tenant.name} />
