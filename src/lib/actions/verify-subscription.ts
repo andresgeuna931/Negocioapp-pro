@@ -39,6 +39,7 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
         const busId = process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS;
         const testId = process.env.NEXT_PUBLIC_MP_PLAN_TEST;
 
+        const mpPlanId = activeSub.preapproval_plan_id;
         let dbSubPlan = 'premium';
         let dbTenantPlan = 'professional';
         let internalPlan = 'professional';
