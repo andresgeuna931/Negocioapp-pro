@@ -18,13 +18,25 @@ export default async function DashboardRootLayout({
         redirect('/login');
     }
 
-    // Fetch subscription directly (more reliable than nested join)
+    // Fetch tenant AND subscription directly from DB (bypass stale session data)
     const supabase = await createClient();
+    
+    const { data: tenant } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('id', session.tenant.id)
+        .single();
+
     let { data: subscription } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('tenant_id', session.tenant.id)
         .single();
+
+    // Update session object with fresh DB data for the rest of the layout
+    if (tenant) {
+        session.tenant = tenant;
+    }
 
     // Override session subscription with direct query result
     if (subscription) {
