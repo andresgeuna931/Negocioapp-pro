@@ -69,18 +69,11 @@ export async function activateTenantManual(tenantId: string, planId: string) {
 
     if (subError) throw new Error(`Error updating subscription: ${subError.message}`);
 
-    // 2. Update Tenant — keep trial if still in trial period
-    const newStatus = (tenantData?.status === 'trial' && tenantData.created_at) ?
-        (() => {
-            const trialEnd = new Date(tenantData.created_at);
-            trialEnd.setDate(trialEnd.getDate() + 14);
-            return trialEnd > now ? 'trial' : 'active';
-        })() : 'active';
-
+    // 2. Update Tenant — ALWAYS set to 'active' after activation
     const { error: tenantError } = await supabaseServiceRole
         .from('tenants')
         .update({
-            status: newStatus,
+            status: 'active',
             plan_type: dbTenantPlan,
             settings: {
                 plan_id: planId,

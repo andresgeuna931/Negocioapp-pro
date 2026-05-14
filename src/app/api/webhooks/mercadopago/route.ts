@@ -112,18 +112,12 @@ export async function POST(request: NextRequest) {
                         updated_at: now.toISOString(),
                     }, { onConflict: "tenant_id" });
 
-                // Update tenant — keep 'trial' if still in trial period, else 'active'
-                const newTenantStatus = (tenantData?.status === 'trial' && tenantData.created_at) ?
-                    (() => {
-                        const trialEnd = new Date(tenantData.created_at);
-                        trialEnd.setDate(trialEnd.getDate() + 14);
-                        return trialEnd > now ? 'trial' : 'active';
-                    })() : 'active';
-
+                // Update tenant — ALWAYS set to 'active' after payment
+                // Trial days are preserved in the subscription expiry date, not in the status
                 await supabaseAdmin
                     .from("tenants")
                     .update({ 
-                        status: newTenantStatus,
+                        status: 'active',
                         plan_type: dbTenantPlan,
                         settings: {
                             plan_id: internalPlanId,
@@ -132,7 +126,7 @@ export async function POST(request: NextRequest) {
                     })
                     .eq("id", tenantId);
 
-                console.log(`✅ Webhook processed: tenant ${tenantId}, status=${newTenantStatus}, plan=${internalPlanId}, expires=${periodEnd.toISOString()}`);
+                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, expires=${periodEnd.toISOString()}`);
             }
         }
 
