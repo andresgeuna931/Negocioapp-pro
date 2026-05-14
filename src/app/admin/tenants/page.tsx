@@ -42,11 +42,20 @@ export default async function AdminTenantsPage() {
 
                     // --- REFINED EXPIRY LOGIC ---
                     let expiryDate = sub?.current_period_end;
-                    if (!expiryDate && tenant.status === 'trial') {
-                        // No subscription record, show trial end date
-                        const trialEnd = new Date(tenant.created_at);
-                        trialEnd.setDate(trialEnd.getDate() + 14);
-                        expiryDate = trialEnd.toISOString();
+                    
+                    if (!expiryDate) {
+                        if (tenant.status === 'active') {
+                            // Fallback for active tenants without sub record (e.g. manual)
+                            // Use the manually_activated date or just 30 days from creation/sync
+                            const baseDate = settings?.activated_at ? new Date(settings.activated_at) : new Date();
+                            baseDate.setDate(baseDate.getDate() + 30);
+                            expiryDate = baseDate.toISOString();
+                        } else if (tenant.status === 'trial') {
+                            // Trial fallback
+                            const trialEnd = new Date(tenant.created_at);
+                            trialEnd.setDate(trialEnd.getDate() + 14);
+                            expiryDate = trialEnd.toISOString();
+                        }
                     }
                     
                     // --- REFINED EMAIL LOGIC ---
