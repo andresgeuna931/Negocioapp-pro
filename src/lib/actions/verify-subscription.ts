@@ -33,24 +33,29 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
         const activeSub = results.find((r: any) => r.status === 'authorized');
         if (!activeSub) return { found: false };
 
-        // Map to DB-valid enum values
-        const mpPlanId = activeSub.preapproval_plan_id;
+        // --- IMPROVED PLAN MAPPING ---
+        const starterId = process.env.NEXT_PUBLIC_MP_PLAN_STARTER;
+        const profId = process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL;
+        const busId = process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS;
+        const testId = process.env.NEXT_PUBLIC_MP_PLAN_TEST;
+
         let dbSubPlan = 'premium';
         let dbTenantPlan = 'professional';
         let internalPlan = 'professional';
 
-        if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST || mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_STARTER) {
+        if (mpPlanId === testId || mpPlanId === starterId) {
             dbSubPlan = 'basic';
             dbTenantPlan = 'starter';
             internalPlan = 'starter';
-        } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL) {
-            dbSubPlan = 'premium';
-            dbTenantPlan = 'professional';
-            internalPlan = 'professional';
-        } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS) {
+        } else if (mpPlanId === busId) {
             dbSubPlan = 'premium';
             dbTenantPlan = 'business';
             internalPlan = 'business';
+        } else {
+            // Default to professional as fallback for successful payments
+            dbSubPlan = 'premium';
+            dbTenantPlan = 'professional';
+            internalPlan = 'professional';
         }
 
         const admin = createSupabaseAdmin(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey);
@@ -58,26 +63,31 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
         const periodEnd = new Date();
         periodEnd.setDate(periodEnd.getDate() + 30);
 
-        // Update Subscriptions
+        // 1. Upsert Subscription (works for both new and existing users)
         await admin
             .from('subscriptions')
-            .update({
+            .upsert({
+                tenant_id: tenantId,
                 status: 'active',
                 plan: dbSubPlan,
                 current_period_start: now.toISOString(),
                 current_period_end: periodEnd.toISOString(),
                 updated_at: now.toISOString(),
                 payment_provider: 'mercadopago',
-                external_subscription_id: activeSub.id
-            })
-            .eq('tenant_id', tenantId);
+                external_subscription_id: activeSub.id,
+                last_payment_at: now.toISOString()
+            }, { onConflict: 'tenant_id' });
 
-        // Update Tenants
+        // 2. Update Tenant Status
         await admin
             .from('tenants')
             .update({ 
                 status: 'active',
-                plan_type: dbTenantPlan 
+                plan_type: dbTenantPlan,
+                settings: {
+                    plan_id: internalPlan,
+                    last_sync_at: now.toISOString()
+                }
             })
             .eq('id', tenantId);
 

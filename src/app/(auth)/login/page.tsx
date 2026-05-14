@@ -68,6 +68,7 @@ function LoginForm() {
                         type="email"
                         label="Email"
                         placeholder="tu@email.com"
+                        name="negocio_user_mail"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         icon={<Mail className="w-5 h-5" />}
@@ -80,6 +81,7 @@ function LoginForm() {
                             type={showPassword ? 'text' : 'password'}
                             label="Contraseña"
                             placeholder="••••••••"
+                            name="negocio_user_pass"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             icon={<Lock className="w-5 h-5" />}
@@ -97,6 +99,7 @@ function LoginForm() {
 
                     <Button
                         type="submit"
+                        id="btn-login-submit"
                         className="w-full"
                         size="lg"
                         loading={loading}
