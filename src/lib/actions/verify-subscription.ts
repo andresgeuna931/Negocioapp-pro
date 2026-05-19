@@ -19,18 +19,30 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
             return { found: false, error: 'Missing env vars' };
         }
 
-        const searchUrl = `https://api.mercadopago.com/preapproval/search?external_reference=${tenantId}`;
-        const response = await fetch(searchUrl, {
-            headers: { 'Authorization': `Bearer ${accessToken}` },
-            cache: 'no-store',
-        });
+        // Search for preapproval plans matching this tenant_id (with new composite format)
+        const plans = ['professional', 'starter', 'business', 'test'];
+        let activeSub = null;
+        let foundPlanId = null;
 
-        if (!response.ok) return { found: false, error: `MP API ${response.status}` };
+        for (const p of plans) {
+            const searchUrl = `https://api.mercadopago.com/preapproval/search?external_reference=${tenantId}___${p}`;
+            const response = await fetch(searchUrl, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+                cache: 'no-store',
+            });
 
-        const data = await response.json();
-        const results = data.results || [];
+            if (response.ok) {
+                const data = await response.json();
+                const results = data.results || [];
+                const found = results.find((r: any) => r.status === 'authorized');
+                if (found) {
+                    activeSub = found;
+                    foundPlanId = p;
+                    break;
+                }
+            }
+        }
 
-        const activeSub = results.find((r: any) => r.status === 'authorized');
         if (!activeSub) return { found: false };
 
         // --- IMPROVED PLAN MAPPING ---

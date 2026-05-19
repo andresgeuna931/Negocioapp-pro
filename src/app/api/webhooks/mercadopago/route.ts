@@ -43,9 +43,16 @@ export async function POST(request: NextRequest) {
                 console.log("PreApproval Details:", JSON.stringify(details, null, 2));
                 
                 if (details.status === "authorized") {
-                    // Try different fields for tenantId
-                    tenantId = details.external_reference || details.external_id || details.metadata?.tenant_id;
-                    mpPlanId = details.preapproval_plan_id;
+                    // Extract tenantId and planId from composite external_reference
+                    const extRef = details.external_reference || "";
+                    if (extRef.includes('___')) {
+                        const parts = extRef.split('___');
+                        tenantId = parts[0];
+                        mpPlanId = parts[1];
+                    } else {
+                        tenantId = extRef || details.external_id || details.metadata?.tenant_id;
+                        mpPlanId = details.preapproval_plan_id || details.metadata?.plan_id;
+                    }
                     status = "active";
                 }
             }
