@@ -75,14 +75,9 @@ export async function POST(request: NextRequest) {
 
         const response = await preApproval.create({
             body: {
-                auto_recurring: {
-                    frequency: 1,
-                    frequency_type: "months",
-                    transaction_amount: plan.price,
-                    currency_id: "ARS"
-                },
+                preapproval_plan_id: plan.mercadopago_plan_id,
                 external_reference: `${profile.tenant_id}___${plan.id}`,
-                back_url: `${baseUrl}/dashboard?payment=success`,
+                back_url: `${baseUrl}/dashboard`, // Removed ?payment=success to avoid double ? from MP
                 reason: `Suscripción NegocioApp Pro - ${plan.name}`,
                 payer_email: payerEmail,
             }
