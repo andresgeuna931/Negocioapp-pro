@@ -52,11 +52,14 @@ function LoginForm() {
                     <p className="text-slate-400 mt-1">Iniciá sesión para continuar</p>
                 </div>
 
-                {/* Form */}
-                <form 
-                    onSubmit={handleSubmit} 
+                {/* Form (changed to div to prevent browser auto-submit) */}
+                <div 
                     className="space-y-5"
-                    autoComplete="off"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            handleSubmit(e as any);
+                        }
+                    }}
                 >
                     {error && (
                         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -106,7 +109,7 @@ function LoginForm() {
                     >
                         Iniciar Sesión
                     </Button>
-                </form>
+                </div>
 
                 {/* Footer */}
                 <div className="mt-6 text-center text-sm text-slate-500">

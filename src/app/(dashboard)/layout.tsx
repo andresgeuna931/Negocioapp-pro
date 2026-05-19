@@ -87,12 +87,12 @@ export default async function DashboardRootLayout({
     let daysRemaining = 0;
 
     const now = new Date();
-    const createdAt = new Date(tenant.created_at);
+    const createdAt = new Date(session.tenant.created_at);
     const trialEndDate = new Date(createdAt);
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-    const isActive = tenant.status === 'active';
-    const isInTrial = tenant.status === 'trial' && now < trialEndDate;
+    const isActive = session.tenant.status === 'active';
+    const isInTrial = session.tenant.status === 'trial' && now < trialEndDate;
 
     if (isInTrial) {
         daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -100,10 +100,10 @@ export default async function DashboardRootLayout({
 
     // Check if has paid subscription (independently of tenant status)
     const hasPaidSub = isActive || !!(
-        subscription &&
-        subscription.status === 'active' &&
-        subscription.plan &&
-        !['free', 'trial'].includes(subscription.plan)
+        session.subscription &&
+        session.subscription.status === 'active' &&
+        session.subscription.plan &&
+        !['free', 'trial'].includes(session.subscription.plan)
     );
 
     // Expired = trial over AND no active paid subscription
