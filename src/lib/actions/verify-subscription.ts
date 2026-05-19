@@ -47,7 +47,7 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
         if (mpPlanId === testId || mpPlanId === starterId) {
             dbSubPlan = 'basic';
             dbTenantPlan = 'starter';
-            internalPlan = 'starter';
+            internalPlan = mpPlanId === testId ? 'test' : 'starter';
         } else if (mpPlanId === busId) {
             dbSubPlan = 'premium';
             dbTenantPlan = 'business';

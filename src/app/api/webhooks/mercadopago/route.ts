@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
                 const details = await payment.get({ id: resourceId });
                 if (details.status === "approved") {
                     tenantId = details.external_reference;
-                    // Try to find plan ID in metadata or external_reference
-                    mpPlanId = details.metadata?.plan_id || details.external_reference;
+                    // Try to find plan ID in metadata
+                    mpPlanId = details.metadata?.plan_id;
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
                 }

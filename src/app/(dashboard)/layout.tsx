@@ -63,19 +63,21 @@ export default async function DashboardRootLayout({
     if (session.tenant.status === 'trial') {
         const verification = await verifySubscriptionWithMP(session.tenant.id);
         if (verification.found && verification.status === 'active') {
-            // DB was updated by verifySubscriptionWithMP. Re-fetch fresh data.
-            session = (await getCurrentSession())!;
-            if (session) {
-                const { data: freshSub } = await supabase
-                    .from('subscriptions')
-                    .select('*')
-                    .eq('tenant_id', session.tenant.id)
-                    .single();
-                if (freshSub) {
-                    subscription = freshSub;
-                    session.subscription = freshSub;
-                }
-            }
+            // Re-fetch directamente de DB, sin pasar por getCurrentSession()
+            const { data: freshTenant } = await supabase
+                .from('tenants')
+                .select('*')
+                .eq('id', session.tenant.id)
+                .single();
+
+            const { data: freshSub } = await supabase
+                .from('subscriptions')
+                .select('*')
+                .eq('tenant_id', session.tenant.id)
+                .single();
+
+            if (freshTenant) session.tenant = freshTenant;
+            if (freshSub) session.subscription = freshSub;
         }
     }
     // ────────────────────────────────────────────────────────────────
