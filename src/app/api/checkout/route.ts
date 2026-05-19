@@ -11,13 +11,18 @@ export async function POST(request: NextRequest) {
     try {
         const supabase = await createClient();
 
-        // 1. Check Auth
+        // 1. Check Auth & Get profile
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
             return NextResponse.json(
                 { error: "No autenticado. Por favor, reingresá a tu cuenta." },
                 { status: 401 }
             );
+        }
+        
+        const payerEmail = user.email;
+        if (!payerEmail) {
+            return NextResponse.json({ error: "Email de usuario no encontrado" }, { status: 400 });
         }
 
         // 2. Get tenant_id from profile
@@ -72,22 +77,27 @@ export async function POST(request: NextRequest) {
             body: {
                 preapproval_plan_id: plan.mercadopago_plan_id,
                 external_reference: profile.tenant_id,
-                back_url: baseUrl,
+                back_url: `${baseUrl}/dashboard?payment=success`,
                 reason: `Suscripción NegocioApp Pro - ${plan.name}`,
+                payer_email: payerEmail,
             }
         });
 
         console.log(`Created MP PreApproval: ${response.id} for tenant ${profile.tenant_id}`);
 
+        if (!response.init_point) {
+            throw new Error("MP no devolvió init_point");
+        }
+
         return NextResponse.json({
             init_point: response.init_point,
         });
-
-
     } catch (error: any) {
         console.error("Global Checkout Error:", error);
+        console.error("MP Error status:", error?.status);
+        console.error("MP Error cause:", JSON.stringify(error?.cause, null, 2));
         return NextResponse.json(
-            { error: "Error interno del servidor.", details: error.message },
+            { error: "Error interno del servidor.", details: error?.message },
             { status: 500 }
         );
     }
