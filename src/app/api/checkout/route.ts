@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
             body: {
                 preapproval_plan_id: plan.mercadopago_plan_id,
                 external_reference: `${profile.tenant_id}___${plan.id}`,
-                back_url: `${baseUrl}/dashboard`, // Removed ?payment=success to avoid double ? from MP
+                back_url: baseUrl, // (dashboard) is a route group, so it's just the root url
                 reason: `Suscripción NegocioApp Pro - ${plan.name}`,
                 payer_email: payerEmail,
             }
