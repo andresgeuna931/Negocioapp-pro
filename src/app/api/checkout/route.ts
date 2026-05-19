@@ -57,22 +57,32 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 4. Build the direct MP subscription checkout URL.
-        // This is the correct approach for PreApprovalPlan:
-        // MP handles the full checkout (card entry, authorization) on their side.
-        const checkoutUrl = new URL("https://www.mercadopago.com.ar/subscriptions/checkout");
-        checkoutUrl.searchParams.set("preapproval_plan_id", plan.mercadopago_plan_id);
-        checkoutUrl.searchParams.set("external_reference", profile.tenant_id);
-        
-        // Redirect to dashboard after payment (not config)
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
-        checkoutUrl.searchParams.set("back_url", baseUrl);
+        // 4. Create the PreApproval intent via MP API
+        // This is CRITICAL. The static checkout URL ignores `external_reference`.
+        // We MUST create it via the API so MercadoPago links the subscription to our tenant_id.
+        const { MercadoPagoConfig, PreApproval } = await import("mercadopago");
+        const mpClient = new MercadoPagoConfig({
+            accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
+        });
 
-        console.log(`Redirecting to MP checkout: ${checkoutUrl.toString()}`);
+        const preApproval = new PreApproval(mpClient);
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
+
+        const response = await preApproval.create({
+            body: {
+                preapproval_plan_id: plan.mercadopago_plan_id,
+                external_reference: profile.tenant_id,
+                back_url: baseUrl,
+                reason: `Suscripción NegocioApp Pro - ${plan.name}`,
+            }
+        });
+
+        console.log(`Created MP PreApproval: ${response.id} for tenant ${profile.tenant_id}`);
 
         return NextResponse.json({
-            init_point: checkoutUrl.toString(),
+            init_point: response.init_point,
         });
+
 
     } catch (error: any) {
         console.error("Global Checkout Error:", error);
