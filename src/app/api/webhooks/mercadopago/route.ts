@@ -31,9 +31,15 @@ export async function POST(request: NextRequest) {
                 const payment = new Payment(mpClient);
                 const details = await payment.get({ id: resourceId });
                 if (details.status === "approved") {
-                    tenantId = details.external_reference;
-                    // Try to find plan ID in metadata
-                    mpPlanId = details.metadata?.plan_id;
+                    const extRef = details.external_reference || "";
+                    if (extRef.includes('___')) {
+                        const parts = extRef.split('___');
+                        tenantId = parts[0];
+                        mpPlanId = parts[1];
+                    } else {
+                        tenantId = extRef;
+                        mpPlanId = details.metadata?.plan_id;
+                    }
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
                 }
