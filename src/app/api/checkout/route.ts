@@ -62,43 +62,45 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 4. Obtener el init_point del plan directamente (GET /preapproval_plan/{id})
-        // As per Claude's instructions, this avoids the card_token_id requirement completely
-        // while allowing us to append external_reference and payer_email to the official link.
-        const response = await fetch(
-            `https://api.mercadopago.com/preapproval_plan/${plan.mercadopago_plan_id}`,
-            {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+        // 4. Create dynamic PreApproval via POST /preapproval
+        // Using auto_recurring generates a new subscription checkout intent that respects external_reference.
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
+        
+        const response = await fetch('https://api.mercadopago.com/preapproval', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                auto_recurring: {
+                    frequency: 1,
+                    frequency_type: "months",
+                    transaction_amount: plan.price,
+                    currency_id: "ARS"
                 },
-            }
-        );
+                external_reference: `${profile.tenant_id}___${plan.id}`,
+                back_url: baseUrl, 
+                reason: `Suscripción NegocioApp Pro - ${plan.name}`,
+                payer_email: payerEmail,
+            }),
+        });
 
-        const planData = await response.json();
+        const data = await response.json();
 
         if (!response.ok) {
-            console.error("MP Plan Fetch Error:", JSON.stringify(planData, null, 2));
-            throw new Error(JSON.stringify(planData));
+            console.error("MP REST API Error:", JSON.stringify(data, null, 2));
+            throw new Error(JSON.stringify(data));
         }
 
-        if (!planData.init_point) {
-            throw new Error("MP API no devolvió init_point para el plan");
+        console.log(`Created MP dynamic PreApproval: ${data.id} for tenant ${profile.tenant_id}`);
+
+        if (!data.init_point) {
+            throw new Error("MP API no devolvió init_point");
         }
-
-        // We use the composite external_reference to be safe with the webhook
-        const compositeRef = `${profile.tenant_id}___${plan.id}`;
-        
-        // Append our tracking data to the official init_point
-        // Note: URL object is safer to handle query params appending
-        const checkoutUrl = new URL(planData.init_point);
-        checkoutUrl.searchParams.set('external_reference', compositeRef);
-        checkoutUrl.searchParams.set('payer_email', payerEmail);
-
-        console.log(`Generated MP Checkout URL: ${checkoutUrl.toString()} for tenant ${profile.tenant_id}`);
 
         return NextResponse.json({
-            init_point: checkoutUrl.toString(),
+            init_point: data.init_point,
         });
     } catch (error: any) {
         console.error("Global Checkout Error:", error);
