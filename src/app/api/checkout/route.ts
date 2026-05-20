@@ -62,35 +62,41 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 4. Create the PreApproval intent via MP API
-        // This is CRITICAL. The static checkout URL ignores `external_reference`.
-        // We MUST create it via the API so MercadoPago links the subscription to our tenant_id.
-        const { MercadoPagoConfig, PreApproval } = await import("mercadopago");
-        const mpClient = new MercadoPagoConfig({
-            accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
-        });
-
-        const preApproval = new PreApproval(mpClient);
+        // 4. Create the PreApproval intent via MP REST API directly
+        // The MP SDK has a bug where it misinterprets preapproval_plan_id 
+        // and throws "card_token_id is required". Calling the REST API directly fixes this.
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
-
-        const response = await preApproval.create({
-            body: {
+        
+        const response = await fetch('https://api.mercadopago.com/preapproval', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
                 preapproval_plan_id: plan.mercadopago_plan_id,
-                external_reference: `${profile.tenant_id}___${plan.id}`,
-                back_url: baseUrl, // (dashboard) is a route group, so it's just the root url
-                reason: `Suscripción NegocioApp Pro - ${plan.name}`,
                 payer_email: payerEmail,
-            }
+                external_reference: `${profile.tenant_id}___${plan.id}`,
+                back_url: baseUrl, 
+                reason: `Suscripción NegocioApp Pro - ${plan.name}`,
+            }),
         });
 
-        console.log(`Created MP PreApproval: ${response.id} for tenant ${profile.tenant_id}`);
+        const data = await response.json();
 
-        if (!response.init_point) {
-            throw new Error("MP no devolvió init_point");
+        if (!response.ok) {
+            console.error("MP REST API Error:", JSON.stringify(data, null, 2));
+            throw new Error(JSON.stringify(data));
+        }
+
+        console.log(`Created MP PreApproval via REST: ${data.id} for tenant ${profile.tenant_id}`);
+
+        if (!data.init_point) {
+            throw new Error("MP API no devolvió init_point");
         }
 
         return NextResponse.json({
-            init_point: response.init_point,
+            init_point: data.init_point,
         });
     } catch (error: any) {
         console.error("Global Checkout Error:", error);
