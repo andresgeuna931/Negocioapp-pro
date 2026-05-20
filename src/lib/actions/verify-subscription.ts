@@ -19,13 +19,14 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
             return { found: false, error: 'Missing env vars' };
         }
 
-        // Search for preapproval plans matching this tenant_id (with new composite format)
-        const plans = ['professional', 'starter', 'business', 'test'];
+        // Search for preapproval plans matching this tenant_id (both plain and composite formats)
+        // This ensures we catch the subscription whether MP respected the composite ID or stripped it.
+        const searchRefs = [tenantId, `${tenantId}___professional`, `${tenantId}___starter`, `${tenantId}___business`, `${tenantId}___test`];
         let activeSub = null;
         let foundPlanId = null;
 
-        for (const p of plans) {
-            const searchUrl = `https://api.mercadopago.com/preapproval/search?external_reference=${tenantId}___${p}`;
+        for (const ref of searchRefs) {
+            const searchUrl = `https://api.mercadopago.com/preapproval/search?external_reference=${ref}`;
             const response = await fetch(searchUrl, {
                 headers: { 'Authorization': `Bearer ${accessToken}` },
                 cache: 'no-store',
@@ -37,7 +38,6 @@ export async function verifySubscriptionWithMP(tenantId: string): Promise<{
                 const found = results.find((r: any) => r.status === 'authorized');
                 if (found) {
                     activeSub = found;
-                    foundPlanId = p;
                     break;
                 }
             }
