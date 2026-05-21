@@ -11,7 +11,7 @@ import { signIn } from '@/lib/actions/auth';
 function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const redirect = searchParams.get('redirect') || '/';
+    const redirect = searchParams.get('redirect') || '/ventas';
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

@@ -45,11 +45,13 @@ export default async function PricingPage() {
 
     // hasPaidSubscription already calculated above
 
-    // Determine current plan:
+    // Determine current plan (normalize 'premium' -> 'professional' for legacy webhook mappings)
     let currentPlanId: string;
+    const rawPlanId = subscription?.plan || 'none';
+    const normalizedPlanId = rawPlanId === 'premium' ? 'professional' : rawPlanId;
 
-    if (hasPaidSubscription && subscription?.plan) {
-        currentPlanId = subscription.plan;
+    if (hasPaidSubscription && normalizedPlanId) {
+        currentPlanId = normalizedPlanId;
     } else if (isInTrial) {
         currentPlanId = 'professional'; // Trial uses Professional features
     } else {

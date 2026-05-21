@@ -86,10 +86,11 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                         <form action={signOut}>
                             <button
                                 type="submit"
-                                className="p-2 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 dark:text-slate-400 dark:hover:text-red-400 transition-all text-sm font-medium"
                                 title="Cerrar sesión"
                             >
-                                <LogOut className="w-5 h-5" />
+                                <LogOut className="w-4 h-4" />
+                                <span className="hidden sm:inline">Salir</span>
                             </button>
                         </form>
                     </div>
