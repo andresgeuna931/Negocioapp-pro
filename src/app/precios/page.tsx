@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { getTenantSettings, getSubscriptionStatus, getCurrentSession } from '@/lib/actions/auth';
 import { PricingSection } from '@/components/subscriptions/pricing-section';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PricingPage() {
     const [session, tenant, subscriptionStatus] = await Promise.all([
         getCurrentSession(),
@@ -21,7 +23,6 @@ export default async function PricingPage() {
 
     const subscription = subscriptionStatus?.subscription;
 
-    // ✅ FIX: considerar tenant.status === 'active' como suscripción paga
     const hasPaidSubscription = tenant.status === 'active' || !!(
         subscription &&
         subscription.status === 'active'
