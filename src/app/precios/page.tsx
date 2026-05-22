@@ -43,28 +43,19 @@ export default async function PricingPage() {
         }
     }
 
-    let currentPlanId: string;
     const rawPlanId = subscription?.plan || subscription?.plan_id || 'none';
     const normalizedPlanId = rawPlanId === 'premium' ? 'professional' : rawPlanId;
 
-    if (hasPaidSubscription && normalizedPlanId && normalizedPlanId !== 'none') {
-        currentPlanId = normalizedPlanId;
+    let currentPlanId: string;
+    if (hasPaidSubscription) {
+        currentPlanId = (normalizedPlanId && normalizedPlanId !== 'none')
+            ? normalizedPlanId
+            : 'professional';
     } else if (isInTrial) {
         currentPlanId = 'professional';
     } else {
         currentPlanId = 'none';
     }
-
-    // DEBUG TEMPORAL - borrar después
-    console.log('DEBUG PRECIOS:', {
-        tenantStatus: tenant.status,
-        subscriptionStatus: subscription?.status,
-        subscriptionPlan: subscription?.plan,
-        rawPlanId,
-        normalizedPlanId,
-        currentPlanId,
-        hasPaidSubscription,
-    });
 
     return (
         <div className="min-h-screen bg-slate-900">
