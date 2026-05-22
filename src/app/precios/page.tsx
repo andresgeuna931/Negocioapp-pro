@@ -55,6 +55,17 @@ export default async function PricingPage() {
         currentPlanId = 'none';
     }
 
+    // DEBUG TEMPORAL - borrar después
+    console.log('DEBUG PRECIOS:', {
+        tenantStatus: tenant.status,
+        subscriptionStatus: subscription?.status,
+        subscriptionPlan: subscription?.plan,
+        rawPlanId,
+        normalizedPlanId,
+        currentPlanId,
+        hasPaidSubscription,
+    });
+
     return (
         <div className="min-h-screen bg-slate-900">
             <div className="max-w-6xl mx-auto pt-6 px-4">
