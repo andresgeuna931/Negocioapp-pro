@@ -21,7 +21,7 @@ export default async function PricingPage() {
 
     const subscription = subscriptionStatus?.subscription;
 
-    // ✅ FIX: también considerar tenant.status === 'active' como suscripción paga
+    // ✅ FIX: considerar tenant.status === 'active' como suscripción paga
     const hasPaidSubscription = tenant.status === 'active' || !!(
         subscription &&
         subscription.status === 'active'
@@ -42,7 +42,6 @@ export default async function PricingPage() {
         }
     }
 
-    // Determinar plan actual
     let currentPlanId: string;
     const rawPlanId = subscription?.plan || subscription?.plan_id || 'none';
     const normalizedPlanId = rawPlanId === 'premium' ? 'professional' : rawPlanId;
@@ -78,7 +77,6 @@ export default async function PricingPage() {
                             : 'Comenzá con una prueba gratuita en nuestro plan Profesional. Sin compromiso, cancelá cuando quieras.'
                         }
                     </p>
-                    {/* ✅ FIX: solo mostrar banner si NO tiene suscripción paga */}
                     {isInTrial && trialDaysLeft > 0 && !hasPaidSubscription && (
                         <div className="mt-6 inline-flex items-center gap-3 bg-slate-800 text-slate-100 px-6 py-2.5 rounded-full text-sm font-semibold border border-slate-700">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
