@@ -108,9 +108,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                             ? 'Plan Actual'
                             : isInTrial && isCurrent
                                 ? 'Suscribirme a este plan'
-                                : hasPaidSubscription
-                                    ? 'Cambiar Plan'
-                                    : 'Elegir Plan'
+                                : 'Elegir Plan'
                     }
                 </button>
             </div>
