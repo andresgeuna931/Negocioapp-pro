@@ -85,14 +85,12 @@ export async function getProductById(id: string) {
 
 // Create new product
 export async function createProduct(formData: ProductFormData) {
-    // 0. Check permissions
     const session = await getCurrentSession();
     if (!session) return { data: null, error: 'No autenticado' };
     if (!hasPermission(session.profile.role, 'products:create')) {
         return { data: null, error: 'No tenés permisos para crear productos' };
     }
 
-    // 1. Check Limits & Access
     const limitCheck = await checkResourceLimit('products');
     if (!limitCheck.success) {
         return { data: null, error: limitCheck.error || 'Límite alcanzado' };
@@ -139,7 +137,6 @@ export async function createProduct(formData: ProductFormData) {
 
 // Update product
 export async function updateProduct(id: string, formData: Partial<ProductFormData>) {
-    // Check permissions
     const session = await getCurrentSession();
     if (!session) return { data: null, error: 'No autenticado' };
     if (!hasPermission(session.profile.role, 'products:edit')) {
@@ -165,9 +162,8 @@ export async function updateProduct(id: string, formData: Partial<ProductFormDat
     return { data: data as Product, error: null };
 }
 
-// Delete product (soft delete - set is_active to false)
+// Delete product (soft delete)
 export async function deleteProduct(id: string) {
-    // Check permissions
     const session = await getCurrentSession();
     if (!session) return { success: false, error: 'No autenticado' };
     if (!hasPermission(session.profile.role, 'products:delete')) {
@@ -203,34 +199,137 @@ export async function getLowStockProducts() {
     return { data, error: null };
 }
 
-// Get product categories
+// Get categories for current tenant
 export async function getCategories() {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .eq('is_active', true)
-        .not('category', 'is', null);
+        .from('categories')
+        .select('id, name')
+        .order('name');
 
     if (error) {
-        return { data: [], error: error.message };
+        return { data: [] as { id: string; name: string }[], error: error.message };
     }
 
-    // Get unique categories
-    const categories = [...new Set(data.map((p) => p.category).filter(Boolean))];
-    return { data: categories as string[], error: null };
+    return { data: data as { id: string; name: string }[], error: null };
+}
+
+// Create category (owner only)
+export async function createCategory(name: string) {
+    const session = await getCurrentSession();
+    if (!session) return { data: null, error: 'No autenticado' };
+    if (session.profile.role !== 'owner') return { data: null, error: 'Solo el dueño puede crear categorías' };
+
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
+
+    const { data, error } = await supabase
+        .from('categories')
+        .insert({ name: name.trim(), tenant_id: profile?.tenant_id })
+        .select()
+        .single();
+
+    if (error) {
+        if (error.code === '23505') return { data: null, error: 'Ya existe una categoría con ese nombre' };
+        return { data: null, error: error.message };
+    }
+
+    revalidatePath('/config');
+    revalidatePath('/productos');
+    return { data, error: null };
+}
+
+// Update category (owner only)
+export async function updateCategory(id: string, name: string) {
+    const session = await getCurrentSession();
+    if (!session) return { data: null, error: 'No autenticado' };
+    if (session.profile.role !== 'owner') return { data: null, error: 'Solo el dueño puede editar categorías' };
+
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('categories')
+        .update({ name: name.trim() })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) {
+        if (error.code === '23505') return { data: null, error: 'Ya existe una categoría con ese nombre' };
+        return { data: null, error: error.message };
+    }
+
+    revalidatePath('/config');
+    revalidatePath('/productos');
+    return { data, error: null };
+}
+
+// Delete category (owner only)
+export async function deleteCategory(id: string) {
+    const session = await getCurrentSession();
+    if (!session) return { success: false, error: 'No autenticado' };
+    if (session.profile.role !== 'owner') return { success: false, error: 'Solo el dueño puede eliminar categorías' };
+
+    const supabase = await createClient();
+
+    // Quitar categoría de productos que la usan
+    const { data: category } = await supabase
+        .from('categories')
+        .select('name')
+        .eq('id', id)
+        .single();
+
+    if (category) {
+        await supabase
+            .from('products')
+            .update({ category: null })
+            .eq('category', category.name);
+    }
+
+    const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/config');
+    revalidatePath('/productos');
+    return { success: true, error: null };
+}
+
+// Seed categories for new tenant based on business type
+export async function seedCategories(tenantId: string, businessType: string) {
+    const supabase = await createClient();
+
+    const categoryMap: Record<string, string[]> = {
+        kiosco: ['Golosinas', 'Chocolates y alfajores', 'Chicles y caramelos', 'Snacks y frituras', 'Bebidas con alcohol', 'Bebidas sin alcohol', 'Aguas y jugos', 'Infusiones', 'Cigarrillos y tabaco', 'Lácteos y fiambres', 'Panificados', 'Enlatados y conservas', 'Condimentos', 'Higiene personal', 'Artículos de limpieza', 'Pilas y accesorios', 'Varios'],
+        libreria: ['Útiles escolares', 'Cuadernos y carpetas', 'Lapiceras y bolígrafos', 'Lápices y colores', 'Pinturas y marcadores', 'Papel y cartulina', 'Arte y manualidades', 'Mochilas y cartucheras', 'Libros', 'Juguetes didácticos', 'Tecnología escolar', 'Sellados y formularios', 'Varios'],
+        ferreteria: ['Herramientas manuales', 'Herramientas eléctricas', 'Tornillería y bulonería', 'Pinturas y barnices', 'Plomería y sanitarios', 'Electricidad e iluminación', 'Materiales de construcción', 'Adhesivos y selladores', 'Cerrajería', 'Seguridad', 'Jardín y exterior', 'Varios'],
+        veterinaria: ['Alimentos perros', 'Alimentos gatos', 'Alimentos otras mascotas', 'Antiparasitarios externos', 'Antiparasitarios internos', 'Medicamentos', 'Vacunas', 'Accesorios perros', 'Accesorios gatos', 'Juguetes', 'Higiene y grooming', 'Jaulas y transportes', 'Servicios', 'Varios'],
+        verduleria: ['Verduras de hoja', 'Tubérculos y raíces', 'Frutas tropicales', 'Frutas de estación', 'Cítricos', 'Hierbas aromáticas', 'Legumbres secas', 'Huevos', 'Productos orgánicos', 'Varios'],
+        carniceria: ['Vacuno', 'Cerdo', 'Pollo', 'Cordero y chivito', 'Embutidos', 'Achuras y menudencias', 'Fiambres', 'Marinados y preparados', 'Varios'],
+        limpieza: ['Limpieza del hogar', 'Limpieza de ropa', 'Desinfectantes', 'Higiene personal', 'Papelería descartable', 'Accesorios de limpieza', 'Fragancias y ambientadores', 'Varios'],
+        dietetica: ['Cereales y granos', 'Legumbres', 'Frutos secos y semillas', 'Harinas alternativas', 'Endulzantes naturales', 'Aceites y aderezos', 'Infusiones y tés', 'Suplementos y vitaminas', 'Proteínas y deportivos', 'Snacks saludables', 'Productos veganos', 'Cosmética natural', 'Varios'],
+        jardineria: ['Plantas de interior', 'Plantas de exterior', 'Plantas aromáticas', 'Cactus y suculentas', 'Árboles y arbustos', 'Semillas', 'Tierra y sustratos', 'Macetas y contenedores', 'Fertilizantes', 'Pesticidas y herbicidas', 'Herramientas de jardín', 'Riego', 'Varios'],
+        imprenta: ['Fotocopias', 'Impresiones', 'Anillados y encuadernados', 'Laminados', 'Ploteos y planos', 'Diseño gráfico', 'Sellados', 'Papelería', 'Insumos de impresión', 'Servicios digitales', 'Varios'],
+        otro: ['Productos', 'Servicios', 'Varios'],
+    };
+
+    const categories = categoryMap[businessType] || categoryMap['otro'];
+    const rows = categories.map(name => ({ tenant_id: tenantId, name }));
+    await supabase.from('categories').insert(rows);
 }
 
 // Update stock manually (adjustment)
-export async function adjustStock(
-    productId: string,
-    newStock: number,
-    notes?: string
-) {
+export async function adjustStock(productId: string, newStock: number, notes?: string) {
     const supabase = await createClient();
 
-    // Get current stock
     const { data: product, error: fetchError } = await supabase
         .from('products')
         .select('stock_on_hand, name')
@@ -254,7 +353,6 @@ export async function adjustStock(
 
     const qtyChange = newStock - product.stock_on_hand;
 
-    // Update stock
     const { error: updateError } = await supabase
         .from('products')
         .update({ stock_on_hand: newStock })
@@ -264,7 +362,6 @@ export async function adjustStock(
         return { success: false, error: updateError.message };
     }
 
-    // Create inventory movement
     await supabase.from('inventory_movements').insert({
         tenant_id: profile.tenant_id,
         product_id: productId,
@@ -294,7 +391,6 @@ export async function importProducts(
         unit_type?: 'unit' | 'kg' | 'g' | 'lt' | 'ml';
     }[]
 ) {
-    // 1. Check Limits & Access
     const limitCheck = await checkResourceLimit('products');
     if (!limitCheck.success) {
         return { success: false, error: limitCheck.error || 'Límite alcanzado', created: 0, updated: 0, errors: [] };
@@ -302,7 +398,6 @@ export async function importProducts(
 
     const supabase = await createClient();
 
-    // Get current user's tenant_id
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         return { success: false, error: 'No autenticado' };
@@ -322,10 +417,8 @@ export async function importProducts(
     let updatedCount = 0;
     let errors: string[] = [];
 
-    // Process in batches (simulated by loop for now)
     for (const p of products) {
         try {
-            // Check if product exists (by barcode OR sku)
             let existingProduct = null;
 
             if (p.barcode) {
@@ -347,14 +440,13 @@ export async function importProducts(
             }
 
             if (existingProduct) {
-                // Update
                 const { error } = await supabase
                     .from('products')
                     .update({
                         name: p.name,
                         price: p.price,
                         cost: p.cost,
-                        stock_on_hand: p.stock_on_hand, // Basic update, usually adds to stock but for import we overwrite
+                        stock_on_hand: p.stock_on_hand,
                         category: p.category,
                         unit_type: p.unit_type || 'unit',
                         is_active: true
@@ -364,14 +456,13 @@ export async function importProducts(
                 if (error) throw error;
                 updatedCount++;
             } else {
-                // Create New
                 const { error } = await supabase
                     .from('products')
                     .insert({
                         tenant_id: profile.tenant_id,
                         name: p.name,
                         barcode: p.barcode,
-                        sku: p.sku || p.barcode, // Fallback SKU
+                        sku: p.sku || p.barcode,
                         price: p.price,
                         cost: p.cost,
                         stock_on_hand: p.stock_on_hand,
