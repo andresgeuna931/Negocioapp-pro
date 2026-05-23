@@ -185,3 +185,107 @@ Abrir [http://localhost:3000](http://localhost:3000)
 4. Deploy automático en cada push a `main`
 
 ### Variables de entorno requeridas en Vercel
+
+```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+MERCADOPAGO_ACCESS_TOKEN
+NEXT_PUBLIC_MP_PLAN_STARTER
+NEXT_PUBLIC_MP_PLAN_PROFESSIONAL
+NEXT_PUBLIC_MP_PLAN_BUSINESS
+NEXT_PUBLIC_APP_URL
+```
+
+---
+
+## 🔗 Configurar Webhook de Mercado Pago
+
+1. Ir a [Mercado Pago Developers](https://www.mercadopago.com.ar/developers/panel)
+2. Seleccionar tu aplicación → Webhooks
+3. Configurar en **Modo Productivo**:
+   - URL: `https://tu-dominio.vercel.app/api/webhooks/mercadopago`
+   - Eventos: ✅ Pagos, ✅ Planes y suscripciones
+4. Guardar
+
+> ⚠️ **Importante**: La ruta `/api/webhooks` debe estar en la lista de rutas públicas del middleware para que Mercado Pago pueda llamarla sin autenticación.
+
+---
+
+## 👤 Roles y Permisos
+
+| Acción | Dueño | Empleado |
+|--------|-------|----------|
+| Ver productos | ✅ | ✅ |
+| Crear/editar productos | ✅ | ❌ |
+| Realizar ventas | ✅ | ✅ |
+| Ver reportes | ✅ | ❌ |
+| Gestionar categorías | ✅ | ❌ |
+| Gestionar equipo | ✅ | ❌ |
+| Ver configuración | ✅ | ❌ |
+| Cambiar plan | ✅ | ❌ |
+
+---
+
+## 🏪 Tipos de Negocio Soportados
+
+Al registrarse, el usuario elige su tipo de negocio y el sistema carga automáticamente las categorías correspondientes:
+
+- 🛒 Kiosco / Almacén
+- 📚 Librería
+- 🔧 Ferretería
+- 🐾 Veterinaria
+- 🥦 Verdulería
+- 🥩 Carnicería
+- 🧴 Artículos de Limpieza
+- 🌿 Dietética / Naturista
+- 🌱 Vivero / Jardinería
+- 🖨️ Fotocopiadora / Imprenta
+- 📦 Otro
+
+---
+
+## 🧪 Casos Críticos a Probar
+
+1. **Aislamiento multi-tenant**: Usuario de tenant A no puede ver datos de tenant B
+2. **Stock negativo**: No se permite vender más stock del disponible
+3. **Suscripción suspendida**: Bloquea ventas y edición de productos
+4. **Webhook de MP**: Al pagar, el banner de trial desaparece automáticamente
+5. **Roles**: Empleado no puede acceder a configuración ni reportes
+6. **Categorías**: Solo el dueño puede agregar, editar y eliminar categorías
+7. **Scanner**: Funciona en dispositivo móvil real
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── app/
+│   ├── (auth)/          # Login, registro
+│   ├── (dashboard)/     # Panel principal (protegido)
+│   │   ├── page.tsx     # Dashboard con métricas
+│   │   ├── ventas/      # Venta rápida
+│   │   ├── productos/   # Gestión de productos
+│   │   ├── clientes/    # Clientes y cuentas corrientes
+│   │   ├── reportes/    # Reportes y estadísticas
+│   │   ├── config/      # Configuración del negocio
+│   │   └── ...
+│   ├── api/
+│   │   ├── webhooks/mercadopago/  # Webhook de pagos
+│   │   └── checkout/              # Crear suscripción MP
+│   └── precios/         # Página de planes (pública)
+├── components/          # Componentes reutilizables
+├── lib/
+│   ├── actions/         # Server Actions (auth, products, sales...)
+│   ├── config/          # Configuración de planes
+│   ├── constants/       # Tipos de negocio
+│   └── supabase/        # Cliente de Supabase
+└── middleware.ts        # Protección de rutas
+```
+
+---
+
+## 📄 Licencia
+
+MIT — Andrés Geuna, 2025
