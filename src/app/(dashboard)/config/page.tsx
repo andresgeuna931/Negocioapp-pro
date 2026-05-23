@@ -1,10 +1,10 @@
-import { Store, Bell, CreditCard, Tag, ChevronRight } from 'lucide-react';
+import { Store, Bell, CreditCard, Tag, ChevronRight, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSession } from '@/lib/actions/auth';
 import { formatDate } from '@/lib/utils';
-import { TenantSettingsForm, TeamManagement } from '@/components/config';
+import { TenantSettingsForm, TeamManagement, CategoryManager } from '@/components/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,6 @@ export default async function ConfigPage() {
 
     return (
         <div className="space-y-6 max-w-4xl">
-            {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                     Configuración
@@ -37,7 +36,6 @@ export default async function ConfigPage() {
                 const isActive = subscriptionInfo?.tenant.status === 'active';
                 const isTenantTrial = subscriptionInfo?.tenant.status === 'trial';
                 
-                // Check if user has a real paid subscription (even while in trial)
                 const hasPaidSub = !!(
                     subscriptionInfo?.subscription?.status === 'active' &&
                     subscriptionInfo?.subscription?.plan &&
@@ -51,7 +49,6 @@ export default async function ConfigPage() {
                 let statusLabel = 'Vencido';
                 let statusVariant: 'success' | 'info' | 'warning' | 'danger' = 'danger';
 
-                // Get plan name from settings (most accurate) or fallback
                 const settings = tenant?.settings as any;
                 const planId = settings?.plan_id || tenant?.plan_type || subscriptionInfo?.subscription?.plan || 'starter';
                 const planMap: Record<string, string> = {
@@ -64,14 +61,12 @@ export default async function ConfigPage() {
                 };
 
                 if (isActive || hasPaidSub) {
-                    // User has paid — show active state
                     statusLabel = 'Activo';
                     statusVariant = 'success';
                     planLabel = planMap[planId] || planId;
                     if (subscriptionInfo?.subscription?.current_period_end) {
                         expiryLabel = formatDate(subscriptionInfo.subscription.current_period_end);
                     } else if (isActive) {
-                        // Fallback for active accounts without sub record (manual/new)
                         const baseDate = settings?.activated_at ? new Date(settings.activated_at) : new Date();
                         baseDate.setDate(baseDate.getDate() + 30);
                         expiryLabel = formatDate(baseDate.toISOString());
@@ -79,7 +74,6 @@ export default async function ConfigPage() {
                         expiryLabel = '-';
                     }
                 } else if (isTenantTrial && tenantCreatedAt) {
-                    // Pure trial (no payment yet)
                     const trialEndDate = new Date(tenantCreatedAt);
                     trialEndDate.setDate(trialEndDate.getDate() + 14);
                     trialDaysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -119,25 +113,17 @@ export default async function ConfigPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div>
                                     <p className="text-sm text-slate-500 mb-1">Estado</p>
-                                    <Badge variant={statusVariant}>
-                                        {statusLabel}
-                                    </Badge>
+                                    <Badge variant={statusVariant}>{statusLabel}</Badge>
                                 </div>
                                 <div>
                                     <p className="text-sm text-slate-500 mb-1">Plan</p>
-                                    <p className="font-semibold text-slate-900 dark:text-white">
-                                        {planLabel}
-                                    </p>
+                                    <p className="font-semibold text-slate-900 dark:text-white">{planLabel}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-slate-500 mb-1">{(isActive || hasPaidSub) ? 'Próximo cobro' : 'Vencimiento'}</p>
-                                    <p className="font-semibold text-slate-900 dark:text-white">
-                                        {expiryLabel}
-                                    </p>
+                                    <p className="font-semibold text-slate-900 dark:text-white">{expiryLabel}</p>
                                     {isTrial && trialDaysLeft <= 7 && (
-                                        <p className="text-xs text-amber-600">
-                                            {trialDaysLeft} días restantes
-                                        </p>
+                                        <p className="text-xs text-amber-600">{trialDaysLeft} días restantes</p>
                                     )}
                                     {isActive && (
                                         <Link href="/precios" className="text-xs text-emerald-500 hover:text-emerald-400 hover:underline font-medium mt-1 inline-block">
@@ -172,14 +158,30 @@ export default async function ConfigPage() {
                         <Store className="w-5 h-5" />
                         Datos del Negocio
                     </CardTitle>
-                    <CardDescription>
-                        Información general de tu kiosco
-                    </CardDescription>
+                    <CardDescription>Información general de tu kiosco</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {tenant && <TenantSettingsForm tenant={tenant} />}
                 </CardContent>
             </Card>
+
+            {/* Categories — solo para owners */}
+            {isOwner && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <LayoutGrid className="w-5 h-5" />
+                            Categorías de Productos
+                        </CardTitle>
+                        <CardDescription>
+                            Administrá las categorías para organizar tus productos
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <CategoryManager />
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Stock Alerts */}
             <Card>
@@ -195,12 +197,8 @@ export default async function ConfigPage() {
                 <CardContent>
                     <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
                         <div>
-                            <p className="font-medium text-slate-900 dark:text-white">
-                                Umbral por defecto
-                            </p>
-                            <p className="text-sm text-slate-500">
-                                Se alerta cuando el stock baja de este valor
-                            </p>
+                            <p className="font-medium text-slate-900 dark:text-white">Umbral por defecto</p>
+                            <p className="text-sm text-slate-500">Se alerta cuando el stock baja de este valor</p>
                         </div>
                         <div className="text-right">
                             <p className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -224,9 +222,7 @@ export default async function ConfigPage() {
                                 <Tag className="w-6 h-6 text-white" />
                             </div>
                             <div className="flex-1">
-                                <h3 className="font-semibold text-slate-900 dark:text-white">
-                                    Listas de Precios
-                                </h3>
+                                <h3 className="font-semibold text-slate-900 dark:text-white">Listas de Precios</h3>
                                 <p className="text-sm text-slate-500">
                                     Configurá precios para efectivo, tarjeta, mayorista, etc.
                                 </p>
