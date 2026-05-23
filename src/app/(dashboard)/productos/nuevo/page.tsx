@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Package, Save, ScanLine } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Scanner } from '@/components/sales/scanner';
-import { createProduct } from '@/lib/actions/products';
+import { createProduct, getCategories } from '@/lib/actions/products';
 import type { UnitType } from '@/lib/types';
 
 const unitOptions = [
@@ -26,12 +26,18 @@ export default function NewProductPage() {
     const [error, setError] = useState('');
     const [showScanner, setShowScanner] = useState(false);
     const [barcode, setBarcode] = useState('');
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
     const nameInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        getCategories().then(({ data }) => {
+            if (data) setCategories(data);
+        });
+    }, []);
 
     const handleScan = (scannedCode: string) => {
         setBarcode(scannedCode);
         setShowScanner(false);
-        // Focus on name input after scanning
         setTimeout(() => {
             nameInputRef.current?.focus();
         }, 100);
@@ -73,12 +79,10 @@ export default function NewProductPage() {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
-            {/* Scanner Modal */}
             {showScanner && (
                 <Scanner onScan={handleScan} onClose={() => setShowScanner(false)} />
             )}
 
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <Link href="/productos">
                     <Button variant="ghost" size="icon">
@@ -95,7 +99,6 @@ export default function NewProductPage() {
                 </div>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit}>
                 <Card>
                     <CardHeader>
@@ -120,7 +123,6 @@ export default function NewProductPage() {
                         />
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Barcode with scan button */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Código de barras
@@ -158,11 +160,20 @@ export default function NewProductPage() {
                                 label="Unidad de medida *"
                                 options={unitOptions}
                             />
-                            <Input
-                                name="category"
-                                label="Categoría"
-                                placeholder="Ej: Bebidas"
-                            />
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Categoría
+                                </label>
+                                <select
+                                    name="category"
+                                    className="w-full h-11 px-3 rounded-xl border border-slate-300 bg-white dark:bg-slate-800 dark:border-slate-600 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                                >
+                                    <option value="">Sin categoría</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
