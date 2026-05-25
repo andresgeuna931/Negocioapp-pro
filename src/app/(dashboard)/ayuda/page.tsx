@@ -17,7 +17,8 @@ import {
     AlertTriangle,
     CreditCard,
     FileSpreadsheet,
-    MessageCircle
+    MessageCircle,
+    LayoutGrid
 } from 'lucide-react';
 
 interface FAQItem {
@@ -76,7 +77,7 @@ const faqData: FAQCategory[] = [
         items: [
             {
                 question: '¿Cómo agrego un producto nuevo?',
-                answer: 'Andá a Productos > "+ Nuevo Producto". Completá el nombre (obligatorio) y el precio. Podés escanear el código de barras tocando el ícono 📷 al lado del campo. El SKU es opcional.',
+                answer: 'Andá a Productos > "+ Nuevo Producto". Completá el nombre (obligatorio), el precio y elegí la categoría del desplegable. Podés escanear el código de barras tocando el ícono 📷 al lado del campo. El SKU es opcional.',
                 keywords: ['nuevo', 'agregar', 'crear', 'producto']
             },
             {
@@ -98,6 +99,39 @@ const faqData: FAQCategory[] = [
                 question: '¿Cómo importo productos desde Excel?',
                 answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.',
                 keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla']
+            },
+            {
+                question: '¿Cómo filtro productos por categoría?',
+                answer: 'En la página de Productos, usá el desplegable "Todas las categorías" que aparece arriba a la derecha del buscador. Seleccioná la categoría que querés ver y la lista se filtra automáticamente.',
+                keywords: ['filtrar', 'categoria', 'buscar', 'ordenar']
+            }
+        ]
+    },
+    {
+        id: 'categorias',
+        title: 'Categorías',
+        icon: <LayoutGrid className="w-5 h-5" />,
+        color: 'teal',
+        items: [
+            {
+                question: '¿Cómo gestiono las categorías de mis productos?',
+                answer: 'Andá a Configuración > "Categorías de Productos". Ahí podés ver todas tus categorías, agregar nuevas, renombrar las existentes o eliminarlas. Solo el dueño del negocio tiene acceso a esta sección.',
+                keywords: ['categoria', 'gestionar', 'agregar', 'editar', 'eliminar']
+            },
+            {
+                question: '¿Puedo agregar categorías personalizadas?',
+                answer: 'Sí. En Configuración > Categorías de Productos, escribí el nombre de la nueva categoría en el campo de texto y tocá "Agregar". La categoría queda disponible inmediatamente para asignar a productos.',
+                keywords: ['categoria', 'nueva', 'personalizada', 'agregar']
+            },
+            {
+                question: '¿Qué pasa si elimino una categoría que tiene productos?',
+                answer: 'Si eliminás una categoría, los productos que tenían esa categoría quedan "sin categoría" pero no se borran. Podés reasignarlos a otra categoría editando cada producto.',
+                keywords: ['eliminar', 'categoria', 'productos', 'borrar']
+            },
+            {
+                question: '¿Por qué ya tengo categorías cuando recién me registré?',
+                answer: 'Al registrarte, el sistema detecta el tipo de negocio que elegiste (kiosco, ferretería, verdulería, etc.) y carga automáticamente una lista de categorías sugeridas para ese tipo de negocio. Podés editarlas o agregar las tuyas.',
+                keywords: ['categorias', 'automatico', 'registro', 'tipo', 'negocio']
             }
         ]
     },
@@ -187,8 +221,13 @@ const faqData: FAQCategory[] = [
                 keywords: ['prueba', 'gratis', 'trial', 'dias']
             },
             {
+                question: '¿Cómo me suscribo a un plan?',
+                answer: 'Andá a Configuración > Ver Planes, o tocá el botón "Suscribirme ahora" del banner. Elegí el plan que prefieras y completá el pago con MercadoPago. Una vez confirmado el pago, el banner de prueba desaparece automáticamente y tu cuenta queda activa.',
+                keywords: ['plan', 'suscribir', 'pagar', 'mercadopago', 'activar']
+            },
+            {
                 question: '¿Cómo cambio de plan?',
-                answer: 'Andá a Configuración > Ver Planes, o tocá el banner azul del Dashboard. Elegí el plan que prefieras y seguí los pasos para pagar con MercadoPago.',
+                answer: 'Andá a Configuración > Ver Planes. Tu plan actual aparece marcado como "Plan Actual". Hacé clic en "Elegir Plan" en el plan al que querés cambiar y seguí los pasos.',
                 keywords: ['plan', 'cambiar', 'upgrade', 'suscripcion']
             },
             {
@@ -198,8 +237,13 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo configuro los datos de mi negocio?',
-                answer: 'Andá a Configuración. Ahí podés cambiar el nombre del negocio, dirección, teléfono y otros datos que aparecen en los tickets.',
+                answer: 'Andá a Configuración. Ahí podés cambiar el nombre del negocio, dirección, teléfono y otros datos. También podés gestionar las categorías de productos y ver el estado de tu suscripción.',
                 keywords: ['configurar', 'negocio', 'datos', 'nombre']
+            },
+            {
+                question: '¿Cómo invito a un empleado?',
+                answer: 'Andá a Configuración > Gestión de Equipo. Ingresá el email del empleado y enviá la invitación. El empleado recibirá un correo para registrarse. Los empleados pueden hacer ventas pero no pueden editar productos, categorías ni ver reportes.',
+                keywords: ['empleado', 'invitar', 'equipo', 'usuario', 'rol']
             }
         ]
     }
@@ -247,7 +291,6 @@ export default function AyudaPage() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
-            {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <HelpCircle className="w-7 h-7 text-emerald-500" />
@@ -258,7 +301,6 @@ export default function AyudaPage() {
                 </p>
             </div>
 
-            {/* Search */}
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
@@ -275,14 +317,12 @@ export default function AyudaPage() {
                 )}
             </div>
 
-            {/* FAQ Categories */}
             <div className="space-y-4">
                 {filteredData.map((category) => (
                     <Card key={category.id} className="overflow-hidden">
-                        {/* Category Header */}
                         <button
                             onClick={() => toggleCategory(category.id)}
-                            className={`w-full p-4 flex items-center justify-between text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50`}
+                            className="w-full p-4 flex items-center justify-between text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
                         >
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg bg-${category.color}-100 dark:bg-${category.color}-900/30 text-${category.color}-600`}>
@@ -304,7 +344,6 @@ export default function AyudaPage() {
                             )}
                         </button>
 
-                        {/* Questions */}
                         {expandedCategories.includes(category.id) && (
                             <CardContent className="pt-0 pb-4">
                                 <div className="space-y-2">
@@ -345,7 +384,6 @@ export default function AyudaPage() {
                 ))}
             </div>
 
-            {/* No results */}
             {searchQuery && totalResults === 0 && (
                 <Card>
                     <CardContent className="p-8 text-center">
@@ -360,7 +398,6 @@ export default function AyudaPage() {
                 </Card>
             )}
 
-            {/* Contact Support */}
             <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20">
                 <CardContent className="p-6">
                     <div className="flex items-start gap-4">
@@ -374,7 +411,7 @@ export default function AyudaPage() {
                             <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">
                                 Nuestro equipo está para ayudarte. Escribinos y te respondemos a la brevedad.
                             </p>
-                            <a
+                            
                                 href="mailto:amgdigital.ok@gmail.com"
                                 className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
                             >
