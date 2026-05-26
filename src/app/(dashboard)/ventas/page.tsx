@@ -117,22 +117,18 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                 </div>
 
                 <Button size="lg" className="w-full" onClick={() => onConfirm('credit', credit1Surcharge, 1)} loading={processing}>
-                    <div className="flex items-center gap-2 flex-1">
-                        <CreditCard className="w-5 h-5" />
-                        <span>1 cuota</span>
-                    </div>
+                    <CreditCard className="w-5 h-5 mr-2" />
+                    <span className="flex-1 text-left">1 cuota</span>
                     {credit1Surcharge > 0 && (
-                        <span className="text-sm opacity-80">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>
+                        <span className="text-sm opacity-80 ml-2">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>
                     )}
                 </Button>
 
                 <Button size="lg" variant="secondary" className="w-full" onClick={() => onConfirm('credit', credit3Surcharge, 3)} loading={processing}>
-                    <div className="flex items-center gap-2 flex-1">
-                        <CreditCard className="w-5 h-5" />
-                        <span>3 cuotas</span>
-                    </div>
+                    <CreditCard className="w-5 h-5 mr-2" />
+                    <span className="flex-1 text-left">3 cuotas</span>
                     {credit3Surcharge > 0 && (
-                        <span className="text-sm opacity-80">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>
+                        <span className="text-sm opacity-80 ml-2">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>
                     )}
                 </Button>
 
@@ -160,22 +156,18 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                 Código QR
             </Button>
 
-            <Button size="lg" variant="secondary" className="w-full justify-between" onClick={() => onConfirm('debit', debitSurcharge)} loading={processing}>
-                <div className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    <span>Débito</span>
-                </div>
+            <Button size="lg" variant="secondary" className="w-full" onClick={() => onConfirm('debit', debitSurcharge)} loading={processing}>
+                <CreditCard className="w-5 h-5 mr-2" />
+                <span className="flex-1 text-left">Débito</span>
                 {debitSurcharge > 0 && (
-                    <span className="text-sm opacity-80">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>
+                    <span className="text-sm opacity-80 ml-2">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>
                 )}
             </Button>
 
-            <Button size="lg" variant="secondary" className="w-full justify-between" onClick={() => setShowCredit(true)} loading={processing}>
-                <div className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    <span>Crédito</span>
-                </div>
-                <span className="text-xs opacity-60">1 o 3 cuotas →</span>
+            <Button size="lg" variant="secondary" className="w-full" onClick={() => setShowCredit(true)} loading={processing}>
+                <CreditCard className="w-5 h-5 mr-2" />
+                <span className="flex-1 text-left">Crédito</span>
+                <span className="text-xs opacity-60 ml-2">1 o 3 cuotas →</span>
             </Button>
 
             <Button
