@@ -10,13 +10,10 @@ import {
     Package,
     Users,
     BarChart3,
-    Settings,
     ChevronDown,
     ChevronUp,
-    ScanLine,
     AlertTriangle,
     CreditCard,
-    FileSpreadsheet,
     MessageCircle,
     LayoutGrid
 } from 'lucide-react';
@@ -77,7 +74,7 @@ const faqData: FAQCategory[] = [
         items: [
             {
                 question: '¿Cómo agrego un producto nuevo?',
-                answer: 'Andá a Productos > "+ Nuevo Producto". Completá el nombre (obligatorio), el precio y elegí la categoría del desplegable. Podés escanear el código de barras tocando el ícono 📷 al lado del campo. El SKU es opcional.',
+                answer: 'Andá a Productos > "+ Nuevo Producto". Completá el nombre (obligatorio), el precio y elegí la categoría del desplegable. Podés escanear el código de barras tocando el ícono de cámara al lado del campo. El SKU es opcional.',
                 keywords: ['nuevo', 'agregar', 'crear', 'producto']
             },
             {
@@ -258,9 +255,7 @@ export default function AyudaPage() {
         if (!searchQuery.trim()) {
             return faqData;
         }
-
         const query = searchQuery.toLowerCase();
-
         return faqData.map(category => ({
             ...category,
             items: category.items.filter(item =>
@@ -350,7 +345,6 @@ export default function AyudaPage() {
                                     {category.items.map((item, idx) => {
                                         const questionId = `${category.id}-${idx}`;
                                         const isExpanded = expandedQuestions.includes(questionId);
-
                                         return (
                                             <div
                                                 key={questionId}
@@ -411,10 +405,7 @@ export default function AyudaPage() {
                             <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">
                                 Nuestro equipo está para ayudarte. Escribinos y te respondemos a la brevedad.
                             </p>
-                            
-                                href="mailto:amgdigital.ok@gmail.com"
-                                className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium hover:underline"
-                            >
+                            <a href="mailto:amgdigital.ok@gmail.com" className="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium hover:underline">
                                 amgdigital.ok@gmail.com
                             </a>
                         </div>
