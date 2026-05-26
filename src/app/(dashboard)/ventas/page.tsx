@@ -13,7 +13,8 @@ import {
     ArrowRight,
     CheckCircle,
     Tag,
-    User
+    User,
+    Scale
 } from 'lucide-react';
 import { CustomerSelector } from '@/components/pos/customer-selector';
 import { Button } from '@/components/ui/button';
@@ -26,10 +27,126 @@ import { createSale } from '@/lib/actions/sales';
 import { getPriceLists, type PriceList } from '@/lib/actions/price-lists';
 import { calculateAdjustedPrice } from '@/lib/utils/pricing';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
-import type { Product, CartItem, PaymentMethod } from '@/lib/types';
+import type { Product, CartItem, PaymentMethod, UnitType } from '@/lib/types';
 
 interface CartItemWithPrice extends CartItem {
     adjustedPrice: number;
+}
+
+// Units that require weight/volume input
+const VARIABLE_UNITS: UnitType[] = ['kg', 'g', 'lt', 'ml'];
+
+const UNIT_LABELS: Record<UnitType, string> = {
+    unit: 'unidad',
+    kg: 'kg',
+    g: 'g',
+    lt: 'lt',
+    ml: 'ml',
+};
+
+function isVariableUnit(unit: UnitType): boolean {
+    return VARIABLE_UNITS.includes(unit);
+}
+
+// Modal for entering quantity of variable unit products
+function QuantityModal({
+    product,
+    adjustedPrice,
+    onConfirm,
+    onCancel,
+}: {
+    product: Product;
+    adjustedPrice: number;
+    onConfirm: (qty: number) => void;
+    onCancel: () => void;
+}) {
+    const [qty, setQty] = useState('');
+    const unitLabel = UNIT_LABELS[product.unit_type];
+    const numQty = parseFloat(qty) || 0;
+    const total = numQty * adjustedPrice;
+    const maxQty = product.stock_on_hand;
+
+    const handleConfirm = () => {
+        if (numQty > 0 && numQty <= maxQty) {
+            onConfirm(numQty);
+        }
+    };
+
+    return (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                        <Scale className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-white text-sm leading-tight">
+                            {product.name}
+                        </h3>
+                        <p className="text-xs text-slate-500">
+                            {formatCurrency(adjustedPrice)} por {unitLabel} · Stock: {maxQty} {unitLabel}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">
+                            Cantidad ({unitLabel})
+                        </label>
+                        <input
+                            type="number"
+                            value={qty}
+                            onChange={(e) => setQty(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+                            placeholder={`Ej: 0.500`}
+                            step="0.001"
+                            min="0.001"
+                            max={maxQty}
+                            autoFocus
+                            className="w-full h-12 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        {numQty > maxQty && (
+                            <p className="text-xs text-red-500 mt-1">
+                                Máximo disponible: {maxQty} {unitLabel}
+                            </p>
+                        )}
+                    </div>
+
+                    {numQty > 0 && numQty <= maxQty && (
+                        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Total</span>
+                                <span className="text-lg font-bold text-emerald-600">
+                                    {formatCurrency(total)}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                {numQty} {unitLabel} × {formatCurrency(adjustedPrice)}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            onClick={onCancel}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            className="flex-1"
+                            onClick={handleConfirm}
+                            disabled={numQty <= 0 || numQty > maxQty}
+                        >
+                            Agregar al carrito
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default function SalesPage() {
@@ -46,14 +163,13 @@ export default function SalesPage() {
     const [saleComplete, setSaleComplete] = useState<string | null>(null);
     const [lastSaleTotal, setLastSaleTotal] = useState(0);
     const [error, setError] = useState('');
+    const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
 
-    // Load price lists on mount
     useEffect(() => {
         const loadPriceLists = async () => {
             const result = await getPriceLists();
             if (result.data && result.data.length > 0) {
                 setPriceLists(result.data);
-                // Select default list
                 const defaultList = result.data.find(l => l.is_default) || result.data[0];
                 setSelectedPriceList(defaultList);
             }
@@ -61,7 +177,6 @@ export default function SalesPage() {
         loadPriceLists();
     }, []);
 
-    // Calculate adjusted price for a product
     const getAdjustedPrice = (product: Product): number => {
         if (!selectedPriceList) return product.price;
         return calculateAdjustedPrice(
@@ -71,61 +186,59 @@ export default function SalesPage() {
         );
     };
 
-    // Calculate total using adjusted prices
     const total = cart.reduce((sum, item) => sum + item.adjustedPrice * item.qty, 0);
 
-    // Handle barcode scan
     const handleScan = useCallback(async (barcode: string) => {
         setShowScanner(false);
         setError('');
-
         const result = await getProductByBarcode(barcode);
-
         if (result.error) {
             setError(`Producto no encontrado: ${barcode}`);
             return;
         }
-
         if (result.data) {
-            addToCart(result.data);
+            handleProductSelect(result.data);
         }
     }, [selectedPriceList]);
 
-    // Search products
     const handleSearch = async (query: string) => {
         setSearchQuery(query);
         if (query.length < 2) {
             setSearchResults([]);
             return;
         }
-
         setSearching(true);
         const result = await getProducts({ search: query, activeOnly: true });
         setSearchResults(result.data || []);
         setSearching(false);
     };
 
-    // Add product to cart
-    const addToCart = (product: Product, qty: number = 1) => {
-        // Check stock availability
+    // Handle product selection — show modal for variable units
+    const handleProductSelect = (product: Product) => {
+        setSearchQuery('');
+        setSearchResults([]);
+        if (isVariableUnit(product.unit_type)) {
+            setPendingProduct(product);
+        } else {
+            addToCart(product, 1);
+        }
+    };
+
+    const addToCart = (product: Product, qty: number) => {
         if (product.stock_on_hand <= 0) {
             setError(`${product.name} no tiene stock disponible`);
             return;
         }
-
         const adjustedPrice = getAdjustedPrice(product);
         setCart((prev) => {
             const existing = prev.find((item) => item.product.id === product.id);
             const currentQty = existing?.qty || 0;
             const maxAvailable = product.stock_on_hand - currentQty;
-
             if (maxAvailable <= 0) {
                 setError(`Ya agregaste todo el stock disponible de ${product.name}`);
                 return prev;
             }
-
             const qtyToAdd = Math.min(qty, maxAvailable);
-
             if (existing) {
                 return prev.map((item) =>
                     item.product.id === product.id
@@ -135,11 +248,15 @@ export default function SalesPage() {
             }
             return [...prev, { product, qty: qtyToAdd, adjustedPrice }];
         });
-        setSearchQuery('');
-        setSearchResults([]);
     };
 
-    // Recalculate prices when price list changes
+    const handleQuantityModalConfirm = (qty: number) => {
+        if (pendingProduct) {
+            addToCart(pendingProduct, qty);
+            setPendingProduct(null);
+        }
+    };
+
     useEffect(() => {
         if (selectedPriceList && cart.length > 0) {
             setCart(prev => prev.map(item => ({
@@ -153,14 +270,12 @@ export default function SalesPage() {
         }
     }, [selectedPriceList]);
 
-    // Update quantity with stock limit
     const updateQty = (productId: string, delta: number) => {
         setCart((prev) =>
             prev
                 .map((item) => {
                     if (item.product.id === productId) {
                         const newQty = item.qty + delta;
-                        // Limit to available stock
                         const maxQty = item.product.stock_on_hand;
                         const limitedQty = Math.min(Math.max(0, newQty), maxQty);
                         return { ...item, qty: limitedQty };
@@ -171,7 +286,6 @@ export default function SalesPage() {
         );
     };
 
-    // Set exact quantity with stock limit
     const setQty = (productId: string, qty: number) => {
         if (qty <= 0) {
             setCart((prev) => prev.filter((item) => item.product.id !== productId));
@@ -179,7 +293,6 @@ export default function SalesPage() {
             setCart((prev) =>
                 prev.map((item) => {
                     if (item.product.id === productId) {
-                        // Limit to available stock
                         const maxQty = item.product.stock_on_hand;
                         const limitedQty = Math.min(qty, maxQty);
                         return { ...item, qty: limitedQty };
@@ -190,16 +303,13 @@ export default function SalesPage() {
         }
     };
 
-    // Remove from cart
     const removeFromCart = (productId: string) => {
         setCart((prev) => prev.filter((item) => item.product.id !== productId));
     };
 
-    // Process sale
     const handleCheckout = async (paymentMethod: PaymentMethod, customerId?: string) => {
         setProcessing(true);
         setError('');
-
         try {
             const result = await createSale({
                 items: cart.map((item) => ({
@@ -209,7 +319,6 @@ export default function SalesPage() {
                 payment_method: paymentMethod,
                 customer_id: customerId,
             });
-
             if (result.error) {
                 setError(result.error);
             } else {
@@ -225,14 +334,12 @@ export default function SalesPage() {
         }
     };
 
-    // Reset after sale
     const handleNewSale = () => {
         setSaleComplete(null);
         setCart([]);
         setError('');
     };
 
-    // Show success screen
     if (saleComplete) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -258,7 +365,16 @@ export default function SalesPage() {
 
     return (
         <div className="space-y-4">
-            {/* Header */}
+            {/* Quantity Modal for variable unit products */}
+            {pendingProduct && (
+                <QuantityModal
+                    product={pendingProduct}
+                    adjustedPrice={getAdjustedPrice(pendingProduct)}
+                    onConfirm={handleQuantityModalConfirm}
+                    onCancel={() => setPendingProduct(null)}
+                />
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -269,7 +385,6 @@ export default function SalesPage() {
                     </p>
                 </div>
 
-                {/* Price List Selector */}
                 {priceLists.length > 1 && (
                     <div className="flex items-center gap-2">
                         <Tag className="w-5 h-5 text-slate-400" />
@@ -305,15 +420,12 @@ export default function SalesPage() {
                 </div>
             )}
 
-            {/* Scanner Modal */}
             {showScanner && (
                 <Scanner onScan={handleScan} onClose={() => setShowScanner(false)} />
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Left side - Search and scan */}
                 <div className="lg:col-span-2 space-y-4">
-                    {/* Scan Button */}
                     <Button
                         size="lg"
                         className="w-full h-20 text-lg"
@@ -323,7 +435,6 @@ export default function SalesPage() {
                         Escanear Producto
                     </Button>
 
-                    {/* Search */}
                     <div className="relative">
                         <Input
                             type="search"
@@ -333,36 +444,41 @@ export default function SalesPage() {
                             icon={<Search className="w-5 h-5" />}
                         />
 
-                        {/* Search Results Dropdown */}
                         {searchResults.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 max-h-80 overflow-auto z-20">
                                 {searchResults.map((product) => (
                                     <button
                                         key={product.id}
-                                        onClick={() => addToCart(product)}
+                                        onClick={() => handleProductSelect(product)}
                                         className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
                                     >
                                         <div className="flex-1">
                                             <p className="font-medium text-slate-900 dark:text-white">
                                                 {product.name}
                                             </p>
-                                            {product.barcode && (
-                                                <p className="text-xs text-slate-400 font-mono">
-                                                    {product.barcode}
-                                                </p>
-                                            )}
+                                            <p className="text-xs text-slate-400">
+                                                {product.barcode && <span className="font-mono mr-2">{product.barcode}</span>}
+                                                {isVariableUnit(product.unit_type) && (
+                                                    <span className="text-emerald-600 font-medium">
+                                                        Por {UNIT_LABELS[product.unit_type]}
+                                                    </span>
+                                                )}
+                                            </p>
                                         </div>
                                         <Badge variant="success">
-                                            {formatCurrency(product.price)}
+                                            {formatCurrency(product.price)}/{UNIT_LABELS[product.unit_type]}
                                         </Badge>
-                                        <Plus className="w-5 h-5 text-emerald-600" />
+                                        {isVariableUnit(product.unit_type) ? (
+                                            <Scale className="w-5 h-5 text-emerald-600" />
+                                        ) : (
+                                            <Plus className="w-5 h-5 text-emerald-600" />
+                                        )}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
 
-                    {/* Cart Items */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -388,7 +504,7 @@ export default function SalesPage() {
                                                     {item.product.name}
                                                 </p>
                                                 <p className="text-sm text-slate-500">
-                                                    {formatCurrency(item.adjustedPrice)} x {item.product.unit_type}
+                                                    {formatCurrency(item.adjustedPrice)}/{UNIT_LABELS[item.product.unit_type]}
                                                     {item.adjustedPrice !== item.product.price && (
                                                         <span className="text-xs text-slate-400 line-through ml-2">
                                                             {formatCurrency(item.product.price)}
@@ -397,50 +513,51 @@ export default function SalesPage() {
                                                 </p>
                                             </div>
 
-                                            {/* Quantity controls */}
                                             <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => updateQty(item.product.id, -1)}
-                                                    className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
-                                                >
-                                                    <Minus className="w-4 h-4" />
-                                                </button>
+                                                {!isVariableUnit(item.product.unit_type) && (
+                                                    <button
+                                                        onClick={() => updateQty(item.product.id, -1)}
+                                                        className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                                                    >
+                                                        <Minus className="w-4 h-4" />
+                                                    </button>
+                                                )}
 
                                                 <div className="flex flex-col items-center">
                                                     <input
                                                         type="number"
                                                         value={item.qty}
                                                         onChange={(e) => setQty(item.product.id, parseFloat(e.target.value) || 0)}
-                                                        className="w-16 h-8 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                                                        step={item.product.unit_type === 'unit' ? 1 : 0.001}
+                                                        className="w-20 h-8 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono"
+                                                        step={isVariableUnit(item.product.unit_type) ? 0.001 : 1}
                                                         min={0}
                                                         max={item.product.stock_on_hand}
                                                     />
                                                     <span className="text-[10px] text-slate-400">
-                                                        máx: {item.product.stock_on_hand}
+                                                        máx: {item.product.stock_on_hand} {UNIT_LABELS[item.product.unit_type]}
                                                     </span>
                                                 </div>
 
-                                                <button
-                                                    onClick={() => updateQty(item.product.id, 1)}
-                                                    disabled={item.qty >= item.product.stock_on_hand}
-                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${item.qty >= item.product.stock_on_hand
+                                                {!isVariableUnit(item.product.unit_type) && (
+                                                    <button
+                                                        onClick={() => updateQty(item.product.id, 1)}
+                                                        disabled={item.qty >= item.product.stock_on_hand}
+                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${item.qty >= item.product.stock_on_hand
                                                             ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
                                                             : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200'
-                                                        }`}
-                                                >
-                                                    <Plus className="w-4 h-4" />
-                                                </button>
+                                                            }`}
+                                                    >
+                                                        <Plus className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
 
-                                            {/* Line total */}
                                             <div className="text-right w-24">
                                                 <p className="font-semibold text-slate-900 dark:text-white">
                                                     {formatCurrency(item.adjustedPrice * item.qty)}
                                                 </p>
                                             </div>
 
-                                            {/* Remove */}
                                             <button
                                                 onClick={() => removeFromCart(item.product.id)}
                                                 className="p-1 text-slate-400 hover:text-red-500 transition-colors"
@@ -455,7 +572,6 @@ export default function SalesPage() {
                     </Card>
                 </div>
 
-                {/* Right side - Total and Checkout */}
                 <div className="lg:col-span-1">
                     <Card className="sticky top-20">
                         <CardContent className="p-5">
@@ -536,10 +652,6 @@ export default function SalesPage() {
                 onOpenChange={setShowCustomerSelect}
                 onSelect={(customer) => {
                     setShowCustomerSelect(false);
-                    // Checkout with account
-                    // We need to pass the customer id
-                    // Since handleCheckout only takes method, we should update handleCheckout signature or state
-                    // Quick fix: call handleCheckout with extra arg if we update signature, or use a state
                     handleCheckout('account', customer.id);
                 }}
             />
