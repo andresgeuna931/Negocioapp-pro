@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSession } from '@/lib/actions/auth';
 import { formatDate } from '@/lib/utils';
-import { TenantSettingsForm, TeamManagement, CategoryManager } from '@/components/config';
+import { TenantSettingsForm, TeamManagement, CategoryManager, PaymentSettingsForm } from '@/components/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +35,6 @@ export default async function ConfigPage() {
                 const tenantCreatedAt = tenant?.created_at ? new Date(tenant.created_at) : null;
                 const isActive = subscriptionInfo?.tenant.status === 'active';
                 const isTenantTrial = subscriptionInfo?.tenant.status === 'trial';
-                
                 const hasPaidSub = !!(
                     subscriptionInfo?.subscription?.status === 'active' &&
                     subscriptionInfo?.subscription?.plan &&
@@ -78,7 +77,6 @@ export default async function ConfigPage() {
                     trialEndDate.setDate(trialEndDate.getDate() + 14);
                     trialDaysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                     isTrial = trialDaysLeft > 0;
-                    
                     if (isTrial) {
                         statusLabel = 'Prueba';
                         statusVariant = 'info';
@@ -105,9 +103,7 @@ export default async function ConfigPage() {
                                 <CreditCard className="w-5 h-5" />
                                 Suscripción
                             </CardTitle>
-                            <CardDescription>
-                                Estado de tu plan y facturación
-                            </CardDescription>
+                            <CardDescription>Estado de tu plan y facturación</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -137,13 +133,10 @@ export default async function ConfigPage() {
                                     )}
                                 </div>
                             </div>
-
                             {subscriptionInfo?.tenant.status === 'suspended' && (
                                 <div className="mt-4 p-4 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
                                     <p className="font-medium">⚠️ Tu cuenta está suspendida</p>
-                                    <p className="text-sm mt-1">
-                                        No podés realizar ventas ni editar productos. Contactá al administrador para renovar tu suscripción.
-                                    </p>
+                                    <p className="text-sm mt-1">No podés realizar ventas ni editar productos.</p>
                                 </div>
                             )}
                         </CardContent>
@@ -165,7 +158,7 @@ export default async function ConfigPage() {
                 </CardContent>
             </Card>
 
-            {/* Categories — solo para owners */}
+            {/* Categories — solo owners */}
             {isOwner && (
                 <Card>
                     <CardHeader>
@@ -179,6 +172,24 @@ export default async function ConfigPage() {
                     </CardHeader>
                     <CardContent>
                         <CategoryManager />
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Payment Settings — solo owners */}
+            {isOwner && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CreditCard className="w-5 h-5" />
+                            Recargos por Método de Pago
+                        </CardTitle>
+                        <CardDescription>
+                            Configurá el porcentaje de recargo para cada método de pago con tarjeta
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <PaymentSettingsForm />
                     </CardContent>
                 </Card>
             )}
