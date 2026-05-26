@@ -219,12 +219,12 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo me suscribo a un plan?',
-                answer: 'Andá a Configuración > Ver Planes, o tocá el botón "Suscribirme ahora" del banner. Elegí el plan que prefieras y completá el pago con MercadoPago. Una vez confirmado el pago, el banner de prueba desaparece automáticamente y tu cuenta queda activa.',
+                answer: 'Andá a Configuración y tocá el link "Cambiar de plan" en la sección Suscripción, o tocá el botón "Suscribirme ahora" del banner. Elegí el plan que prefieras y completá el pago con MercadoPago. Una vez confirmado el pago, el banner de prueba desaparece automáticamente y tu cuenta queda activa.',
                 keywords: ['plan', 'suscribir', 'pagar', 'mercadopago', 'activar']
             },
             {
                 question: '¿Cómo cambio de plan?',
-                answer: 'Andá a Configuración > Ver Planes. Tu plan actual aparece marcado como "Plan Actual". Hacé clic en "Elegir Plan" en el plan al que querés cambiar y seguí los pasos.',
+                answer: 'Andá a Configuración y tocá el link "Cambiar de plan" en la sección Suscripción. Tu plan actual aparece marcado como "Plan Actual". Hacé clic en "Elegir Plan" en el plan al que querés cambiar y seguí los pasos.',
                 keywords: ['plan', 'cambiar', 'upgrade', 'suscripcion']
             },
             {
