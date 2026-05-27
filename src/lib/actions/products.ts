@@ -488,3 +488,18 @@ export async function importProducts(
         errors: errors.length > 0 ? errors : null
     };
 }
+// Get categories from categories table
+export async function getCategoriesFromTable() {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+        .order('name');
+
+    if (error) {
+        return { data: [], error: error.message };
+    }
+
+    return { data: data.map(c => c.name) as string[], error: null };
+}
