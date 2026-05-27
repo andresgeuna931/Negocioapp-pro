@@ -54,7 +54,7 @@ function QuantityModal({ product, adjustedPrice, onConfirm, onCancel }: {
                     </div>
                     <div>
                         <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{product.name}</h3>
-                        <p className="text-xs text-slate-500">{formatCurrency(adjustedPrice)} por {unitLabel} · Stock: {maxQty} {unitLabel}</p>
+                        <p className="text-xs text-slate-500">{formatCurrency(adjustedPrice)} x {unitLabel} · Stock: {maxQty} {unitLabel}</p>
                     </div>
                 </div>
                 <div className="space-y-3">
@@ -398,10 +398,10 @@ export default function SalesPage() {
                                             <p className="font-medium text-slate-900 dark:text-white">{product.name}</p>
                                             <p className="text-xs text-slate-400">
                                                 {product.barcode && <span className="font-mono mr-2">{product.barcode}</span>}
-                                                {isVariableUnit(product.unit_type) && <span className="text-emerald-600 font-medium">Por {UNIT_LABELS[product.unit_type]}</span>}
+                                                {isVariableUnit(product.unit_type) && <span className="text-emerald-600 font-medium">x {UNIT_LABELS[product.unit_type]}</span>}
                                             </p>
                                         </div>
-                                        <Badge variant="success">{formatCurrency(product.price)}/{UNIT_LABELS[product.unit_type]}</Badge>
+                                        <Badge variant="success">{formatCurrency(product.price)} x {UNIT_LABELS[product.unit_type]}</Badge>
                                         {isVariableUnit(product.unit_type) ? <Scale className="w-5 h-5 text-emerald-600" /> : <Plus className="w-5 h-5 text-emerald-600" />}
                                     </button>
                                 ))}
@@ -425,47 +425,58 @@ export default function SalesPage() {
                             ) : (
                                 <div className="space-y-3">
                                     {cart.map(item => (
-                                        <div key={item.product.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-slate-900 dark:text-white text-sm">{item.product.name}</p>
-                                                <p className="text-sm text-slate-500">
-                                                    {formatCurrency(item.adjustedPrice)}/{UNIT_LABELS[item.product.unit_type]}
-                                                    {item.adjustedPrice !== item.product.price && <span className="text-xs text-slate-400 line-through ml-2">{formatCurrency(item.product.price)}</span>}
+                                        <div key={item.product.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                                            {/* Línea 1: nombre + total + eliminar */}
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <p className="font-medium text-slate-900 dark:text-white text-sm truncate flex-1">
+                                                    {item.product.name}
                                                 </p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                {!isVariableUnit(item.product.unit_type) && (
-                                                    <button onClick={() => updateQty(item.product.id, -1)} className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 transition-colors">
-                                                        <Minus className="w-4 h-4" />
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <p className="font-semibold text-slate-900 dark:text-white">
+                                                        {formatCurrency(item.adjustedPrice * item.qty)}
+                                                    </p>
+                                                    <button onClick={() => removeFromCart(item.product.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
+                                                        <X className="w-4 h-4" />
                                                     </button>
-                                                )}
-                                                <div className="flex flex-col items-center">
-                                                    <input
-                                                        type="number"
-                                                        value={item.qty}
-                                                        onChange={(e) => setQty(item.product.id, parseFloat(e.target.value) || 0)}
-                                                        className="w-20 h-8 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono"
-                                                        step={isVariableUnit(item.product.unit_type) ? 0.001 : 1}
-                                                        min={0} max={item.product.stock_on_hand}
-                                                    />
-                                                    <span className="text-[10px] text-slate-400">máx: {item.product.stock_on_hand} {UNIT_LABELS[item.product.unit_type]}</span>
                                                 </div>
-                                                {!isVariableUnit(item.product.unit_type) && (
-                                                    <button
-                                                        onClick={() => updateQty(item.product.id, 1)}
-                                                        disabled={item.qty >= item.product.stock_on_hand}
-                                                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${item.qty >= item.product.stock_on_hand ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200'}`}
-                                                    >
-                                                        <Plus className="w-4 h-4" />
-                                                    </button>
-                                                )}
                                             </div>
-                                            <div className="text-right w-24">
-                                                <p className="font-semibold text-slate-900 dark:text-white">{formatCurrency(item.adjustedPrice * item.qty)}</p>
+
+                                            {/* Línea 2: precio unitario + controles cantidad */}
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-xs text-slate-500">
+                                                    {formatCurrency(item.adjustedPrice)} x {UNIT_LABELS[item.product.unit_type]}
+                                                    {item.adjustedPrice !== item.product.price && (
+                                                        <span className="text-slate-400 line-through ml-2">{formatCurrency(item.product.price)}</span>
+                                                    )}
+                                                </p>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {!isVariableUnit(item.product.unit_type) && (
+                                                        <button onClick={() => updateQty(item.product.id, -1)} className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 transition-colors">
+                                                            <Minus className="w-3 h-3" />
+                                                        </button>
+                                                    )}
+                                                    <div className="flex flex-col items-center">
+                                                        <input
+                                                            type="number"
+                                                            value={item.qty}
+                                                            onChange={(e) => setQty(item.product.id, parseFloat(e.target.value) || 0)}
+                                                            className="w-16 h-7 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono text-sm"
+                                                            step={isVariableUnit(item.product.unit_type) ? 0.001 : 1}
+                                                            min={0} max={item.product.stock_on_hand}
+                                                        />
+                                                        <span className="text-[10px] text-slate-400">máx: {item.product.stock_on_hand}</span>
+                                                    </div>
+                                                    {!isVariableUnit(item.product.unit_type) && (
+                                                        <button
+                                                            onClick={() => updateQty(item.product.id, 1)}
+                                                            disabled={item.qty >= item.product.stock_on_hand}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${item.qty >= item.product.stock_on_hand ? 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-200'}`}
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <button onClick={() => removeFromCart(item.product.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
-                                                <X className="w-5 h-5" />
-                                            </button>
                                         </div>
                                     ))}
                                 </div>
