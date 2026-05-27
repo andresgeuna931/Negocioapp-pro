@@ -117,7 +117,6 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                     </button>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Seleccioná las cuotas</p>
                 </div>
-
                 <button
                     onClick={() => onConfirm('credit', credit1Surcharge, 1)}
                     disabled={processing}
@@ -129,7 +128,6 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                         <span className="text-sm opacity-80 ml-2">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>
                     )}
                 </button>
-
                 <button
                     onClick={() => onConfirm('credit', credit3Surcharge, 3)}
                     disabled={processing}
@@ -141,7 +139,6 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                         <span className="text-sm opacity-80 ml-2">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>
                     )}
                 </button>
-
                 <Button variant="ghost" className="w-full" onClick={() => setShowCredit(false)} disabled={processing}>Volver</Button>
             </div>
         );
