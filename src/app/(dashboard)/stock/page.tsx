@@ -1,10 +1,9 @@
+import { AlertTriangle, Package, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { AlertTriangle, Package, ArrowRight, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { getLowStockProducts } from '@/lib/actions/products';
-import { formatQuantity, getStockStatus } from '@/lib/utils';
+import { StockProductRow } from '@/components/stock/stock-product-row';
 import type { LowStockProduct } from '@/lib/types';
 
 export default async function StockPage() {
@@ -12,15 +11,10 @@ export default async function StockPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        Stock Bajo
-                    </h1>
-                    <p className="text-slate-500">
-                        Productos que necesitan reposición
-                    </p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Stock Bajo</h1>
+                    <p className="text-slate-500">Productos que necesitan reposición</p>
                 </div>
                 <Link href="/productos">
                     <Button variant="outline">
@@ -30,7 +24,6 @@ export default async function StockPage() {
                 </Link>
             </div>
 
-            {/* Alert Banner */}
             {lowStockProducts && lowStockProducts.length > 0 && (
                 <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
                     <CardContent className="p-4 flex items-center gap-4">
@@ -49,7 +42,6 @@ export default async function StockPage() {
                 </Card>
             )}
 
-            {/* Products List */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
@@ -72,62 +64,14 @@ export default async function StockPage() {
                         </div>
                     ) : lowStockProducts && lowStockProducts.length > 0 ? (
                         <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {lowStockProducts.map((product: LowStockProduct) => {
-                                const status = getStockStatus(product.stock_on_hand, product.threshold);
-
-                                return (
-                                    <div
-                                        key={product.id}
-                                        className="flex items-center gap-4 py-4"
-                                    >
-                                        {/* Status indicator */}
-                                        <div className={`w-3 h-3 rounded-full ${status === 'out' ? 'bg-red-500 animate-pulse' :
-                                            status === 'critical' ? 'bg-orange-500' :
-                                                'bg-amber-500'
-                                            }`} />
-
-                                        {/* Product info */}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-slate-900 dark:text-white">
-                                                {product.name}
-                                            </p>
-                                            <p className="text-sm text-slate-500">
-                                                Umbral: {formatQuantity(product.threshold, product.unit_type)}
-                                            </p>
-                                        </div>
-
-                                        {/* Current stock */}
-                                        <div className="text-right">
-                                            <Badge
-                                                variant={
-                                                    status === 'out' ? 'danger' :
-                                                        status === 'critical' ? 'warning' : 'warning'
-                                                }
-                                            >
-                                                {status === 'out'
-                                                    ? 'Sin stock'
-                                                    : formatQuantity(product.stock_on_hand, product.unit_type)
-                                                }
-                                            </Badge>
-                                        </div>
-
-                                        {/* Action */}
-                                        <Link href={`/productos/${product.id}`}>
-                                            <Button variant="ghost" size="sm">
-                                                Editar
-                                                <ArrowRight className="w-4 h-4 ml-1" />
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                );
-                            })}
+                            {lowStockProducts.map((product: LowStockProduct) => (
+                                <StockProductRow key={product.id} product={product} />
+                            ))}
                         </div>
                     ) : (
                         <div className="text-center py-12 text-slate-500">
                             <Package className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">
-                                ¡Todo en orden!
-                            </h3>
+                            <h3 className="text-lg font-medium text-slate-900 dark:text-white mb-2">¡Todo en orden!</h3>
                             <p>No hay productos con stock bajo</p>
                         </div>
                     )}
