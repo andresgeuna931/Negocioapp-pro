@@ -247,11 +247,10 @@ export async function getCategories() {
     const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
-        .from('products')
-        .select('category')
+        .from('categories')
+        .select('id, name')
         .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
-        .eq('is_active', true)
-        .not('category', 'is', null);
+        .order('name');
 
     if (error) {
         return { data: [] as { id: string; name: string }[], error: error.message };
@@ -296,11 +295,19 @@ export async function updateCategory(id: string, name: string) {
     if (session.profile.role !== 'owner') return { data: null, error: 'Solo el dueño puede editar categorías' };
 
     const supabase = await createClient();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
+
+    if (!profile?.tenant_id) return { data: null, error: 'Tenant no encontrado' };
 
     const { data, error } = await supabase
         .from('categories')
         .update({ name: name.trim() })
         .eq('id', id)
+        .eq('tenant_id', profile.tenant_id)  // CRITICAL: Filter by tenant
         .select()
         .single();
 
@@ -321,25 +328,35 @@ export async function deleteCategory(id: string) {
     if (session.profile.role !== 'owner') return { success: false, error: 'Solo el dueño puede eliminar categorías' };
 
     const supabase = await createClient();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
 
-    // Quitar categoría de productos que la usan
+    if (!profile?.tenant_id) return { success: false, error: 'Tenant no encontrado' };
+
+    // Quitar categoría de productos que la usan - scoped to tenant
     const { data: category } = await supabase
         .from('categories')
         .select('name')
         .eq('id', id)
+        .eq('tenant_id', profile.tenant_id)  // CRITICAL: Filter by tenant
         .single();
 
     if (category) {
         await supabase
             .from('products')
             .update({ category: null })
-            .eq('category', category.name);
+            .eq('category', category.name)
+            .eq('tenant_id', profile.tenant_id);  // CRITICAL: Filter by tenant
     }
 
     const { error } = await supabase
         .from('categories')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', profile.tenant_id);  // CRITICAL: Filter by tenant
 
     if (error) return { success: false, error: error.message };
 
@@ -525,11 +542,14 @@ export async function importProducts(
 }
 // Get categories from categories table
 export async function getCategoriesFromTable() {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: [], error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
         .from('categories')
         .select('name')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .order('name');
 
     if (error) {

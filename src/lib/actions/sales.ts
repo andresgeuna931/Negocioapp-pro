@@ -32,10 +32,18 @@ export async function createSale(saleData: CreateSaleData) {
         return { data: null, error: 'Tu período de prueba ha finalizado. Suscribite para seguir vendiendo.' };
     }
 
-    // Check if there's an open cash session
+    // Get tenant context FIRST (needed for all subsequent tenant-scoped queries)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: 'No autenticado' };
+    const { data: profile } = await supabase.from('profiles').select('tenant_id').eq('id', user.id).single();
+    if (!profile?.tenant_id) return { data: null, error: 'Tenant no encontrado' };
+    const tenantId = profile.tenant_id;
+
+    // Check if there's an open cash session FOR THIS TENANT
     const { data: openSession } = await supabase
         .from('cash_sessions')
         .select('id')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('status', 'open')
         .single();
 
@@ -47,13 +55,6 @@ export async function createSale(saleData: CreateSaleData) {
     if (!saleData.items || saleData.items.length === 0) {
         return { data: null, error: 'La venta debe tener al menos un producto' };
     }
-
-    // Get tenant context
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: 'No autenticado' };
-    const { data: profile } = await supabase.from('profiles').select('tenant_id').eq('id', user.id).single();
-    if (!profile?.tenant_id) return { data: null, error: 'Tenant no encontrado' };
-    const tenantId = profile.tenant_id;
 
     let estimatedTotal = 0;
     if (saleData.payment_method === 'account') {

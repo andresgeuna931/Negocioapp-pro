@@ -3,13 +3,32 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+// Helper to get current user's tenant_id
+async function getCurrentUserContext() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) return null;
+    return { supabase, user, tenantId: profile.tenant_id };
+}
+
 // Get all unique categories
 export async function getCategories() {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: [], error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
         .from('products')
         .select('category')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true)
         .not('category', 'is', null);
 
@@ -29,11 +48,14 @@ export async function previewPriceIncrease(
     percentage: number,
     category?: string
 ) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     let query = supabase
         .from('products')
         .select('id, name, price, category, barcode')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true);
 
     if (category) {
@@ -66,12 +88,15 @@ export async function applyPriceIncrease(
     percentage: number,
     category?: string
 ) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     // Get products to update
     let query = supabase
         .from('products')
         .select('id, price')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true);
 
     if (category) {
@@ -92,7 +117,8 @@ export async function applyPriceIncrease(
         const { error: updateError } = await supabase
             .from('products')
             .update({ price: newPrice, updated_at: new Date().toISOString() })
-            .eq('id', product.id);
+            .eq('id', product.id)
+            .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
 
         if (!updateError) {
             updatedCount++;
@@ -113,12 +139,15 @@ export async function applyPriceIncrease(
 export async function previewExcelImport(
     items: { barcode: string; price: number }[]
 ) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     // Get all products with barcodes
     const { data: products, error } = await supabase
         .from('products')
         .select('id, name, price, barcode, category')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true)
         .not('barcode', 'is', null);
 
@@ -178,12 +207,15 @@ export async function previewExcelImport(
 export async function applyExcelImport(
     items: { barcode: string; price: number }[]
 ) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autenticado', updatedCount: 0 };
+    const { supabase, tenantId } = ctx;
 
     // Get all products with barcodes
     const { data: products, error } = await supabase
         .from('products')
         .select('id, barcode')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true)
         .not('barcode', 'is', null);
 
@@ -199,7 +231,8 @@ export async function applyExcelImport(
             const { error: updateError } = await supabase
                 .from('products')
                 .update({ price: item.price, updated_at: new Date().toISOString() })
-                .eq('id', product.id);
+                .eq('id', product.id)
+                .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
 
             if (!updateError) {
                 updatedCount++;
