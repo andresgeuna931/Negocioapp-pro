@@ -43,7 +43,7 @@ export function SalesChart({ data }: SalesChartProps) {
                             <XAxis
                                 dataKey="date"
                                 tickFormatter={(str) => {
-                                    const parts = str.split('-');
+                                    const parts = String(str).split('-');
                                     return `${parts[2]}/${parts[1]}`;
                                 }}
                                 stroke="#888888"
@@ -64,10 +64,11 @@ export function SalesChart({ data }: SalesChartProps) {
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (active && payload && payload.length) {
-                                        const parts = (label ?? '').split('-');
+                                        const labelStr = String(label ?? '');
+                                        const parts = labelStr.split('-');
                                         const fechaFormateada = parts.length === 3
                                             ? `${parts[2]}/${parts[1]}/${parts[0]}`
-                                            : label ?? '';
+                                            : labelStr;
                                         return (
                                             <div className="rounded-lg border bg-white p-3 shadow-sm dark:bg-slate-950 dark:border-slate-800 text-sm">
                                                 <div className="grid grid-cols-2 gap-4">
