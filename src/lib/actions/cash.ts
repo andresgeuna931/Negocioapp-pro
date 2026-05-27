@@ -2,13 +2,43 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import type { CashSession, CashMovement, CashMovementType } from '@/lib/types';
+import type { CashSession, CashMovement } from '@/lib/types';
 
-// Helper to get current user's tenant_id
-async function getCurrentUserContext() {
+async function getTenantId(): Promise<string | null> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+    return profile?.tenant_id || null;
+}
+
+export async function getCurrentCashSession() {
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
+
+    const { data, error } = await supabase
+        .from('cash_sessions')
+        .select(`*, opener:profiles!cash_sessions_opened_by_fkey(full_name)`)
+        .eq('status', 'open')
+        .eq('tenant_id', tenantId)
+        .single();
+
+    if (error && error.code !== 'PGRST116') {
+        return { data: null, error: error.message };
+    }
+
+    return { data: data as CashSession | null, error: null };
+}
+
+export async function openCashSession(openingAmount: number) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: 'No autenticado' };
 
     const { data: profile } = await supabase
         .from('profiles')
@@ -16,57 +46,23 @@ async function getCurrentUserContext() {
         .eq('id', user.id)
         .single();
 
-    if (!profile?.tenant_id) return null;
-    return { supabase, user, tenantId: profile.tenant_id };
-}
+    if (!profile?.tenant_id) return { data: null, error: 'Perfil no encontrado' };
 
-// Get current open cash session
-export async function getCurrentCashSession() {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
-
-    const { data, error } = await supabase
-        .from('cash_sessions')
-        .select(`
-            *,
-            opener:profiles!cash_sessions_opened_by_fkey(full_name)
-        `)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
-        .eq('status', 'open')
-        .single();
-
-    if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching cash session:', error);
-        return { data: null, error: error.message };
-    }
-
-    return { data: data as CashSession | null, error: null };
-}
-
-// Open new cash session
-export async function openCashSession(openingAmount: number) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, user, tenantId } = ctx;
-
-    // Check if there's already an open session FOR THIS TENANT
     const { data: existingSession } = await supabase
         .from('cash_sessions')
         .select('id')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('status', 'open')
+        .eq('tenant_id', profile.tenant_id)
         .single();
 
     if (existingSession) {
         return { data: null, error: 'Ya hay una caja abierta. Cerrala antes de abrir una nueva.' };
     }
 
-    // Create new session
     const { data, error } = await supabase
         .from('cash_sessions')
         .insert({
-            tenant_id: tenantId,  // CRITICAL: Always set tenant_id
+            tenant_id: profile.tenant_id,
             opened_by: user.id,
             opened_at: new Date().toISOString(),
             opening_amount: openingAmount,
@@ -80,34 +76,31 @@ export async function openCashSession(openingAmount: number) {
         .select()
         .single();
 
-    if (error) {
-        console.error('Error opening cash session:', error);
-        return { data: null, error: error.message };
-    }
+    if (error) return { data: null, error: error.message };
 
     revalidatePath('/caja');
     return { data: data as CashSession, error: null };
 }
 
-// Close cash session
 export async function closeCashSession(actualCash: number, notes?: string) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, user, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
-    // Get current open session FOR THIS TENANT
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: 'No autenticado' };
+
     const { data: session, error: sessionError } = await supabase
         .from('cash_sessions')
         .select('*')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('status', 'open')
+        .eq('tenant_id', tenantId)
         .single();
 
     if (sessionError || !session) {
         return { data: null, error: 'No hay caja abierta para cerrar' };
     }
 
-    // Calculate expected cash
     const expectedCash = session.opening_amount
         + session.total_sales_cash
         + session.total_deposits
@@ -115,7 +108,6 @@ export async function closeCashSession(actualCash: number, notes?: string) {
 
     const difference = actualCash - expectedCash;
 
-    // Update session
     const { data, error } = await supabase
         .from('cash_sessions')
         .update({
@@ -128,45 +120,43 @@ export async function closeCashSession(actualCash: number, notes?: string) {
             notes: notes,
         })
         .eq('id', session.id)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant on update
+        .eq('tenant_id', tenantId)
         .select()
         .single();
 
-    if (error) {
-        console.error('Error closing cash session:', error);
-        return { data: null, error: error.message };
-    }
+    if (error) return { data: null, error: error.message };
 
     revalidatePath('/caja');
     return { data: data as CashSession, error: null };
 }
 
-// Add cash movement (withdrawal or deposit)
 export async function addCashMovement(
     type: 'withdrawal' | 'deposit' | 'expense',
     amount: number,
     description?: string
 ) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, user, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
-    // Get current open session FOR THIS TENANT
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: 'No autenticado' };
+
     const { data: session, error: sessionError } = await supabase
         .from('cash_sessions')
         .select('id, total_withdrawals, total_deposits')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('status', 'open')
+        .eq('tenant_id', tenantId)
         .single();
 
     if (sessionError || !session) {
         return { data: null, error: 'No hay caja abierta' };
     }
 
-    // Create movement record
     const { data: movement, error: movementError } = await supabase
         .from('cash_movements')
         .insert({
+            tenant_id: tenantId,
             session_id: session.id,
             type: type,
             amount: amount,
@@ -176,12 +166,8 @@ export async function addCashMovement(
         .select()
         .single();
 
-    if (movementError) {
-        console.error('Error creating cash movement:', movementError);
-        return { data: null, error: movementError.message };
-    }
+    if (movementError) return { data: null, error: movementError.message };
 
-    // Update session totals
     const updateData: Record<string, number> = {};
     if (type === 'withdrawal' || type === 'expense') {
         updateData.total_withdrawals = session.total_withdrawals + amount;
@@ -193,68 +179,34 @@ export async function addCashMovement(
         .from('cash_sessions')
         .update(updateData)
         .eq('id', session.id)
-        .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant on update
+        .eq('tenant_id', tenantId);
 
     revalidatePath('/caja');
     return { data: movement as CashMovement, error: null };
 }
 
-// Get cash movements for current session
 export async function getCashMovements(sessionId?: string) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
-    // If no sessionId provided, get the current open session for this tenant
-    let targetSessionId = sessionId;
-    if (!targetSessionId) {
-        const { data: openSession } = await supabase
-            .from('cash_sessions')
-            .select('id')
-            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
-            .eq('status', 'open')
-            .single();
-        targetSessionId = openSession?.id;
-    }
-
-    if (!targetSessionId) {
-        return { data: [], error: null };
-    }
-
-    // Verify the session belongs to this tenant before fetching movements
-    const { data: sessionCheck } = await supabase
-        .from('cash_sessions')
-        .select('id')
-        .eq('id', targetSessionId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Verify session belongs to tenant
-        .single();
-
-    if (!sessionCheck) {
-        return { data: null, error: 'Sesión no encontrada' };
-    }
-
-    const { data, error } = await supabase
+    let query = supabase
         .from('cash_movements')
-        .select(`
-            *,
-            creator:profiles!cash_movements_created_by_fkey(full_name)
-        `)
-        .eq('session_id', targetSessionId)
+        .select(`*, creator:profiles!cash_movements_created_by_fkey(full_name)`)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error('Error fetching cash movements:', error);
-        return { data: null, error: error.message };
-    }
+    if (sessionId) query = query.eq('session_id', sessionId);
 
+    const { data, error } = await query;
+    if (error) return { data: null, error: error.message };
     return { data: data as CashMovement[], error: null };
 }
 
-// Get cash session history
 export async function getCashSessionHistory(limit: number = 10) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
     const { data, error } = await supabase
         .from('cash_sessions')
@@ -263,40 +215,29 @@ export async function getCashSessionHistory(limit: number = 10) {
             opener:profiles!cash_sessions_opened_by_fkey(full_name),
             closer:profiles!cash_sessions_closed_by_fkey(full_name)
         `)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('status', 'closed')
+        .eq('tenant_id', tenantId)
         .order('closed_at', { ascending: false })
         .limit(limit);
 
-    if (error) {
-        console.error('Error fetching cash session history:', error);
-        return { data: null, error: error.message };
-    }
-
+    if (error) return { data: null, error: error.message };
     return { data: data as CashSession[], error: null };
 }
 
-// Get today's sales summary for cash (called when making sales)
 export async function updateCashSessionFromSale(totalAmount: number, paymentMethod: string) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { error: null }; // No session = skip silently
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { error: null };
 
-    const { supabase, tenantId } = ctx;
-
-    // Get current open session FOR THIS TENANT
     const { data: session } = await supabase
         .from('cash_sessions')
         .select('id, total_sales_cash, total_sales_other')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('status', 'open')
+        .eq('tenant_id', tenantId)
         .single();
 
-    if (!session) {
-        // No open session, skip update
-        return { error: null };
-    }
+    if (!session) return { error: null };
 
-    // Update based on payment method
     const isCash = paymentMethod === 'cash';
     const updateData = isCash
         ? { total_sales_cash: session.total_sales_cash + totalAmount }
@@ -306,7 +247,7 @@ export async function updateCashSessionFromSale(totalAmount: number, paymentMeth
         .from('cash_sessions')
         .update(updateData)
         .eq('id', session.id)
-        .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant on update
+        .eq('tenant_id', tenantId);
 
     return { error: null };
 }
