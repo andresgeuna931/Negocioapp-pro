@@ -64,8 +64,10 @@ export function SalesChart({ data }: SalesChartProps) {
                             <Tooltip
                                 content={({ active, payload, label }) => {
                                     if (active && payload && payload.length) {
-                                        const parts = label.split('-');
-                                        const fechaFormateada = `${parts[2]}/${parts[1]}/${parts[0]}`;
+                                        const parts = (label ?? '').split('-');
+                                        const fechaFormateada = parts.length === 3
+                                            ? `${parts[2]}/${parts[1]}/${parts[0]}`
+                                            : label ?? '';
                                         return (
                                             <div className="rounded-lg border bg-white p-3 shadow-sm dark:bg-slate-950 dark:border-slate-800 text-sm">
                                                 <div className="grid grid-cols-2 gap-4">
