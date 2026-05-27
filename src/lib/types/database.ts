@@ -5,7 +5,7 @@
 // Enums
 export type TenantStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
 export type UserRole = 'owner' | 'staff' | 'admin';
-export type UnitType = 'unit' | 'kg' | 'g' | 'lt' | 'ml';
+export type UnitType = 'unit' | 'kg' | 'lt';
 export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'mixed' | 'account';
 export type MovementType = 'sale' | 'adjustment' | 'purchase' | 'return';
 export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'unpaid';
@@ -19,11 +19,11 @@ export interface Tenant {
   name: string;
   slug: string;
   status: TenantStatus;
-  plan_type: SubscriptionPlan; // Added
-  subscription_status: SubscriptionStatus; // Added
-  trial_ends_at?: string; // Added
-  current_period_end?: string; // Added
-  mercadopago_customer_id?: string; // Added
+  plan_type: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
+  trial_ends_at?: string;
+  current_period_end?: string;
+  mercadopago_customer_id?: string;
   low_stock_threshold_default: number;
   address?: string;
   phone?: string;
@@ -47,7 +47,6 @@ export interface Profile {
   last_login_at?: string;
   created_at: string;
   updated_at: string;
-  // Relations
   tenant?: Tenant;
 }
 
@@ -80,7 +79,6 @@ export interface Sale {
   payment_method: PaymentMethod;
   notes?: string;
   created_at: string;
-  // Relations
   items?: SaleItem[];
   seller?: Profile;
 }
@@ -96,7 +94,6 @@ export interface SaleItem {
   unit_price: number;
   line_total: number;
   created_at: string;
-  // Relations
   product?: Product;
 }
 
@@ -113,7 +110,6 @@ export interface InventoryMovement {
   notes?: string;
   created_by?: string;
   created_at: string;
-  // Relations
   product?: Product;
 }
 
@@ -121,12 +117,12 @@ export interface InventoryMovement {
 export interface Subscription {
   id: string;
   tenant_id: string;
-  plan?: SubscriptionPlan; // Legacy
-  plan_id?: SubscriptionPlan; // Added
+  plan?: SubscriptionPlan;
+  plan_id?: SubscriptionPlan;
   status: SubscriptionStatus;
   current_period_start: string;
   current_period_end: string;
-  mercadopago_subscription_id?: string; // Added
+  mercadopago_subscription_id?: string;
   trial_ends_at?: string;
   last_payment_at?: string;
   last_payment_amount?: number;
@@ -152,7 +148,6 @@ export interface Customer {
   credit_limit: number;
   created_at: string;
   updated_at: string;
-  // Relations
   account?: CustomerAccount;
 }
 
@@ -176,7 +171,6 @@ export interface AccountMovement {
   reference_id?: string;
   created_by?: string;
   created_at: string;
-  // Relations
   creator?: Profile;
 }
 
@@ -184,7 +178,6 @@ export interface AccountMovement {
 // TIPOS PARA FORMULARIOS Y ACCIONES
 // ============================================
 
-// Crear/Editar Producto
 export interface ProductFormData {
   name: string;
   description?: string;
@@ -199,13 +192,11 @@ export interface ProductFormData {
   is_active?: boolean;
 }
 
-// Item del carrito
 export interface CartItem {
   product: Product;
   qty: number;
 }
 
-// Datos para crear venta
 export interface CreateSaleData {
   items: {
     product_id: string;
@@ -246,7 +237,6 @@ export interface LowStockProduct {
 // TIPOS PARA CONTROL DE CAJA
 // ============================================
 
-// Sesión de Caja
 export interface CashSession {
   id: string;
   tenant_id: string;
@@ -265,12 +255,10 @@ export interface CashSession {
   status: CashSessionStatus;
   notes?: string;
   created_at: string;
-  // Relations
   opener?: Profile;
   closer?: Profile;
 }
 
-// Movimiento de Caja
 export interface CashMovement {
   id: string;
   tenant_id: string;
@@ -281,7 +269,6 @@ export interface CashMovement {
   reference_id?: string;
   created_by: string;
   created_at: string;
-  // Relations
   creator?: Profile;
 }
 
@@ -302,7 +289,6 @@ export interface ApiResponse<T> {
   success: boolean;
 }
 
-// User session con profile
 export interface UserSession {
   user: {
     id: string;
