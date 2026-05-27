@@ -81,7 +81,12 @@ export function formatQuantity(qty: number, unitType: string): string {
     if (unitType === 'unit') {
         return `${Math.round(qty)} ${getUnitLabel(unitType, qty)}`;
     }
-    return `${formatNumber(qty, 3)} ${getUnitLabel(unitType, qty)}`;
+    // Mostrar hasta 3 decimales pero sin ceros innecesarios
+    const formatted = new Intl.NumberFormat('es-AR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 3,
+    }).format(qty);
+    return `${formatted} ${getUnitLabel(unitType, qty)}`;
 }
 
 // Generate slug from text
