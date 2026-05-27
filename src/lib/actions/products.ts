@@ -180,30 +180,28 @@ export async function deleteProduct(id: string) {
 
 export async function getLowStockProducts() {
     const supabase = await createClient();
-
     const { data, error } = await supabase.rpc('get_low_stock_products');
     if (error) return { data: null, error: error.message };
     return { data, error: null };
 }
 
+// Get categories from products table (returns unique strings)
 export async function getCategories() {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { data: [], error: 'No autenticado' };
 
     const { data, error } = await supabase
-        .from('products')
-        .select('category')
+        .from('categories')
+        .select('id, name')
         .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .not('category', 'is', null);
+        .order('name');
 
     if (error) return { data: [], error: error.message };
-
-    const categories = [...new Set(data.map((p) => p.category).filter(Boolean))];
-    return { data: categories as string[], error: null };
+    return { data: data as { id: string; name: string }[], error: null };
 }
 
+// Get categories from categories table (returns full objects with id)
 export async function getCategoriesFromTable() {
     const supabase = await createClient();
     const tenantId = await getTenantId();
@@ -217,6 +215,67 @@ export async function getCategoriesFromTable() {
 
     if (error) return { data: [], error: error.message };
     return { data: data.map(c => c.name) as string[], error: null };
+}
+
+// Create category
+export async function createCategory(name: string) {
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { error: 'No autenticado' };
+
+    const { error } = await supabase
+        .from('categories')
+        .insert({ tenant_id: tenantId, name: name.trim() });
+
+    if (error) {
+        if (error.code === '23505') return { error: 'Ya existe una categoría con ese nombre' };
+        return { error: error.message };
+    }
+
+    revalidatePath('/config');
+    revalidatePath('/productos');
+    return { error: null };
+}
+
+// Update category
+export async function updateCategory(id: string, name: string) {
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { error: 'No autenticado' };
+
+    const { error } = await supabase
+        .from('categories')
+        .update({ name: name.trim() })
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
+
+    if (error) {
+        if (error.code === '23505') return { error: 'Ya existe una categoría con ese nombre' };
+        return { error: error.message };
+    }
+
+    revalidatePath('/config');
+    revalidatePath('/productos');
+    return { error: null };
+}
+
+// Delete category
+export async function deleteCategory(id: string) {
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { error: 'No autenticado' };
+
+    const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
+
+    if (error) return { error: error.message };
+
+    revalidatePath('/config');
+    revalidatePath('/productos');
+    return { error: null };
 }
 
 export async function adjustStock(productId: string, newStock: number, notes?: string) {
