@@ -1,12 +1,17 @@
 'use client';
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useDebouncedCallback } from '@/hooks/use-debounce';
 
+interface Category {
+    id: string;
+    name: string;
+}
+
 interface ProductSearchProps {
-    categories: string[];
+    categories: Category[];
 }
 
 export function ProductSearch({ categories }: ProductSearchProps) {
@@ -54,7 +59,7 @@ export function ProductSearch({ categories }: ProductSearchProps) {
                 >
                     <option value="">Todas las categorías</option>
                     {categories.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
                     ))}
                 </select>
             )}

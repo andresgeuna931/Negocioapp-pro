@@ -32,6 +32,17 @@ export async function createSale(saleData: CreateSaleData) {
         return { data: null, error: 'Tu período de prueba ha finalizado. Suscribite para seguir vendiendo.' };
     }
 
+    // Check if there's an open cash session
+    const { data: openSession } = await supabase
+        .from('cash_sessions')
+        .select('id')
+        .eq('status', 'open')
+        .single();
+
+    if (!openSession) {
+        return { data: null, error: 'No hay caja abierta. Abrí la caja antes de realizar ventas.' };
+    }
+
     // Validate items
     if (!saleData.items || saleData.items.length === 0) {
         return { data: null, error: 'La venta debe tener al menos un producto' };
@@ -81,7 +92,6 @@ export async function createSale(saleData: CreateSaleData) {
             });
         }
 
-        // Check Limit
         const customerData = Array.isArray(customerAccount.customer) ? customerAccount.customer[0] : customerAccount.customer;
         const limit = customerData?.credit_limit || 0;
 
@@ -108,7 +118,6 @@ export async function createSale(saleData: CreateSaleData) {
         return { data: null, error: error.message };
     }
 
-    // POST-SALE: If Account, register debit movement
     if (saleData.payment_method === 'account' && saleData.customer_id) {
         const { data: customerAccount } = await supabase
             .from('customer_accounts')
@@ -171,7 +180,6 @@ export async function createSale(saleData: CreateSaleData) {
     return { data: saleId as string, error: null };
 }
 
-// Get sales with optional filters
 export async function getSales(options?: {
     from?: string;
     to?: string;
@@ -199,21 +207,10 @@ export async function getSales(options?: {
         .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .order('created_at', { ascending: false });
 
-    if (options?.from) {
-        query = query.gte('created_at', options.from);
-    }
-
-    if (options?.to) {
-        query = query.lte('created_at', options.to);
-    }
-
-    if (options?.limit) {
-        query = query.limit(options.limit);
-    }
-
-    if (options?.offset) {
-        query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
-    }
+    if (options?.from) query = query.gte('created_at', options.from);
+    if (options?.to) query = query.lte('created_at', options.to);
+    if (options?.limit) query = query.limit(options.limit);
+    if (options?.offset) query = query.range(options.offset, options.offset + (options.limit || 10) - 1);
 
     const { data, error } = await query;
 
@@ -225,18 +222,12 @@ export async function getSales(options?: {
     return { data: data as Sale[], error: null };
 }
 
-// Get today's sales
 export async function getTodaySales() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    return getSales({
-        from: today.toISOString(),
-        limit: 50,
-    });
+    return getSales({ from: today.toISOString(), limit: 50 });
 }
 
-// Get sale by ID
 export async function getSaleById(id: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
@@ -261,14 +252,10 @@ export async function getSaleById(id: string) {
         .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
-    if (error) {
-        return { data: null, error: error.message };
-    }
-
+    if (error) return { data: null, error: error.message };
     return { data: data as Sale, error: null };
 }
 
-// Get recent sales count and total for dashboard
 export async function getSalesStats() {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { today: { count: 0, total: 0 }, month: { count: 0, total: 0 } };
@@ -276,7 +263,6 @@ export async function getSalesStats() {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
     // Today's stats - filtered by tenant
@@ -303,4 +289,3 @@ export async function getSalesStats() {
         month: { count: monthCount, total: monthTotal },
     };
 }
-// Payment methods are exported from utils, not as server action

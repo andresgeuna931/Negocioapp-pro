@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, Save, Trash2, Eye } from 'lucide-react';
+import { Package, Save, Trash2, Eye, ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -15,24 +15,21 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { updateProduct, deleteProduct } from '@/lib/actions/products';
+import { Scanner } from '@/components/sales/scanner';
+import { updateProduct, deleteProduct, getCategoriesFromTable } from '@/lib/actions/products';
 import { formatCurrency, formatQuantity, getStockStatus } from '@/lib/utils';
 import type { Product, UnitType } from '@/lib/types';
 
 const unitOptions = [
     { value: 'unit', label: 'Unidad' },
     { value: 'kg', label: 'Kilogramo (kg)' },
-    { value: 'g', label: 'Gramo (g)' },
     { value: 'lt', label: 'Litro (lt)' },
-    { value: 'ml', label: 'Mililitro (ml)' },
 ];
 
 const unitLabels: Record<string, string> = {
-    unit: 'Unidad',
-    kg: 'Kilogramo (kg)',
-    g: 'Gramo (g)',
-    lt: 'Litro (lt)',
-    ml: 'Mililitro (ml)',
+    unit: 'unidad',
+    kg: 'kg',
+    lt: 'lt',
 };
 
 interface ProductCardProps {
@@ -47,40 +44,59 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showScanner, setShowScanner] = useState(false);
+    const [categories, setCategories] = useState<string[]>([]);
 
     // Form state
     const [name, setName] = useState(product.name);
     const [barcode, setBarcode] = useState(product.barcode || '');
     const [sku, setSku] = useState(product.sku || '');
-    const [unitType, setUnitType] = useState(product.unit_type);
+    const [unitType, setUnitType] = useState<UnitType>(product.unit_type);
     const [category, setCategory] = useState(product.category || '');
     const [price, setPrice] = useState(product.price.toString());
     const [cost, setCost] = useState(product.cost?.toString() || '');
     const [stockOnHand, setStockOnHand] = useState(product.stock_on_hand.toString());
     const [threshold, setThreshold] = useState(product.low_stock_threshold_override?.toString() || '');
 
+    const unitLabel = unitLabels[unitType] || 'unidad';
+    const priceNum = parseFloat(price) || 0;
+    const costNum = parseFloat(cost) || 0;
+    const margin = priceNum > 0 && costNum > 0 ? priceNum - costNum : null;
+    const marginPct = margin !== null && priceNum > 0 ? ((margin / priceNum) * 100).toFixed(1) : null;
+
     const status = getStockStatus(
         product.stock_on_hand,
         product.low_stock_threshold_override || 5
     );
 
+    useEffect(() => {
+        if (open) {
+            getCategoriesFromTable().then(result => {
+                if (result.data) setCategories(result.data);
+            });
+        }
+    }, [open]);
+
+    const handleScan = (scannedCode: string) => {
+        setBarcode(scannedCode);
+        setShowScanner(false);
+    };
+
     const handleSave = async () => {
         setError('');
         setLoading(true);
-
         try {
             const result = await updateProduct(product.id, {
                 name,
                 barcode: barcode || undefined,
                 sku: sku || undefined,
-                unit_type: unitType as UnitType,
+                unit_type: unitType,
                 category: category || undefined,
                 price: parseFloat(price),
                 cost: cost ? parseFloat(cost) : undefined,
                 stock_on_hand: parseFloat(stockOnHand),
                 low_stock_threshold_override: threshold ? parseFloat(threshold) : undefined,
             });
-
             if (result.error) {
                 setError(result.error);
             } else {
@@ -119,11 +135,8 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                 onClick={() => setOpen(true)}
             >
                 <CardContent className="p-4">
-                    {/* Product Image Placeholder */}
                     <div className="aspect-square rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center mb-4 relative overflow-hidden">
                         <Package className="w-12 h-12 text-slate-400" />
-
-                        {/* Stock badge */}
                         <Badge
                             variant={
                                 status === 'ok' ? 'success' :
@@ -136,8 +149,6 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                             {formatQuantity(product.stock_on_hand, product.unit_type)}
                         </Badge>
                     </div>
-
-                    {/* Product Info */}
                     <div>
                         <p className="font-medium text-slate-900 dark:text-white truncate">
                             {product.name}
@@ -161,7 +172,11 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                 </CardContent>
             </Card>
 
-            {/* Detail / Edit Dialog */}
+            {/* Scanner fuera del Dialog para evitar conflictos de z-index */}
+            {showScanner && (
+                <Scanner onScan={handleScan} onClose={() => setShowScanner(false)} />
+            )}
+
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
@@ -182,7 +197,6 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                     )}
 
                     {canEdit ? (
-                        /* ===== EDIT MODE (Owner) ===== */
                         <div className="space-y-4">
                             <Input
                                 label="Nombre *"
@@ -191,12 +205,31 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                                 required
                             />
 
+                            {/* Código de barras con scanner */}
                             <div className="grid grid-cols-2 gap-3">
-                                <Input
-                                    label="Código de barras"
-                                    value={barcode}
-                                    onChange={(e) => setBarcode(e.target.value)}
-                                />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Código de barras
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={barcode}
+                                            onChange={(e) => setBarcode(e.target.value)}
+                                            placeholder="Ej: 779089..."
+                                            className="flex-1"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => setShowScanner(true)}
+                                            title="Escanear código"
+                                            className="shrink-0 h-11 w-11"
+                                        >
+                                            <ScanLine className="w-5 h-5" />
+                                        </Button>
+                                    </div>
+                                </div>
                                 <Input
                                     label="SKU (opcional)"
                                     value={sku}
@@ -204,6 +237,7 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                                 />
                             </div>
 
+                            {/* Unidad y Categoría */}
                             <div className="grid grid-cols-2 gap-3">
                                 <Select
                                     label="Unidad"
@@ -211,42 +245,86 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                                     onChange={(e) => setUnitType(e.target.value as UnitType)}
                                     options={unitOptions}
                                 />
-                                <Input
-                                    label="Categoría"
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Categoría
+                                    </label>
+                                    <select
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    >
+                                        <option value="">Sin categoría</option>
+                                        {categories.map(cat => (
+                                            <option key={cat} value={cat}>{cat}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
+                            {/* Precio con sufijo unidad */}
                             <div className="grid grid-cols-2 gap-3">
-                                <Input
-                                    label="Precio *"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    required
-                                />
-                                <Input
-                                    label="Costo"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={cost}
-                                    onChange={(e) => setCost(e.target.value)}
-                                />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Precio * <span className="text-slate-400 font-normal">por {unitLabel}</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={price}
+                                            onChange={(e) => setPrice(e.target.value)}
+                                            required
+                                            className="w-full h-11 pl-4 pr-14 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium pointer-events-none">
+                                            /{unitLabel}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Costo con margen */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Costo <span className="text-slate-400 font-normal">(opcional)</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={cost}
+                                            onChange={(e) => setCost(e.target.value)}
+                                            className="w-full h-11 pl-4 pr-14 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium pointer-events-none">
+                                            /{unitLabel}
+                                        </span>
+                                    </div>
+                                    {margin !== null && marginPct !== null && (
+                                        <div className={`flex items-center px-3 py-1.5 rounded-lg text-sm ${margin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'}`}>
+                                            <span className="font-medium">Margen: {formatCurrency(margin)} ({marginPct}%)</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
+                            {/* Stock con unidad dinámica */}
                             <div className="grid grid-cols-2 gap-3">
-                                <Input
-                                    label="Stock actual"
-                                    type="number"
-                                    step="0.001"
-                                    min="0"
-                                    value={stockOnHand}
-                                    onChange={(e) => setStockOnHand(e.target.value)}
-                                />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Stock actual <span className="text-slate-400 font-normal">({unitLabel})</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.001"
+                                        min="0"
+                                        value={stockOnHand}
+                                        onChange={(e) => setStockOnHand(e.target.value)}
+                                        className="w-full h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
                                 <Input
                                     label="Alerta stock bajo"
                                     type="number"
@@ -259,7 +337,7 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                             </div>
                         </div>
                     ) : (
-                        /* ===== READ-ONLY MODE (Staff) ===== */
+                        /* READ-ONLY MODE */
                         <div className="space-y-4">
                             <DetailRow label="Nombre" value={product.name} />
                             <div className="grid grid-cols-2 gap-3">
@@ -294,16 +372,10 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                                     Eliminar
                                 </Button>
                                 <div className="flex-1" />
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setOpen(false)}
-                                >
+                                <Button variant="outline" onClick={() => setOpen(false)}>
                                     Cancelar
                                 </Button>
-                                <Button
-                                    onClick={handleSave}
-                                    loading={loading}
-                                >
+                                <Button onClick={handleSave} loading={loading}>
                                     <Save className="w-4 h-4 mr-2" />
                                     Guardar
                                 </Button>
@@ -332,7 +404,6 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                                 </div>
                             </div>
                         ) : (
-                            /* Staff: just a close button */
                             <Button
                                 variant="outline"
                                 onClick={() => setOpen(false)}
@@ -348,7 +419,6 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
     );
 }
 
-/* Helper: read-only detail row */
 function DetailRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
     return (
         <div>

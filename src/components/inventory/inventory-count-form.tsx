@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Check, AlertTriangle, Loader2, X } from 'lucide-react';
+import { Search, Package, Check, AlertTriangle, Loader2, X, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { formatQuantity } from '@/lib/utils';
 import { getProductsForCount, applyInventoryAdjustments } from '@/lib/actions/inventory';
+import { getCurrentSession } from '@/lib/actions/auth';
 import { ADJUSTMENT_REASONS, type AdjustmentReason } from '@/lib/constants/adjustment-reasons';
 import { useRouter } from 'next/navigation';
 
@@ -31,8 +32,9 @@ export function InventoryCountForm() {
     const [applying, setApplying] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+    const [isOwner, setIsOwner] = useState(false);
 
-    // Load products
+    // Load products and check role
     const loadProducts = async (searchTerm?: string) => {
         setLoading(true);
         const result = await getProductsForCount(searchTerm);
@@ -54,39 +56,37 @@ export function InventoryCountForm() {
 
     useEffect(() => {
         loadProducts();
+        getCurrentSession().then(session => {
+            setIsOwner(session?.profile.role === 'owner');
+        });
     }, []);
 
-    // Handle search
     const handleSearch = () => {
         loadProducts(search || undefined);
     };
 
-    // Update counted stock for a product
     const updateCount = (productId: string, value: string) => {
         const numValue = value === '' ? null : parseFloat(value);
         setProducts(prev => prev.map(p =>
-            p.id === productId
-                ? { ...p, countedStock: numValue }
-                : p
+            p.id === productId ? { ...p, countedStock: numValue } : p
         ));
     };
 
-    // Update reason for a product
     const updateReason = (productId: string, reason: AdjustmentReason) => {
         setProducts(prev => prev.map(p =>
-            p.id === productId
-                ? { ...p, reason }
-                : p
+            p.id === productId ? { ...p, reason } : p
         ));
     };
 
-    // Get products with differences
     const productsWithDifference = products.filter(p =>
         p.countedStock !== null && p.countedStock !== p.systemStock
     );
 
-    // Apply adjustments
     const handleApply = async () => {
+        if (!isOwner) {
+            setError('Solo el dueño puede aplicar ajustes de inventario');
+            return;
+        }
         if (productsWithDifference.length === 0) {
             setError('No hay diferencias para ajustar');
             return;
@@ -109,7 +109,6 @@ export function InventoryCountForm() {
 
         if (result.success) {
             setSuccess(`✓ Se ajustaron ${result.adjustedCount} productos`);
-            // Reload products
             await loadProducts(search || undefined);
         } else {
             setError(result.error || 'Error al aplicar ajustes');
@@ -117,7 +116,6 @@ export function InventoryCountForm() {
         setApplying(false);
     };
 
-    // Clear all counts
     const handleClear = () => {
         setProducts(prev => prev.map(p => ({
             ...p,
@@ -137,7 +135,6 @@ export function InventoryCountForm() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                {/* Success/Error Messages */}
                 {success && (
                     <div className="p-4 rounded-xl bg-emerald-100 text-emerald-700 flex items-center gap-2">
                         <Check className="w-5 h-5" />
@@ -151,7 +148,16 @@ export function InventoryCountForm() {
                     </div>
                 )}
 
-                {/* Search */}
+                {/* Aviso para empleados */}
+                {!isOwner && (
+                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center gap-3">
+                        <Lock className="w-5 h-5 text-blue-500 shrink-0" />
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                            Podés contar los productos, pero solo el <strong>dueño</strong> puede aplicar los ajustes.
+                        </p>
+                    </div>
+                )}
+
                 <div className="flex gap-2">
                     <div className="flex-1">
                         <Input
@@ -168,7 +174,6 @@ export function InventoryCountForm() {
                     </Button>
                 </div>
 
-                {/* Products Table */}
                 {loading ? (
                     <div className="py-12 text-center">
                         <Loader2 className="w-8 h-8 mx-auto animate-spin text-slate-400" />
@@ -255,7 +260,6 @@ export function InventoryCountForm() {
                     </div>
                 )}
 
-                {/* Footer */}
                 <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                     <div className="text-sm text-slate-500">
                         {productsWithDifference.length > 0 ? (
@@ -273,10 +277,15 @@ export function InventoryCountForm() {
                         </Button>
                         <Button
                             onClick={handleApply}
-                            disabled={productsWithDifference.length === 0 || applying}
+                            disabled={productsWithDifference.length === 0 || applying || !isOwner}
                             loading={applying}
+                            title={!isOwner ? 'Solo el dueño puede aplicar ajustes' : ''}
                         >
-                            <Check className="w-4 h-4 mr-2" />
+                            {!isOwner ? (
+                                <Lock className="w-4 h-4 mr-2" />
+                            ) : (
+                                <Check className="w-4 h-4 mr-2" />
+                            )}
                             Aplicar Ajustes ({productsWithDifference.length})
                         </Button>
                     </div>

@@ -22,7 +22,7 @@ export const PLANS = {
     PROFESSIONAL: {
         id: 'professional',
         name: 'Profesional',
-        price: 20, // TEMP: original is 35000 — restore after testing
+        price: 35000, 
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL,
         limits: {
             products: 5000,

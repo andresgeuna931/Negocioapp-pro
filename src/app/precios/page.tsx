@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { getTenantSettings, getSubscriptionStatus, getCurrentSession } from '@/lib/actions/auth';
 import { PricingSection } from '@/components/subscriptions/pricing-section';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PricingPage() {
     const [session, tenant, subscriptionStatus] = await Promise.all([
         getCurrentSession(),
@@ -15,21 +17,19 @@ export default async function PricingPage() {
         redirect('/login');
     }
 
-    // Only owners can manage subscriptions
     if (session?.profile?.role !== 'owner') {
         redirect('/');
     }
 
-    // Check if user is in trial period (14 days from account creation)
-    // We check by date only — does NOT depend on tenant.status being exactly 'trial'
-    let isInTrial = false;
-    let trialDaysLeft = 0;
-
     const subscription = subscriptionStatus?.subscription;
-    const hasPaidSubscription = !!(
+
+    const hasPaidSubscription = tenant.status === 'active' || !!(
         subscription &&
         subscription.status === 'active'
     );
+
+    let isInTrial = false;
+    let trialDaysLeft = 0;
 
     if (!hasPaidSubscription && tenant.created_at) {
         const createdAt = new Date(tenant.created_at);
@@ -43,24 +43,22 @@ export default async function PricingPage() {
         }
     }
 
-    // hasPaidSubscription already calculated above
-
-    // Determine current plan (normalize 'premium' -> 'professional' for legacy webhook mappings)
-    let currentPlanId: string;
-    const rawPlanId = subscription?.plan || 'none';
+    const rawPlanId = subscription?.plan || subscription?.plan_id || 'none';
     const normalizedPlanId = rawPlanId === 'premium' ? 'professional' : rawPlanId;
 
-    if (hasPaidSubscription && normalizedPlanId) {
-        currentPlanId = normalizedPlanId;
+    let currentPlanId: string;
+    if (hasPaidSubscription) {
+        currentPlanId = (normalizedPlanId && normalizedPlanId !== 'none')
+            ? normalizedPlanId
+            : 'professional';
     } else if (isInTrial) {
-        currentPlanId = 'professional'; // Trial uses Professional features
+        currentPlanId = 'professional';
     } else {
         currentPlanId = 'none';
     }
 
     return (
         <div className="min-h-screen bg-slate-900">
-            {/* Back button */}
             <div className="max-w-6xl mx-auto pt-6 px-4">
                 <Link
                     href="/"
@@ -86,12 +84,6 @@ export default async function PricingPage() {
                         <div className="mt-6 inline-flex items-center gap-3 bg-slate-800 text-slate-100 px-6 py-2.5 rounded-full text-sm font-semibold border border-slate-700">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                             Te quedan {trialDaysLeft} días de prueba del Plan Profesional
-                        </div>
-                    )}
-                    {isInTrial && hasPaidSubscription && (
-                        <div className="mt-4 inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-full text-sm font-semibold">
-                            <span className="w-2 h-2 bg-emerald-400 rounded-full" />
-                            ✅ Suscripción confirmada. Tu plan pago arranca cuando termine la prueba.
                         </div>
                     )}
                 </div>
