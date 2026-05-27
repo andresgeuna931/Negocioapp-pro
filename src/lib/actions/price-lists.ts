@@ -23,85 +23,65 @@ export interface ProductPrice {
     price: number;
 }
 
-// Helper to get current user's tenant_id
-async function getCurrentUserContext() {
+async function getTenantId(): Promise<string | null> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-
     const { data: profile } = await supabase
         .from('profiles')
         .select('tenant_id')
         .eq('id', user.id)
         .single();
-
-    if (!profile?.tenant_id) return null;
-    return { supabase, user, tenantId: profile.tenant_id };
+    return profile?.tenant_id || null;
 }
 
-// Get all active price lists for the current tenant
 export async function getPriceLists() {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
     const { data, error } = await supabase
         .from('price_lists')
         .select('*')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-    if (error) {
-        console.error('Error fetching price lists:', error);
-        return { data: null, error: error.message };
-    }
-
+    if (error) return { data: null, error: error.message };
     return { data: data as PriceList[], error: null };
 }
 
-// Get all price lists including inactive
 export async function getAllPriceLists() {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
     const { data, error } = await supabase
         .from('price_lists')
         .select('*')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .order('sort_order', { ascending: true });
 
-    if (error) {
-        console.error('Error fetching price lists:', error);
-        return { data: null, error: error.message };
-    }
-
+    if (error) return { data: null, error: error.message };
     return { data: data as PriceList[], error: null };
 }
 
-// Get the default price list
 export async function getDefaultPriceList() {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
     const { data, error } = await supabase
         .from('price_lists')
         .select('*')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .eq('is_default', true)
         .single();
 
-    if (error) {
-        console.error('Error fetching default price list:', error);
-        return { data: null, error: error.message };
-    }
-
+    if (error) return { data: null, error: error.message };
     return { data: data as PriceList, error: null };
 }
 
-// Create a new price list
 export async function createPriceList(data: {
     name: string;
     description?: string;
@@ -109,9 +89,9 @@ export async function createPriceList(data: {
     adjustment_value: number;
     is_default?: boolean;
 }) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
     const { data: newList, error } = await supabase
         .from('price_lists')
@@ -126,10 +106,7 @@ export async function createPriceList(data: {
         .select()
         .single();
 
-    if (error) {
-        console.error('Error creating price list:', error);
-        return { data: null, error: error.message };
-    }
+    if (error) return { data: null, error: error.message };
 
     revalidatePath('/config/precios');
     revalidatePath('/productos');
@@ -138,7 +115,6 @@ export async function createPriceList(data: {
     return { data: newList as PriceList, error: null };
 }
 
-// Update a price list
 export async function updatePriceList(
     id: string,
     data: {
@@ -151,25 +127,19 @@ export async function updatePriceList(
         sort_order?: number;
     }
 ) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { data: null, error: 'No autenticado' };
 
     const { data: updated, error } = await supabase
         .from('price_lists')
-        .update({
-            ...data,
-            updated_at: new Date().toISOString(),
-        })
+        .update({ ...data, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .select()
         .single();
 
-    if (error) {
-        console.error('Error updating price list:', error);
-        return { data: null, error: error.message };
-    }
+    if (error) return { data: null, error: error.message };
 
     revalidatePath('/config/precios');
     revalidatePath('/productos');
@@ -178,25 +148,19 @@ export async function updatePriceList(
     return { data: updated as PriceList, error: null };
 }
 
-// Delete a price list
 export async function deletePriceList(id: string) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { success: false, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
+    const tenantId = await getTenantId();
+    if (!tenantId) return { success: false, error: 'No autenticado' };
 
-    // Check if it's the default list - also verify tenant
     const { data: list } = await supabase
         .from('price_lists')
         .select('is_default')
         .eq('id', id)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .single();
 
-    if (!list) {
-        return { success: false, error: 'Lista de precios no encontrada' };
-    }
-
-    if (list.is_default) {
+    if (list?.is_default) {
         return { success: false, error: 'No se puede eliminar la lista predeterminada' };
     }
 
@@ -204,12 +168,9 @@ export async function deletePriceList(id: string) {
         .from('price_lists')
         .delete()
         .eq('id', id)
-        .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId);
 
-    if (error) {
-        console.error('Error deleting price list:', error);
-        return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
 
     revalidatePath('/config/precios');
     revalidatePath('/productos');
@@ -217,69 +178,29 @@ export async function deletePriceList(id: string) {
     return { success: true, error: null };
 }
 
-// Get prices for a specific product across all lists
-// Note: product_prices are scoped via price_list which is scoped to tenant
 export async function getProductPrices(productId: string) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
-
-    // First verify the product belongs to this tenant
-    const { data: productCheck } = await supabase
-        .from('products')
-        .select('id')
-        .eq('id', productId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Verify product belongs to tenant
-        .single();
-
-    if (!productCheck) {
-        return { data: null, error: 'Producto no encontrado' };
-    }
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('product_prices')
-        .select(`
-            *,
-            price_list:price_lists(id, name, is_default)
-        `)
+        .select(`*, price_list:price_lists(id, name, is_default)`)
         .eq('product_id', productId);
 
-    if (error) {
-        console.error('Error fetching product prices:', error);
-        return { data: null, error: error.message };
-    }
-
+    if (error) return { data: null, error: error.message };
     return { data, error: null };
 }
 
-// Set prices for a product across multiple lists
 export async function setProductPrices(
     productId: string,
     prices: Array<{ priceListId: string; price: number }>
 ) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { success: false, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
 
-    // Verify the product belongs to this tenant
-    const { data: productCheck } = await supabase
-        .from('products')
-        .select('id')
-        .eq('id', productId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Verify product belongs to tenant
-        .single();
-
-    if (!productCheck) {
-        return { success: false, error: 'Producto no encontrado' };
-    }
-
-    // Delete existing prices for this product
     await supabase
         .from('product_prices')
         .delete()
         .eq('product_id', productId);
 
-    // Insert new prices
     const insertData = prices.map(p => ({
         product_id: productId,
         price_list_id: p.priceListId,
@@ -290,10 +211,7 @@ export async function setProductPrices(
         .from('product_prices')
         .insert(insertData);
 
-    if (error) {
-        console.error('Error setting product prices:', error);
-        return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
 
     revalidatePath('/productos');
     revalidatePath('/ventas');
@@ -301,13 +219,9 @@ export async function setProductPrices(
     return { success: true, error: null };
 }
 
-// Get the price of a product for a specific list
 export async function getProductPriceForList(productId: string, priceListId: string) {
-    const ctx = await getCurrentUserContext();
-    if (!ctx) return { price: null, error: 'No autenticado' };
-    const { supabase, tenantId } = ctx;
+    const supabase = await createClient();
 
-    // First try to get specific price from product_prices
     const { data: specificPrice } = await supabase
         .from('product_prices')
         .select('price')
@@ -319,21 +233,16 @@ export async function getProductPriceForList(productId: string, priceListId: str
         return { price: Number(specificPrice.price), error: null };
     }
 
-    // If no specific price, calculate from base price and adjustment
-    // Verify product belongs to tenant
     const { data: product } = await supabase
         .from('products')
         .select('sale_price')
         .eq('id', productId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
-    // Verify price list belongs to tenant
     const { data: priceList } = await supabase
         .from('price_lists')
         .select('adjustment_type, adjustment_value')
         .eq('id', priceListId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
     if (!product || !priceList) {
