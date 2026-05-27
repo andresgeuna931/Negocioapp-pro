@@ -4,8 +4,9 @@ import { useState, useCallback, useEffect } from 'react';
 import {
     ScanLine, Search, Plus, Minus, X, ShoppingCart,
     CreditCard, Banknote, ArrowRight, CheckCircle,
-    Tag, User, Scale, Smartphone, Building2
+    Tag, User, Scale, Smartphone, Building2, AlertTriangle
 } from 'lucide-react';
+import Link from 'next/link';
 import { CustomerSelector } from '@/components/pos/customer-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { getProducts, getProductByBarcode } from '@/lib/actions/products';
 import { createSale } from '@/lib/actions/sales';
 import { getPriceLists, type PriceList } from '@/lib/actions/price-lists';
 import { getPaymentSettings, type PaymentSettings } from '@/lib/actions/payment-settings';
+import { getCurrentCashSession } from '@/lib/actions/cash';
 import { calculateAdjustedPrice } from '@/lib/utils/pricing';
 import { formatCurrency } from '@/lib/utils';
 import type { Product, CartItem, PaymentMethod, UnitType } from '@/lib/types';
@@ -147,22 +149,18 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
     return (
         <div className="space-y-3">
             <p className="text-sm text-slate-500 text-center">Seleccioná método de pago</p>
-
             <Button size="lg" className="w-full" onClick={() => onConfirm('cash', 0)} loading={processing}>
                 <Banknote className="w-5 h-5 mr-2" />
                 Efectivo
             </Button>
-
             <button onClick={() => onConfirm('transfer', 0)} disabled={processing} className={btnSecondaryClass}>
                 <Building2 className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Transferencia</span>
             </button>
-
             <button onClick={() => onConfirm('transfer', 0)} disabled={processing} className={btnSecondaryClass}>
                 <Smartphone className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Código QR</span>
             </button>
-
             <button onClick={() => onConfirm('debit', debitSurcharge)} disabled={processing} className={btnSecondaryClass}>
                 <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Débito</span>
@@ -170,13 +168,11 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                     <span className="text-sm opacity-80 ml-2">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>
                 )}
             </button>
-
             <button onClick={() => setShowCredit(true)} disabled={processing} className={btnSecondaryClass}>
                 <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Crédito</span>
                 <span className="text-xs opacity-60 ml-2">1 o 3 cuotas →</span>
             </button>
-
             <button
                 onClick={onOpenCustomer}
                 disabled={processing}
@@ -185,7 +181,6 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                 <User className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Cuenta Corriente (Fiado)</span>
             </button>
-
             <Button variant="ghost" className="w-full" onClick={onCancel} disabled={processing}>Cancelar</Button>
         </div>
     );
@@ -196,6 +191,7 @@ export default function SalesPage() {
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
+    const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
     const [showScanner, setShowScanner] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -217,6 +213,9 @@ export default function SalesPage() {
         });
         getPaymentSettings().then(result => {
             if (result.data) setPaymentSettings(result.data);
+        });
+        getCurrentCashSession().then(result => {
+            setCashSessionOpen(!!result.data);
         });
     }, []);
 
@@ -372,6 +371,24 @@ export default function SalesPage() {
                 )}
             </div>
 
+            {/* Banner caja cerrada */}
+            {cashSessionOpen === false && (
+                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                            <p className="font-medium text-amber-800 dark:text-amber-200 text-sm">Caja cerrada</p>
+                            <p className="text-amber-600 dark:text-amber-400 text-xs">Abrí la caja para poder realizar ventas</p>
+                        </div>
+                    </div>
+                    <Link href="/caja">
+                        <Button size="sm" variant="outline" className="shrink-0 border-amber-300 text-amber-700 hover:bg-amber-100">
+                            Ir a Caja
+                        </Button>
+                    </Link>
+                </div>
+            )}
+
             {error && (
                 <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm flex items-center justify-between">
                     {error}
@@ -383,13 +400,13 @@ export default function SalesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 space-y-4">
-                    <Button size="lg" className="w-full h-20 text-lg" onClick={() => setShowScanner(true)}>
+                    <Button size="lg" className="w-full h-20 text-lg" onClick={() => setShowScanner(true)} disabled={cashSessionOpen === false}>
                         <ScanLine className="w-8 h-8 mr-3" />
                         Escanear Producto
                     </Button>
 
                     <div className="relative">
-                        <Input type="search" placeholder="Buscar producto por nombre o código..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} icon={<Search className="w-5 h-5" />} />
+                        <Input type="search" placeholder="Buscar producto por nombre o código..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} icon={<Search className="w-5 h-5" />} disabled={cashSessionOpen === false} />
                         {searchResults.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 max-h-80 overflow-auto z-20">
                                 {searchResults.map(product => (
@@ -426,7 +443,6 @@ export default function SalesPage() {
                                 <div className="space-y-3">
                                     {cart.map(item => (
                                         <div key={item.product.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
-                                            {/* Línea 1: nombre + total + eliminar */}
                                             <div className="flex items-center justify-between gap-2 mb-1">
                                                 <p className="font-medium text-slate-900 dark:text-white text-sm truncate flex-1">
                                                     {item.product.name}
@@ -440,8 +456,6 @@ export default function SalesPage() {
                                                     </button>
                                                 </div>
                                             </div>
-
-                                            {/* Línea 2: precio unitario + controles cantidad */}
                                             <div className="flex items-center justify-between gap-2">
                                                 <p className="text-xs text-slate-500">
                                                     {formatCurrency(item.adjustedPrice)} x {UNIT_LABELS[item.product.unit_type]}
@@ -494,7 +508,7 @@ export default function SalesPage() {
                                     <p className="text-4xl font-bold text-slate-900 dark:text-white">{formatCurrency(total)}</p>
                                 </div>
                                 {!showCheckout ? (
-                                    <Button size="lg" className="w-full" disabled={cart.length === 0} onClick={() => setShowCheckout(true)}>
+                                    <Button size="lg" className="w-full" disabled={cart.length === 0 || cashSessionOpen === false} onClick={() => setShowCheckout(true)}>
                                         Cobrar <ArrowRight className="w-5 h-5 ml-2" />
                                     </Button>
                                 ) : (
