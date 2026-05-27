@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { ADJUSTMENT_REASONS, type AdjustmentReason } from '@/lib/constants/adjustment-reasons';
 
-// Get products for inventory count
 export async function getProductsForCount(search?: string) {
     const supabase = await createClient();
 
@@ -28,7 +27,6 @@ export async function getProductsForCount(search?: string) {
     return { data, error: null };
 }
 
-// Apply inventory adjustments
 export async function applyInventoryAdjustments(
     adjustments: Array<{
         productId: string;
@@ -42,10 +40,24 @@ export async function applyInventoryAdjustments(
 ) {
     const supabase = await createClient();
 
-    // Get current user
+    // Get current user and tenant_id
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         return { success: false, error: 'No autenticado' };
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id, role')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) {
+        return { success: false, error: 'Perfil no encontrado' };
+    }
+
+    if (profile.role !== 'owner') {
+        return { success: false, error: 'Solo el dueño puede aplicar ajustes de inventario' };
     }
 
     let successCount = 0;
@@ -66,10 +78,11 @@ export async function applyInventoryAdjustments(
             continue;
         }
 
-        // Create inventory movement record
+        // Create inventory movement record con tenant_id
         const { error: movementError } = await supabase
             .from('inventory_movements')
             .insert({
+                tenant_id: profile.tenant_id,
                 product_id: adj.productId,
                 type: 'adjustment',
                 qty_change: adj.difference,
@@ -81,7 +94,8 @@ export async function applyInventoryAdjustments(
 
         if (movementError) {
             console.error('Error creating movement:', movementError);
-            // Continue anyway - the stock was updated
+            errors.push(`Error registrando movimiento de ${adj.productName}: ${movementError.message}`);
+            continue;
         }
 
         successCount++;
@@ -106,7 +120,6 @@ export async function applyInventoryAdjustments(
     };
 }
 
-// Get recent inventory adjustments history
 export async function getAdjustmentHistory(limit: number = 20) {
     const supabase = await createClient();
 
