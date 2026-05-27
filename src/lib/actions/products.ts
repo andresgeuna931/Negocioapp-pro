@@ -7,6 +7,22 @@ import { checkResourceLimit } from '@/lib/actions/subscription-limits';
 import { getCurrentSession } from '@/lib/actions/auth';
 import { hasPermission } from '@/lib/permissions';
 
+// Helper to get current user's tenant_id
+async function getCurrentUserContext() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) return null;
+    return { supabase, user, tenantId: profile.tenant_id };
+}
+
 // Get all products for current tenant
 export async function getProducts(options?: {
     search?: string;
@@ -14,11 +30,14 @@ export async function getProducts(options?: {
     activeOnly?: boolean;
     lowStockOnly?: boolean;
 }) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     let query = supabase
         .from('products')
         .select('*')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .order('name');
 
     if (options?.activeOnly !== false) {
@@ -47,12 +66,15 @@ export async function getProducts(options?: {
 
 // Get product by barcode
 export async function getProductByBarcode(barcode: string) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('barcode', barcode)
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true)
         .single();
 
@@ -68,12 +90,15 @@ export async function getProductByBarcode(barcode: string) {
 
 // Get product by ID
 export async function getProductById(id: string) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('id', id)
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
     if (error) {
@@ -147,11 +172,19 @@ export async function updateProduct(id: string, formData: Partial<ProductFormDat
     }
 
     const supabase = await createClient();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
+
+    if (!profile?.tenant_id) return { data: null, error: 'Tenant no encontrado' };
 
     const { data, error } = await supabase
         .from('products')
         .update(formData)
         .eq('id', id)
+        .eq('tenant_id', profile.tenant_id)  // CRITICAL: Filter by tenant
         .select()
         .single();
 
@@ -175,11 +208,19 @@ export async function deleteProduct(id: string) {
     }
 
     const supabase = await createClient();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', session.user.id)
+        .single();
+
+    if (!profile?.tenant_id) return { success: false, error: 'Tenant no encontrado' };
 
     const { error } = await supabase
         .from('products')
         .update({ is_active: false })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', profile.tenant_id);  // CRITICAL: Filter by tenant
 
     if (error) {
         return { success: false, error: error.message };
@@ -205,11 +246,14 @@ export async function getLowStockProducts() {
 
 // Get product categories
 export async function getCategories() {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: [], error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
         .from('products')
         .select('category')
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .eq('is_active', true)
         .not('category', 'is', null);
 
@@ -228,37 +272,30 @@ export async function adjustStock(
     newStock: number,
     notes?: string
 ) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autenticado' };
+    const { supabase, user, tenantId } = ctx;
 
-    // Get current stock
+    // Get current stock - verify product belongs to this tenant
     const { data: product, error: fetchError } = await supabase
         .from('products')
         .select('stock_on_hand, name')
         .eq('id', productId)
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
     if (fetchError || !product) {
         return { success: false, error: 'Producto no encontrado' };
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('id', user?.id)
-        .single();
-
-    if (!profile) {
-        return { success: false, error: 'Perfil no encontrado' };
-    }
-
     const qtyChange = newStock - product.stock_on_hand;
 
-    // Update stock
+    // Update stock - also filtered by tenant for extra safety
     const { error: updateError } = await supabase
         .from('products')
         .update({ stock_on_hand: newStock })
-        .eq('id', productId);
+        .eq('id', productId)
+        .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
 
     if (updateError) {
         return { success: false, error: updateError.message };
@@ -266,14 +303,14 @@ export async function adjustStock(
 
     // Create inventory movement
     await supabase.from('inventory_movements').insert({
-        tenant_id: profile.tenant_id,
+        tenant_id: tenantId,
         product_id: productId,
         type: 'adjustment',
         qty_change: qtyChange,
         stock_before: product.stock_on_hand,
         stock_after: newStock,
         notes: notes || `Ajuste manual de stock: ${product.name}`,
-        created_by: user?.id,
+        created_by: user.id,
     });
 
     revalidatePath('/productos');
@@ -300,39 +337,25 @@ export async function importProducts(
         return { success: false, error: limitCheck.error || 'Límite alcanzado', created: 0, updated: 0, errors: [] };
     }
 
-    const supabase = await createClient();
-
-    // Get current user's tenant_id
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { success: false, error: 'No autenticado' };
-    }
-
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-    if (!profile) {
-        return { success: false, error: 'Perfil no encontrado' };
-    }
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     let createdCount = 0;
     let updatedCount = 0;
     let errors: string[] = [];
 
-    // Process in batches (simulated by loop for now)
+    // Process in batches
     for (const p of products) {
         try {
-            // Check if product exists (by barcode OR sku)
+            // Check if product exists (by barcode OR sku) - always filtered by tenant
             let existingProduct = null;
 
             if (p.barcode) {
                 const { data } = await supabase
                     .from('products')
                     .select('id')
-                    .eq('tenant_id', profile.tenant_id)
+                    .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
                     .eq('barcode', p.barcode)
                     .single();
                 existingProduct = data;
@@ -340,26 +363,27 @@ export async function importProducts(
                 const { data } = await supabase
                     .from('products')
                     .select('id')
-                    .eq('tenant_id', profile.tenant_id)
+                    .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
                     .eq('sku', p.sku)
                     .single();
                 existingProduct = data;
             }
 
             if (existingProduct) {
-                // Update
+                // Update - filtered by tenant for safety
                 const { error } = await supabase
                     .from('products')
                     .update({
                         name: p.name,
                         price: p.price,
                         cost: p.cost,
-                        stock_on_hand: p.stock_on_hand, // Basic update, usually adds to stock but for import we overwrite
+                        stock_on_hand: p.stock_on_hand,
                         category: p.category,
                         unit_type: p.unit_type || 'unit',
                         is_active: true
                     })
-                    .eq('id', existingProduct.id);
+                    .eq('id', existingProduct.id)
+                    .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
 
                 if (error) throw error;
                 updatedCount++;
@@ -368,10 +392,10 @@ export async function importProducts(
                 const { error } = await supabase
                     .from('products')
                     .insert({
-                        tenant_id: profile.tenant_id,
+                        tenant_id: tenantId,
                         name: p.name,
                         barcode: p.barcode,
-                        sku: p.sku || p.barcode, // Fallback SKU
+                        sku: p.sku || p.barcode,
                         price: p.price,
                         cost: p.cost,
                         stock_on_hand: p.stock_on_hand,

@@ -16,9 +16,26 @@ export interface CreateCustomerData {
 
 export type UpdateCustomerData = Partial<CreateCustomerData> & { is_active?: boolean };
 
+// Helper to get current user's tenant_id and user id
+async function getCurrentUserContext() {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) return null;
+    return { supabase, user, tenantId: profile.tenant_id };
+}
+
 export async function getCustomers(query?: string): Promise<ApiResponse<Customer[]>> {
-    const supabase = await createClient(); // Await added here if needed, depending on updated SDK usage, but standard nextjs template is async
-    // Correct usage for server actions usually involves no await if it's the sync helper, but let's stick to pattern used in auth.ts
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, tenantId } = ctx;
 
     try {
         let dbQuery = supabase
@@ -27,6 +44,7 @@ export async function getCustomers(query?: string): Promise<ApiResponse<Customer
                 *,
                 account:customer_accounts(*)
             `)
+            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
             .order('full_name');
 
         if (query) {
@@ -48,7 +66,10 @@ export async function getCustomers(query?: string): Promise<ApiResponse<Customer
 }
 
 export async function getCustomerById(id: string): Promise<ApiResponse<Customer>> {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, tenantId } = ctx;
+
     try {
         const { data, error } = await supabase
             .from('customers')
@@ -57,6 +78,7 @@ export async function getCustomerById(id: string): Promise<ApiResponse<Customer>
                 account:customer_accounts(*)
             `)
             .eq('id', id)
+            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
             .single();
 
         if (error) {
@@ -70,24 +92,15 @@ export async function getCustomerById(id: string): Promise<ApiResponse<Customer>
 }
 
 export async function createCustomer(data: CreateCustomerData): Promise<ApiResponse<Customer>> {
-    const supabase = await createClient();
-
-    // Get tenant_id from auth session mostly handled by RLS, but for insert we need to act as authenticated user.
-    // NOTE: RLS policy checks auth.uid(). We rely on default mapping or explicit if needed.
-    // However, our table schema requires tenant_id. We must get it from the user's profile.
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'No autorizado' };
-
-    // Get profile to get tenant_id
-    const { data: profile } = await supabase.from('profiles').select('tenant_id').eq('id', user.id).single();
-    if (!profile) return { success: false, error: 'Perfil no encontrado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, tenantId } = ctx;
 
     try {
         const { data: newCustomer, error } = await supabase
             .from('customers')
             .insert({
-                tenant_id: profile.tenant_id,
+                tenant_id: tenantId,
                 full_name: data.full_name,
                 dni: data.dni,
                 email: data.email,
@@ -105,7 +118,7 @@ export async function createCustomer(data: CreateCustomerData): Promise<ApiRespo
         }
 
         revalidatePath('/customers');
-        revalidatePath('/sales'); // In case customer list allows selection there
+        revalidatePath('/sales');
         return { success: true, data: newCustomer as Customer };
     } catch (error) {
         console.error('Unexpected error:', error);
@@ -114,12 +127,16 @@ export async function createCustomer(data: CreateCustomerData): Promise<ApiRespo
 }
 
 export async function updateCustomer(id: string, data: UpdateCustomerData): Promise<ApiResponse<Customer>> {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, tenantId } = ctx;
+
     try {
         const { data: updatedCustomer, error } = await supabase
             .from('customers')
             .update(data)
             .eq('id', id)
+            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
             .select()
             .single();
 
@@ -136,12 +153,16 @@ export async function updateCustomer(id: string, data: UpdateCustomerData): Prom
 }
 
 export async function deleteCustomer(id: string): Promise<ApiResponse<void>> {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, tenantId } = ctx;
+
     try {
         const { error } = await supabase
             .from('customers')
             .delete()
-            .eq('id', id);
+            .eq('id', id)
+            .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
 
         if (error) {
             console.error('Error deleting customer:', error);
@@ -156,34 +177,32 @@ export async function deleteCustomer(id: string): Promise<ApiResponse<void>> {
 }
 
 export async function registerPayment(customerId: string, amount: number, notes?: string): Promise<ApiResponse<void>> {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, user, tenantId } = ctx;
 
-    // 1. Get user for tenant_id (optional safety check usually handled by RLS but good for auditing)
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: 'No autorizado' };
-
-    // 2. Get customer account
+    // Get customer account - ensure it belongs to this tenant via customer
     const { data: account } = await supabase
         .from('customer_accounts')
         .select('id, tenant_id')
         .eq('customer_id', customerId)
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
     if (!account) {
         return { success: false, error: 'Cuenta de cliente no encontrada' };
     }
 
-    // 3. Insert payment movement
-    // Trigger `update_account_balance` will automatically decrease debt
+    // Insert payment movement
     const { error } = await supabase
         .from('account_movements')
         .insert({
-            tenant_id: account.tenant_id,
+            tenant_id: tenantId,
             account_id: account.id,
             type: 'payment',
             amount: amount,
             description: notes || 'Pago a cuenta',
-            created_by: (await supabase.from('profiles').select('id').eq('id', user.id).single()).data?.id
+            created_by: user.id
         } as any);
 
     if (error) {
@@ -192,18 +211,20 @@ export async function registerPayment(customerId: string, amount: number, notes?
     }
 
     revalidatePath('/clientes');
-    // Also revalidate sales if we show status there?
     return { success: true };
 }
 
 export async function getCustomerMovements(customerId: string) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, tenantId } = ctx;
 
-    // Get account first
+    // Get account first, ensuring it belongs to this tenant
     const { data: account } = await supabase
         .from('customer_accounts')
         .select('id')
         .eq('customer_id', customerId)
+        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
         .single();
 
     if (!account) return { success: false, error: 'Cuenta no encontrada' };
@@ -215,6 +236,7 @@ export async function getCustomerMovements(customerId: string) {
             creator:profiles(full_name)
         `)
         .eq('account_id', account.id)
+        .eq('tenant_id', tenantId)  // CRITICAL: Double-check tenant on movements too
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -238,7 +260,7 @@ export async function importCustomers(
 ) {
     const supabase = await createClient();
 
-    // Call RPC
+    // Call RPC (RPC uses auth.uid() internally to scope to tenant)
     const { data: result, error } = await supabase.rpc('import_customers_with_balance', {
         p_customers: customers
     });
