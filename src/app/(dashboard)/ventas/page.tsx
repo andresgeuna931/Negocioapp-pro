@@ -24,9 +24,9 @@ interface CartItemWithPrice extends CartItem {
     adjustedPrice: number;
 }
 
-const VARIABLE_UNITS: UnitType[] = ['kg', 'g', 'lt', 'ml'];
+const VARIABLE_UNITS: UnitType[] = ['kg', 'lt'];
 const UNIT_LABELS: Record<UnitType, string> = {
-    unit: 'unidad', kg: 'kg', g: 'g', lt: 'lt', ml: 'ml',
+    unit: 'unidad', kg: 'kg', lt: 'lt',
 };
 
 function isVariableUnit(unit: UnitType): boolean {
@@ -156,29 +156,17 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                 Efectivo
             </Button>
 
-            <button
-                onClick={() => onConfirm('transfer', 0)}
-                disabled={processing}
-                className={btnSecondaryClass}
-            >
+            <button onClick={() => onConfirm('transfer', 0)} disabled={processing} className={btnSecondaryClass}>
                 <Building2 className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Transferencia</span>
             </button>
 
-            <button
-                onClick={() => onConfirm('transfer', 0)}
-                disabled={processing}
-                className={btnSecondaryClass}
-            >
+            <button onClick={() => onConfirm('transfer', 0)} disabled={processing} className={btnSecondaryClass}>
                 <Smartphone className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Código QR</span>
             </button>
 
-            <button
-                onClick={() => onConfirm('debit', debitSurcharge)}
-                disabled={processing}
-                className={btnSecondaryClass}
-            >
+            <button onClick={() => onConfirm('debit', debitSurcharge)} disabled={processing} className={btnSecondaryClass}>
                 <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Débito</span>
                 {debitSurcharge > 0 && (
@@ -186,11 +174,7 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                 )}
             </button>
 
-            <button
-                onClick={() => setShowCredit(true)}
-                disabled={processing}
-                className={btnSecondaryClass}
-            >
+            <button onClick={() => setShowCredit(true)} disabled={processing} className={btnSecondaryClass}>
                 <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Crédito</span>
                 <span className="text-xs opacity-60 ml-2">1 o 3 cuotas →</span>
