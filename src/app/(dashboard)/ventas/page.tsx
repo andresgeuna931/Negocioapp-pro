@@ -106,6 +106,8 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
 
     const calcTotal = (surcharge: number) => total * (1 + surcharge / 100);
 
+    const btnSecondaryClass = "w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed";
+
     if (showCredit) {
         return (
             <div className="space-y-3">
@@ -116,21 +118,29 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Seleccioná las cuotas</p>
                 </div>
 
-                <Button size="lg" className="w-full" onClick={() => onConfirm('credit', credit1Surcharge, 1)} loading={processing}>
-                    <CreditCard className="w-5 h-5 mr-2" />
+                <button
+                    onClick={() => onConfirm('credit', credit1Surcharge, 1)}
+                    disabled={processing}
+                    className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                     <span className="flex-1 text-left">1 cuota</span>
                     {credit1Surcharge > 0 && (
                         <span className="text-sm opacity-80 ml-2">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>
                     )}
-                </Button>
+                </button>
 
-                <Button size="lg" variant="secondary" className="w-full" onClick={() => onConfirm('credit', credit3Surcharge, 3)} loading={processing}>
-                    <CreditCard className="w-5 h-5 mr-2" />
+                <button
+                    onClick={() => onConfirm('credit', credit3Surcharge, 3)}
+                    disabled={processing}
+                    className={btnSecondaryClass}
+                >
+                    <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                     <span className="flex-1 text-left">3 cuotas</span>
                     {credit3Surcharge > 0 && (
                         <span className="text-sm opacity-80 ml-2">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>
                     )}
-                </Button>
+                </button>
 
                 <Button variant="ghost" className="w-full" onClick={() => setShowCredit(false)} disabled={processing}>Volver</Button>
             </div>
@@ -146,38 +156,54 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                 Efectivo
             </Button>
 
-            <Button size="lg" variant="secondary" className="w-full" onClick={() => onConfirm('transfer', 0)} loading={processing}>
-                <Building2 className="w-5 h-5 mr-2" />
-                Transferencia
-            </Button>
+            <button
+                onClick={() => onConfirm('transfer', 0)}
+                disabled={processing}
+                className={btnSecondaryClass}
+            >
+                <Building2 className="w-5 h-5 mr-2 shrink-0" />
+                <span className="flex-1 text-left">Transferencia</span>
+            </button>
 
-            <Button size="lg" variant="secondary" className="w-full" onClick={() => onConfirm('transfer', 0)} loading={processing}>
-                <Smartphone className="w-5 h-5 mr-2" />
-                Código QR
-            </Button>
+            <button
+                onClick={() => onConfirm('transfer', 0)}
+                disabled={processing}
+                className={btnSecondaryClass}
+            >
+                <Smartphone className="w-5 h-5 mr-2 shrink-0" />
+                <span className="flex-1 text-left">Código QR</span>
+            </button>
 
-            <Button size="lg" variant="secondary" className="w-full" onClick={() => onConfirm('debit', debitSurcharge)} loading={processing}>
-                <CreditCard className="w-5 h-5 mr-2" />
+            <button
+                onClick={() => onConfirm('debit', debitSurcharge)}
+                disabled={processing}
+                className={btnSecondaryClass}
+            >
+                <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Débito</span>
                 {debitSurcharge > 0 && (
                     <span className="text-sm opacity-80 ml-2">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>
                 )}
-            </Button>
+            </button>
 
-            <Button size="lg" variant="secondary" className="w-full" onClick={() => setShowCredit(true)} loading={processing}>
-                <CreditCard className="w-5 h-5 mr-2" />
+            <button
+                onClick={() => setShowCredit(true)}
+                disabled={processing}
+                className={btnSecondaryClass}
+            >
+                <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Crédito</span>
                 <span className="text-xs opacity-60 ml-2">1 o 3 cuotas →</span>
-            </Button>
+            </button>
 
-            <Button
-                size="lg" variant="outline"
-                className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700"
-                onClick={onOpenCustomer} loading={processing}
+            <button
+                onClick={onOpenCustomer}
+                disabled={processing}
+                className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-orange-50 hover:bg-orange-100 text-orange-700 border-2 border-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <User className="w-5 h-5 mr-2" />
-                Cuenta Corriente (Fiado)
-            </Button>
+                <User className="w-5 h-5 mr-2 shrink-0" />
+                <span className="flex-1 text-left">Cuenta Corriente (Fiado)</span>
+            </button>
 
             <Button variant="ghost" className="w-full" onClick={onCancel} disabled={processing}>Cancelar</Button>
         </div>
