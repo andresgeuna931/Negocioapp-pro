@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Package, Save, ScanLine } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Scanner } from '@/components/sales/scanner';
-import { createProduct } from '@/lib/actions/products';
+import { createProduct, getCategoriesFromTable } from '@/lib/actions/products';
 import { formatCurrency } from '@/lib/utils';
 import type { UnitType } from '@/lib/types';
 
@@ -34,13 +34,20 @@ export default function NewProductPage() {
     const [unitType, setUnitType] = useState<UnitType>('unit');
     const [price, setPrice] = useState('');
     const [cost, setCost] = useState('');
+    const [categories, setCategories] = useState<string[]>([]);
     const nameInputRef = useRef<HTMLInputElement>(null);
 
     const unitLabel = UNIT_LABELS[unitType];
     const priceNum = parseFloat(price) || 0;
     const costNum = parseFloat(cost) || 0;
     const margin = priceNum > 0 && costNum > 0 ? priceNum - costNum : null;
-    const marginPct = margin !== null && costNum > 0 ? ((margin / priceNum) * 100).toFixed(1) : null;
+    const marginPct = margin !== null && priceNum > 0 ? ((margin / priceNum) * 100).toFixed(1) : null;
+
+    useEffect(() => {
+        getCategoriesFromTable().then(result => {
+            if (result.data) setCategories(result.data);
+        });
+    }, []);
 
     const handleScan = (scannedCode: string) => {
         setBarcode(scannedCode);
@@ -160,11 +167,21 @@ export default function NewProductPage() {
                                 value={unitType}
                                 onChange={(e) => setUnitType(e.target.value as UnitType)}
                             />
-                            <Input
-                                name="category"
-                                label="Categoría"
-                                placeholder="Ej: Bebidas"
-                            />
+                            {/* Categoría con select dinámico */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Categoría
+                                </label>
+                                <select
+                                    name="category"
+                                    className="w-full h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                >
+                                    <option value="">Sin categoría</option>
+                                    {categories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Precio con sufijo de unidad */}
@@ -191,7 +208,7 @@ export default function NewProductPage() {
                                 </div>
                             </div>
 
-                            {/* Costo con indicador de margen */}
+                            {/* Costo con margen */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Costo <span className="text-slate-400 font-normal">(opcional)</span>
@@ -213,15 +230,13 @@ export default function NewProductPage() {
                                 </div>
                                 {margin !== null && marginPct !== null && (
                                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${margin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'}`}>
-                                        <span className="font-medium">
-                                            Margen: {formatCurrency(margin)} ({marginPct}%)
-                                        </span>
+                                        <span className="font-medium">Margen: {formatCurrency(margin)} ({marginPct}%)</span>
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Stock con unidad dinámica en el label */}
+                        {/* Stock con unidad dinámica */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
