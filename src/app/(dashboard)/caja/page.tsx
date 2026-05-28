@@ -2,7 +2,7 @@ import { Wallet, Clock, ArrowDownCircle, ArrowUpCircle, History, ArrowLeftRight,
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentCashSession, getCashMovements, getCashSessionHistory } from '@/lib/actions/cash';
 import { getSales } from '@/lib/actions/sales';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { CashSessionCard } from '@/components/cash/cash-session-card';
 import { CashHistoryTable } from '@/components/cash/cash-history-table';
 
@@ -44,9 +44,10 @@ export default async function CajaPage() {
     const methodLabels: Record<string, { label: string; icon: any; color: string }> = {
         cash: { label: 'Efectivo', icon: Banknote, color: 'text-emerald-600' },
         transfer: { label: 'Transferencia', icon: Building2, color: 'text-blue-600' },
+        qr: { label: 'Código QR', icon: Smartphone, color: 'text-indigo-600' },
         debit: { label: 'Débito', icon: CreditCard, color: 'text-purple-600' },
         credit: { label: 'Crédito', icon: CreditCard, color: 'text-orange-600' },
-        mixed: { label: 'QR / Otros', icon: Smartphone, color: 'text-slate-600' },
+        mixed: { label: 'Otros', icon: ArrowLeftRight, color: 'text-slate-600' },
         account: { label: 'Cuenta Corriente', icon: ArrowLeftRight, color: 'text-amber-600' },
     };
 
@@ -61,7 +62,7 @@ export default async function CajaPage() {
 
             {currentSession && (
                 <>
-                    {/* Stats por método */}
+                    {/* Stats */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <Card>
                             <CardContent className="p-5">
