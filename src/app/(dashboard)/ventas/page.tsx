@@ -35,6 +35,53 @@ function isVariableUnit(unit: UnitType): boolean {
     return VARIABLE_UNITS.includes(unit);
 }
 
+// Input de cantidad con estado local para no borrar mientras escribís
+function QtyInput({ value, max, step, onCommit }: {
+    value: number;
+    max: number;
+    step: number;
+    onCommit: (qty: number) => void;
+}) {
+    const [localValue, setLocalValue] = useState(String(value));
+
+    useEffect(() => {
+        setLocalValue(String(value));
+    }, [value]);
+
+    const handleBlur = () => {
+        const parsed = parseFloat(localValue);
+        if (isNaN(parsed) || localValue === '') {
+            setLocalValue(String(value)); // Restaurar valor anterior
+        } else {
+            onCommit(Math.min(Math.max(0, parsed), max));
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+        }
+        if (e.key === 'Escape') {
+            setLocalValue(String(value));
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    return (
+        <input
+            type="number"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            className="w-16 h-7 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono text-sm"
+            step={step}
+            min={0}
+            max={max}
+        />
+    );
+}
+
 function QuantityModal({ product, adjustedPrice, onConfirm, onCancel }: {
     product: Product;
     adjustedPrice: number;
@@ -92,8 +139,9 @@ function QuantityModal({ product, adjustedPrice, onConfirm, onCancel }: {
     );
 }
 
-function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing, onOpenCustomer }: {
+function CheckoutModal({ total, cart, paymentSettings, onConfirm, onCancel, processing, onOpenCustomer }: {
     total: number;
+    cart: CartItemWithPrice[];
     paymentSettings: PaymentSettings | null;
     onConfirm: (method: PaymentMethod, surcharge: number, installments?: number) => void;
     onCancel: () => void;
@@ -119,27 +167,16 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
                     </button>
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Seleccioná las cuotas</p>
                 </div>
-                <button
-                    onClick={() => onConfirm('credit', credit1Surcharge, 1)}
-                    disabled={processing}
-                    className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={() => onConfirm('credit', credit1Surcharge, 1)} disabled={processing}
+                    className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed">
                     <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                     <span className="flex-1 text-left">1 cuota</span>
-                    {credit1Surcharge > 0 && (
-                        <span className="text-sm opacity-80 ml-2">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>
-                    )}
+                    {credit1Surcharge > 0 && <span className="text-sm opacity-80 ml-2">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>}
                 </button>
-                <button
-                    onClick={() => onConfirm('credit', credit3Surcharge, 3)}
-                    disabled={processing}
-                    className={btnSecondaryClass}
-                >
+                <button onClick={() => onConfirm('credit', credit3Surcharge, 3)} disabled={processing} className={btnSecondaryClass}>
                     <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                     <span className="flex-1 text-left">3 cuotas</span>
-                    {credit3Surcharge > 0 && (
-                        <span className="text-sm opacity-80 ml-2">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>
-                    )}
+                    {credit3Surcharge > 0 && <span className="text-sm opacity-80 ml-2">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>}
                 </button>
                 <Button variant="ghost" className="w-full" onClick={() => setShowCredit(false)} disabled={processing}>Volver</Button>
             </div>
@@ -148,7 +185,27 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
 
     return (
         <div className="space-y-3">
+            {/* Resumen del carrito */}
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 space-y-1.5 max-h-40 overflow-y-auto">
+                {cart.map(item => (
+                    <div key={item.product.id} className="flex items-center justify-between text-sm">
+                        <span className="text-slate-700 dark:text-slate-300 truncate flex-1 mr-2">
+                            {item.product.name}
+                            <span className="text-slate-400 ml-1">×{item.qty}</span>
+                        </span>
+                        <span className="font-medium text-slate-900 dark:text-white shrink-0">
+                            {formatCurrency(item.adjustedPrice * item.qty)}
+                        </span>
+                    </div>
+                ))}
+                <div className="flex justify-between items-center pt-1.5 border-t border-slate-200 dark:border-slate-700">
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Total</span>
+                    <span className="text-base font-bold text-emerald-600">{formatCurrency(total)}</span>
+                </div>
+            </div>
+
             <p className="text-sm text-slate-500 text-center">Seleccioná método de pago</p>
+
             <Button size="lg" className="w-full" onClick={() => onConfirm('cash', 0)} loading={processing}>
                 <Banknote className="w-5 h-5 mr-2" />
                 Efectivo
@@ -164,20 +221,15 @@ function CheckoutModal({ total, paymentSettings, onConfirm, onCancel, processing
             <button onClick={() => onConfirm('debit', debitSurcharge)} disabled={processing} className={btnSecondaryClass}>
                 <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Débito</span>
-                {debitSurcharge > 0 && (
-                    <span className="text-sm opacity-80 ml-2">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>
-                )}
+                {debitSurcharge > 0 && <span className="text-sm opacity-80 ml-2">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>}
             </button>
             <button onClick={() => setShowCredit(true)} disabled={processing} className={btnSecondaryClass}>
                 <CreditCard className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Crédito</span>
                 <span className="text-xs opacity-60 ml-2">1 o 3 cuotas →</span>
             </button>
-            <button
-                onClick={onOpenCustomer}
-                disabled={processing}
-                className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-orange-50 hover:bg-orange-100 text-orange-700 border-2 border-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button onClick={onOpenCustomer} disabled={processing}
+                className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-orange-50 hover:bg-orange-100 text-orange-700 border-2 border-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 disabled:opacity-50 disabled:cursor-not-allowed">
                 <User className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Cuenta Corriente (Fiado)</span>
             </button>
@@ -246,24 +298,18 @@ export default function SalesPage() {
     const scrollToCartItem = (productId: string) => {
         setHighlightedId(productId);
         const el = cartItemRefs.current[productId];
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => setHighlightedId(null), 1500);
     };
 
     const handleProductSelect = (product: Product) => {
         setSearchQuery('');
         setSearchResults([]);
-
-        // Si ya está en el carrito → solo hacer scroll, no agregar ni abrir modal
         const alreadyInCart = cart.find(item => item.product.id === product.id);
         if (alreadyInCart) {
             scrollToCartItem(product.id);
             return;
         }
-
-        // Si no está → agregar normalmente
         if (isVariableUnit(product.unit_type)) {
             setPendingProduct(product);
         } else {
@@ -302,12 +348,15 @@ export default function SalesPage() {
         }).filter(item => item.qty > 0));
     };
 
-    const setQty = (productId: string, qty: number) => {
-        if (qty <= 0) { setCart(prev => prev.filter(item => item.product.id !== productId)); return; }
-        setCart(prev => prev.map(item => {
-            if (item.product.id !== productId) return item;
-            return { ...item, qty: Math.min(qty, item.product.stock_on_hand) };
-        }));
+    const commitQty = (productId: string, qty: number) => {
+        if (qty <= 0) {
+            setCart(prev => prev.filter(item => item.product.id !== productId));
+        } else {
+            setCart(prev => prev.map(item => {
+                if (item.product.id !== productId) return item;
+                return { ...item, qty: Math.min(qty, item.product.stock_on_hand) };
+            }));
+        }
     };
 
     const removeFromCart = (productId: string) => setCart(prev => prev.filter(item => item.product.id !== productId));
@@ -506,13 +555,11 @@ export default function SalesPage() {
                                                         </button>
                                                     )}
                                                     <div className="flex flex-col items-center">
-                                                        <input
-                                                            type="number"
+                                                        <QtyInput
                                                             value={item.qty}
-                                                            onChange={(e) => setQty(item.product.id, parseFloat(e.target.value) || 0)}
-                                                            className="w-16 h-7 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono text-sm"
+                                                            max={item.product.stock_on_hand}
                                                             step={isVariableUnit(item.product.unit_type) ? 0.001 : 1}
-                                                            min={0} max={item.product.stock_on_hand}
+                                                            onCommit={(qty) => commitQty(item.product.id, qty)}
                                                         />
                                                         <span className="text-[10px] text-slate-400">máx: {item.product.stock_on_hand}</span>
                                                     </div>
@@ -550,6 +597,7 @@ export default function SalesPage() {
                                 ) : (
                                     <CheckoutModal
                                         total={total}
+                                        cart={cart}
                                         paymentSettings={paymentSettings}
                                         onConfirm={(method, surcharge, installments) => handleCheckout(method, surcharge, installments)}
                                         onCancel={() => setShowCheckout(false)}
