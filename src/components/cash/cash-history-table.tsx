@@ -23,6 +23,8 @@ export function CashHistoryTable({ sessions }: CashHistoryTableProps) {
                 <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700">
                         <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Fecha</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Abrió</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-slate-500">Cerró</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Apertura</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Esperado</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-slate-500">Real</th>
@@ -42,8 +44,20 @@ export function CashHistoryTable({ sessions }: CashHistoryTableProps) {
                                         {session.closed_at && new Date(session.closed_at).toLocaleDateString('es-AR')}
                                     </div>
                                     <div className="text-xs text-slate-500">
+                                        {session.opened_at && new Date(session.opened_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                        {' → '}
                                         {session.closed_at && new Date(session.closed_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                                     </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                                        {(session.opener as any)?.full_name || '—'}
+                                    </p>
+                                </td>
+                                <td className="py-3 px-4">
+                                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                                        {(session.closer as any)?.full_name || '—'}
+                                    </p>
                                 </td>
                                 <td className="py-3 px-4 text-right text-slate-600 dark:text-slate-400">
                                     {formatCurrency(session.opening_amount)}
