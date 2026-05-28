@@ -234,7 +234,7 @@ export default function SalesPage() {
         const result = await getProductByBarcode(barcode);
         if (result.error) { setError(`Producto no encontrado: ${barcode}`); return; }
         if (result.data) handleProductSelect(result.data);
-    }, [selectedPriceList]);
+    }, [selectedPriceList, cart]);
 
     const handleSearch = async (query: string) => {
         setSearchQuery(query);
@@ -256,12 +256,14 @@ export default function SalesPage() {
         setSearchQuery('');
         setSearchResults([]);
 
+        // Si ya está en el carrito → solo hacer scroll, no agregar ni abrir modal
         const alreadyInCart = cart.find(item => item.product.id === product.id);
         if (alreadyInCart) {
             scrollToCartItem(product.id);
             return;
         }
 
+        // Si no está → agregar normalmente
         if (isVariableUnit(product.unit_type)) {
             setPendingProduct(product);
         } else {
@@ -442,7 +444,7 @@ export default function SalesPage() {
                                             {inCart ? (
                                                 <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-lg text-xs font-medium shrink-0">
                                                     <Check className="w-3 h-3" />
-                                                    <span>{cartItem.qty} en carrito</span>
+                                                    <span>{cartItem.qty} en carrito → ver</span>
                                                 </div>
                                             ) : isVariableUnit(product.unit_type) ? (
                                                 <Scale className="w-5 h-5 text-emerald-600 shrink-0" />
