@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     ScanLine, Search, Plus, Minus, X, ShoppingCart,
     CreditCard, Banknote, ArrowRight, CheckCircle,
-    Tag, User, Scale, Smartphone, Building2, AlertTriangle
+    Tag, User, Scale, Smartphone, Building2, AlertTriangle, Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { CustomerSelector } from '@/components/pos/customer-selector';
@@ -202,6 +202,8 @@ export default function SalesPage() {
     const [lastSaleTotal, setLastSaleTotal] = useState(0);
     const [error, setError] = useState('');
     const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+    const [highlightedId, setHighlightedId] = useState<string | null>(null);
+    const cartItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     useEffect(() => {
         getPriceLists().then(result => {
@@ -241,9 +243,25 @@ export default function SalesPage() {
         setSearchResults(result.data || []);
     };
 
+    const scrollToCartItem = (productId: string) => {
+        setHighlightedId(productId);
+        const el = cartItemRefs.current[productId];
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        setTimeout(() => setHighlightedId(null), 1500);
+    };
+
     const handleProductSelect = (product: Product) => {
         setSearchQuery('');
         setSearchResults([]);
+
+        const alreadyInCart = cart.find(item => item.product.id === product.id);
+        if (alreadyInCart) {
+            scrollToCartItem(product.id);
+            return;
+        }
+
         if (isVariableUnit(product.unit_type)) {
             setPendingProduct(product);
         } else {
@@ -371,7 +389,6 @@ export default function SalesPage() {
                 )}
             </div>
 
-            {/* Banner caja cerrada */}
             {cashSessionOpen === false && (
                 <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -409,19 +426,32 @@ export default function SalesPage() {
                         <Input type="search" placeholder="Buscar producto por nombre o código..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} icon={<Search className="w-5 h-5" />} disabled={cashSessionOpen === false} />
                         {searchResults.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 max-h-80 overflow-auto z-20">
-                                {searchResults.map(product => (
-                                    <button key={product.id} onClick={() => handleProductSelect(product)} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left">
-                                        <div className="flex-1">
-                                            <p className="font-medium text-slate-900 dark:text-white">{product.name}</p>
-                                            <p className="text-xs text-slate-400">
-                                                {product.barcode && <span className="font-mono mr-2">{product.barcode}</span>}
-                                                {isVariableUnit(product.unit_type) && <span className="text-emerald-600 font-medium">x {UNIT_LABELS[product.unit_type]}</span>}
-                                            </p>
-                                        </div>
-                                        <Badge variant="success">{formatCurrency(product.price)} x {UNIT_LABELS[product.unit_type]}</Badge>
-                                        {isVariableUnit(product.unit_type) ? <Scale className="w-5 h-5 text-emerald-600" /> : <Plus className="w-5 h-5 text-emerald-600" />}
-                                    </button>
-                                ))}
+                                {searchResults.map(product => {
+                                    const cartItem = cart.find(item => item.product.id === product.id);
+                                    const inCart = !!cartItem;
+                                    return (
+                                        <button key={product.id} onClick={() => handleProductSelect(product)} className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left">
+                                            <div className="flex-1">
+                                                <p className="font-medium text-slate-900 dark:text-white">{product.name}</p>
+                                                <p className="text-xs text-slate-400">
+                                                    {product.barcode && <span className="font-mono mr-2">{product.barcode}</span>}
+                                                    {isVariableUnit(product.unit_type) && <span className="text-emerald-600 font-medium">x {UNIT_LABELS[product.unit_type]}</span>}
+                                                </p>
+                                            </div>
+                                            <Badge variant="success">{formatCurrency(product.price)} x {UNIT_LABELS[product.unit_type]}</Badge>
+                                            {inCart ? (
+                                                <div className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-lg text-xs font-medium shrink-0">
+                                                    <Check className="w-3 h-3" />
+                                                    <span>{cartItem.qty} en carrito</span>
+                                                </div>
+                                            ) : isVariableUnit(product.unit_type) ? (
+                                                <Scale className="w-5 h-5 text-emerald-600 shrink-0" />
+                                            ) : (
+                                                <Plus className="w-5 h-5 text-emerald-600 shrink-0" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -442,7 +472,11 @@ export default function SalesPage() {
                             ) : (
                                 <div className="space-y-3">
                                     {cart.map(item => (
-                                        <div key={item.product.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800">
+                                        <div
+                                            key={item.product.id}
+                                            ref={el => { cartItemRefs.current[item.product.id] = el; }}
+                                            className={`p-3 rounded-xl transition-all duration-300 ${highlightedId === item.product.id ? 'bg-emerald-50 dark:bg-emerald-900/30 ring-2 ring-emerald-400' : 'bg-slate-50 dark:bg-slate-800'}`}
+                                        >
                                             <div className="flex items-center justify-between gap-2 mb-1">
                                                 <p className="font-medium text-slate-900 dark:text-white text-sm truncate flex-1">
                                                     {item.product.name}
