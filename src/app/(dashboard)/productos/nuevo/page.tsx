@@ -70,7 +70,7 @@ export default function NewProductPage() {
                 cost: cost ? parseFloat(cost) : undefined,
                 stock_on_hand: parseFloat(formData.get('stock_on_hand') as string) || 0,
                 low_stock_threshold_override: formData.get('threshold')
-                    ? parseFloat(formData.get('threshold') as string)
+                    ? parseInt(formData.get('threshold') as string)
                     : undefined,
                 category: formData.get('category') as string || undefined,
             });
@@ -167,7 +167,6 @@ export default function NewProductPage() {
                                 value={unitType}
                                 onChange={(e) => setUnitType(e.target.value as UnitType)}
                             />
-                            {/* Categoría con select dinámico */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Categoría
@@ -255,10 +254,10 @@ export default function NewProductPage() {
                             <Input
                                 name="threshold"
                                 type="number"
-                                step="0.01"
+                                step="1"
                                 min="0"
                                 label="Alerta stock bajo (opcional)"
-                                placeholder="Usar valor por defecto"
+                                placeholder="5 (por defecto)"
                             />
                         </div>
 
