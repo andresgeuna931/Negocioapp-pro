@@ -168,7 +168,7 @@ export function EditProductModal({ product, onClose }: { product: Product; onClo
                                 <input type="number" step="0.001" min="0" value={stockOnHand} onChange={(e) => setStockOnHand(e.target.value)}
                                     className="w-full h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                             </div>
-                            <Input label="Alerta stock bajo" type="number" step="0.01" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder="Por defecto" />
+                            <Input label="Alerta stock bajo" type="number" step="1" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder="5 (por defecto)" />
                         </div>
                     </div>
 
