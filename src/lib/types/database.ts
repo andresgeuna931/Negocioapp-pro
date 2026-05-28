@@ -6,7 +6,7 @@
 export type TenantStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled';
 export type UserRole = 'owner' | 'staff' | 'admin';
 export type UnitType = 'unit' | 'kg' | 'lt';
-export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'mixed' | 'account';
+export type PaymentMethod = 'cash' | 'debit' | 'credit' | 'transfer' | 'qr' | 'mixed' | 'account';
 export type MovementType = 'sale' | 'adjustment' | 'purchase' | 'return';
 export type SubscriptionStatus = 'trial' | 'active' | 'past_due' | 'suspended' | 'canceled' | 'unpaid';
 export type SubscriptionPlan = 'free' | 'basic' | 'premium' | 'starter' | 'professional' | 'business';
