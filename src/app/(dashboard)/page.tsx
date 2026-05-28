@@ -1,429 +1,243 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { getCurrentSession, getTenantSettings, getSubscriptionStatus } from '@/lib/actions/auth';
+import { getSalesSummary, getTopProducts } from '@/lib/actions/reports';
+import { getLowStockProducts } from '@/lib/actions/products';
+import { PLANS } from '@/lib/config/plans';
+import type { LowStockProduct } from '@/lib/types';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import {
-    ScanLine, Search, Plus, Minus, X, ShoppingCart,
-    CreditCard, Banknote, ArrowRight, CheckCircle,
-    Tag, User, Scale, Smartphone, Building2, AlertTriangle, Check
-} from 'lucide-react';
-import Link from 'next/link';
-import { CustomerSelector } from '@/components/pos/customer-selector';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+export const dynamic = 'force-dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Scanner } from '@/components/sales/scanner';
-import { getProducts, getProductByBarcode } from '@/lib/actions/products';
-import { createSale } from '@/lib/actions/sales';
-import { getPriceLists, type PriceList } from '@/lib/actions/price-lists';
-import { getPaymentSettings, type PaymentSettings } from '@/lib/actions/payment-settings';
-import { getCurrentCashSession } from '@/lib/actions/cash';
-import { calculateAdjustedPrice } from '@/lib/utils/pricing';
-import { formatCurrency } from '@/lib/utils';
-import type { Product, CartItem, PaymentMethod, UnitType } from '@/lib/types';
+import { formatCurrency, formatQuantity } from '@/lib/utils';
+import {
+  ShoppingCart,
+  TrendingUp,
+  Package,
+  AlertTriangle,
+  DollarSign,
+  BarChart3,
+  Clock
+} from 'lucide-react';
+import Link from 'next/link';
+import { verifyMercadoPagoPayment } from '@/lib/actions/checkout';
 
-interface CartItemWithPrice extends CartItem {
-    adjustedPrice: number;
+interface PageProps {
+  searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-const VARIABLE_UNITS: UnitType[] = ['kg', 'lt'];
-const UNIT_LABELS: Record<UnitType, string> = {
-    unit: 'unidad', kg: 'kg', lt: 'lt',
-};
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const paymentId = searchParams?.payment_id as string;
+  if (paymentId) {
+    await verifyMercadoPagoPayment(paymentId);
+  }
 
-function isVariableUnit(unit: UnitType): boolean {
-    return VARIABLE_UNITS.includes(unit);
-}
+  const session = await getCurrentSession();
+  if (!session) redirect('/login');
 
-function QtyInput({ value, max, step, onCommit }: {
-    value: number;
-    max: number;
-    step: number;
-    onCommit: (qty: number) => void;
-}) {
-    const [localValue, setLocalValue] = useState(String(value));
+  const [todaySummary, monthSummary, topProducts, lowStock, tenant, subscriptionResult] = await Promise.all([
+    getSalesSummary('today'),
+    getSalesSummary('month'),
+    getTopProducts(5, 'month'),
+    getLowStockProducts(),
+    getTenantSettings(),
+    getSubscriptionStatus()
+  ]);
 
-    useEffect(() => {
-        setLocalValue(String(value));
-    }, [value]);
+  const subscription = subscriptionResult?.subscription;
 
-    const handleBlur = () => {
-        const parsed = parseFloat(localValue);
-        if (isNaN(parsed) || localValue === '') {
-            setLocalValue(String(value));
-        } else {
-            onCommit(Math.min(Math.max(0, parsed), max));
-        }
-    };
+  let planName = 'Pendiente de Pago';
+  let isInTrial = false;
+  let trialDaysLeft = 0;
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-        if (e.key === 'Escape') {
-            setLocalValue(String(value));
-            (e.target as HTMLInputElement).blur();
-        }
-    };
+  const isActive = tenant?.status === 'active';
 
-    return (
-        <input
-            type="number"
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className="w-16 h-7 text-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-mono text-sm"
-            step={step}
-            min={0}
-            max={max}
-        />
-    );
-}
-
-function QuantityModal({ product, adjustedPrice, onConfirm, onCancel }: {
-    product: Product;
-    adjustedPrice: number;
-    onConfirm: (qty: number) => void;
-    onCancel: () => void;
-}) {
-    const [qty, setQty] = useState('');
-    const unitLabel = UNIT_LABELS[product.unit_type];
-    const numQty = parseFloat(qty) || 0;
-    const total = numQty * adjustedPrice;
-    const maxQty = product.stock_on_hand;
-
-    return (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                        <Scale className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-slate-900 dark:text-white text-sm">{product.name}</h3>
-                        <p className="text-xs text-slate-500">{formatCurrency(adjustedPrice)} x {unitLabel} · Stock: {maxQty} {unitLabel}</p>
-                    </div>
-                </div>
-                <div className="space-y-3">
-                    <div>
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300 block mb-1">Cantidad ({unitLabel})</label>
-                        <input
-                            type="number"
-                            value={qty}
-                            onChange={(e) => setQty(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && numQty > 0 && numQty <= maxQty && onConfirm(numQty)}
-                            placeholder="Ej: 0.500"
-                            step="0.001" min="0.001" max={maxQty} autoFocus
-                            className="w-full h-12 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
-                        {numQty > maxQty && <p className="text-xs text-red-500 mt-1">Máximo disponible: {maxQty} {unitLabel}</p>}
-                    </div>
-                    {numQty > 0 && numQty <= maxQty && (
-                        <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600 dark:text-slate-400">Total</span>
-                                <span className="text-lg font-bold text-emerald-600">{formatCurrency(total)}</span>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-0.5">{numQty} {unitLabel} × {formatCurrency(adjustedPrice)}</p>
-                        </div>
-                    )}
-                    <div className="flex gap-2 pt-1">
-                        <Button variant="outline" className="flex-1" onClick={onCancel}>Cancelar</Button>
-                        <Button className="flex-1" onClick={() => onConfirm(numQty)} disabled={numQty <= 0 || numQty > maxQty}>Agregar al carrito</Button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function CheckoutModal({ total, cart, paymentSettings, onConfirm, onCancel, processing, onOpenCustomer }: {
-    total: number;
-    cart: CartItemWithPrice[];
-    paymentSettings: PaymentSettings | null;
-    onConfirm: (method: PaymentMethod, surcharge: number, installments?: number) => void;
-    onCancel: () => void;
-    processing: boolean;
-    onOpenCustomer: () => void;
-}) {
-    const [showCredit, setShowCredit] = useState(false);
-
-    const debitSurcharge = paymentSettings?.debit_surcharge || 0;
-    const credit1Surcharge = paymentSettings?.credit_1_surcharge || 0;
-    const credit3Surcharge = paymentSettings?.credit_3_surcharge || 0;
-
-    const calcTotal = (surcharge: number) => total * (1 + surcharge / 100);
-
-    const btnSecondaryClass = "w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed";
-
-    if (showCredit) {
-        return (
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-2">
-                    <button onClick={() => setShowCredit(false)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-4 h-4" />
-                    </button>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Seleccioná las cuotas</p>
-                </div>
-                <button onClick={() => onConfirm('credit', credit1Surcharge, 1)} disabled={processing}
-                    className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <CreditCard className="w-5 h-5 mr-2 shrink-0" />
-                    <span className="flex-1 text-left">1 cuota</span>
-                    {credit1Surcharge > 0 && <span className="text-sm opacity-80 ml-2">+{credit1Surcharge}% = {formatCurrency(calcTotal(credit1Surcharge))}</span>}
-                </button>
-                <button onClick={() => onConfirm('credit', credit3Surcharge, 3)} disabled={processing} className={btnSecondaryClass}>
-                    <CreditCard className="w-5 h-5 mr-2 shrink-0" />
-                    <span className="flex-1 text-left">3 cuotas</span>
-                    {credit3Surcharge > 0 && <span className="text-sm opacity-80 ml-2">+{credit3Surcharge}% = {formatCurrency(calcTotal(credit3Surcharge))}</span>}
-                </button>
-                <Button variant="ghost" className="w-full" onClick={() => setShowCredit(false)} disabled={processing}>Volver</Button>
-            </div>
-        );
+  if (isActive || (subscription && subscription.status === 'active')) {
+    isInTrial = false;
+    const settings = tenant?.settings as any;
+    let planKey: string = (settings?.plan_id || tenant?.plan_type || subscription?.plan || 'starter').toUpperCase();
+    if (planKey === 'BASIC') planKey = 'STARTER';
+    if (planKey === 'PREMIUM') planKey = 'PROFESSIONAL';
+    const finalPlanKey = (planKey as keyof typeof PLANS) in PLANS ? (planKey as keyof typeof PLANS) : 'STARTER';
+    planName = PLANS[finalPlanKey]?.name || 'Profesional';
+  } else {
+    const createdAt = new Date(tenant?.created_at || new Date());
+    const trialEndDate = new Date(createdAt);
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
+    const now = new Date();
+    if (now < trialEndDate) {
+      isInTrial = true;
+      trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      planName = 'Prueba Gratis';
+    } else {
+      planName = 'Suscripción Necesaria';
     }
+  }
 
-    return (
-        <div className="space-y-3">
-            {/* Resumen del carrito */}
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 space-y-1.5 max-h-40 overflow-y-auto">
-                {cart.map(item => (
-                    <div key={item.product.id} className="flex items-center justify-between text-sm">
-                        <span className="text-slate-700 dark:text-slate-300 truncate flex-1 mr-2">
-                            {item.product.name}
-                            <span className="text-slate-400 ml-1">×{item.qty}</span>
-                        </span>
-                        <span className="font-medium text-slate-900 dark:text-white shrink-0">
-                            {formatCurrency(item.adjustedPrice * item.qty)}
-                        </span>
-                    </div>
-                ))}
-                <div className="flex justify-between items-center pt-1.5 border-t border-slate-200 dark:border-slate-700">
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Total</span>
-                    <span className="text-base font-bold text-emerald-600">{formatCurrency(total)}</span>
-                </div>
-            </div>
-
-            <p className="text-sm text-slate-500 text-center">Seleccioná método de pago</p>
-
-            <Button size="lg" className="w-full" onClick={() => onConfirm('cash', 0)} loading={processing}>
-                <Banknote className="w-5 h-5 mr-2" />
-                Efectivo
-            </Button>
-            <button onClick={() => onConfirm('transfer', 0)} disabled={processing} className={btnSecondaryClass}>
-                <Building2 className="w-5 h-5 mr-2 shrink-0" />
-                <span className="flex-1 text-left">Transferencia</span>
-            </button>
-            <button onClick={() => onConfirm('qr', 0)} disabled={processing} className={btnSecondaryClass}>
-                <Smartphone className="w-5 h-5 mr-2 shrink-0" />
-                <span className="flex-1 text-left">Código QR</span>
-            </button>
-            <button onClick={() => onConfirm('debit', debitSurcharge)} disabled={processing} className={btnSecondaryClass}>
-                <CreditCard className="w-5 h-5 mr-2 shrink-0" />
-                <span className="flex-1 text-left">Débito</span>
-                {debitSurcharge > 0 && <span className="text-sm opacity-80 ml-2">+{debitSurcharge}% = {formatCurrency(calcTotal(debitSurcharge))}</span>}
-            </button>
-            <button onClick={() => setShowCredit(true)} disabled={processing} className={btnSecondaryClass}>
-                <CreditCard className="w-5 h-5 mr-2 shrink-0" />
-                <span className="flex-1 text-left">Crédito</span>
-                <span className="text-xs opacity-60 ml-2">1 o 3 cuotas →</span>
-            </button>
-            <button onClick={onOpenCustomer} disabled={processing}
-                className="w-full h-14 px-8 text-lg inline-flex items-center rounded-xl font-medium transition-all duration-200 bg-orange-50 hover:bg-orange-100 text-orange-700 border-2 border-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 dark:text-orange-300 dark:border-orange-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                <User className="w-5 h-5 mr-2 shrink-0" />
-                <span className="flex-1 text-left">Cuenta Corriente (Fiado)</span>
-            </button>
-            <Button variant="ghost" className="w-full" onClick={onCancel} disabled={processing}>Cancelar</Button>
-        </div>
-    );
-}
-
-export default function SalesPage() {
-    const [cart, setCart] = useState<CartItemWithPrice[]>([]);
-    const [priceLists, setPriceLists] = useState<PriceList[]>([]);
-    const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
-    const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
-    const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
-    const [showScanner, setShowScanner] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<Product[]>([]);
-    const [processing, setProcessing] = useState(false);
-    const [showCheckout, setShowCheckout] = useState(false);
-    const [showCustomerSelect, setShowCustomerSelect] = useState(false);
-    const [saleComplete, setSaleComplete] = useState<string | null>(null);
-    const [lastSaleTotal, setLastSaleTotal] = useState(0);
-    const [error, setError] = useState('');
-    const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
-    const [highlightedId, setHighlightedId] = useState<string | null>(null);
-    const cartItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-    useEffect(() => {
-        getPriceLists().then(result => {
-            if (result.data && result.data.length > 0) {
-                setPriceLists(result.data);
-                const defaultList = result.data.find(l => l.is_default) || result.data[0];
-                setSelectedPriceList(defaultList);
-            }
-        });
-        getPaymentSettings().then(result => {
-            if (result.data) setPaymentSettings(result.data);
-        });
-        getCurrentCashSession().then(result => {
-            setCashSessionOpen(!!result.data);
-        });
-    }, []);
-
-    const getAdjustedPrice = (product: Product): number => {
-        if (!selectedPriceList) return product.price;
-        return calculateAdjustedPrice(product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
-    };
-
-    const total = cart.reduce((sum, item) => sum + item.adjustedPrice * item.qty, 0);
-
-    const handleScan = useCallback(async (barcode: string) => {
-        setShowScanner(false);
-        setError('');
-        const result = await getProductByBarcode(barcode);
-        if (result.error) { setError(`Producto no encontrado: ${barcode}`); return; }
-        if (result.data) handleProductSelect(result.data);
-    }, [selectedPriceList, cart]);
-
-    const handleSearch = async (query: string) => {
-        setSearchQuery(query);
-        if (query.length < 2) { setSearchResults([]); return; }
-        const result = await getProducts({ search: query, activeOnly: true });
-        setSearchResults(result.data || []);
-    };
-
-    const scrollToCartItem = (productId: string) => {
-        setHighlightedId(productId);
-        const el = cartItemRefs.current[productId];
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => setHighlightedId(null), 1500);
-    };
-
-    const handleProductSelect = (product: Product) => {
-        setSearchQuery('');
-        setSearchResults([]);
-        const alreadyInCart = cart.find(item => item.product.id === product.id);
-        if (alreadyInCart) {
-            scrollToCartItem(product.id);
-            return;
-        }
-        if (isVariableUnit(product.unit_type)) {
-            setPendingProduct(product);
-        } else {
-            addToCart(product, 1);
-        }
-    };
-
-    const addToCart = (product: Product, qty: number) => {
-        if (product.stock_on_hand <= 0) { setError(`${product.name} no tiene stock disponible`); return; }
-        const adjustedPrice = getAdjustedPrice(product);
-        setCart(prev => {
-            const existing = prev.find(item => item.product.id === product.id);
-            const currentQty = existing?.qty || 0;
-            const maxAvailable = product.stock_on_hand - currentQty;
-            if (maxAvailable <= 0) { setError(`Ya agregaste todo el stock disponible de ${product.name}`); return prev; }
-            const qtyToAdd = Math.min(qty, maxAvailable);
-            if (existing) return prev.map(item => item.product.id === product.id ? { ...item, qty: item.qty + qtyToAdd, adjustedPrice } : item);
-            return [...prev, { product, qty: qtyToAdd, adjustedPrice }];
-        });
-    };
-
-    useEffect(() => {
-        if (selectedPriceList && cart.length > 0) {
-            setCart(prev => prev.map(item => ({
-                ...item,
-                adjustedPrice: calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value)
-            })));
-        }
-    }, [selectedPriceList]);
-
-    const updateQty = (productId: string, delta: number) => {
-        setCart(prev => prev.map(item => {
-            if (item.product.id !== productId) return item;
-            const newQty = Math.min(Math.max(0, item.qty + delta), item.product.stock_on_hand);
-            return { ...item, qty: newQty };
-        }).filter(item => item.qty > 0));
-    };
-
-    const commitQty = (productId: string, qty: number) => {
-        if (qty <= 0) {
-            setCart(prev => prev.filter(item => item.product.id !== productId));
-        } else {
-            setCart(prev => prev.map(item => {
-                if (item.product.id !== productId) return item;
-                return { ...item, qty: Math.min(qty, item.product.stock_on_hand) };
-            }));
-        }
-    };
-
-    const removeFromCart = (productId: string) => setCart(prev => prev.filter(item => item.product.id !== productId));
-
-    const handleCheckout = async (paymentMethod: PaymentMethod, surcharge: number, installments?: number, customerId?: string) => {
-        setProcessing(true);
-        setError('');
-        try {
-            const finalTotal = total * (1 + surcharge / 100);
-            const result = await createSale({
-                items: cart.map(item => ({ product_id: item.product.id, qty: item.qty })),
-                payment_method: paymentMethod,
-                customer_id: customerId,
-                notes: installments ? `Crédito ${installments} cuota${installments > 1 ? 's' : ''} (+${surcharge}%)` : surcharge > 0 ? `Recargo ${surcharge}%` : undefined,
-            });
-            if (result.error) {
-                setError(result.error);
-            } else {
-                setSaleComplete(result.data);
-                setLastSaleTotal(finalTotal);
-                setCart([]);
-                setShowCheckout(false);
-            }
-        } catch {
-            setError('Error al procesar la venta');
-        } finally {
-            setProcessing(false);
-        }
-    };
-
-    const handleNewSale = () => { setSaleComplete(null); setCart([]); setError(''); };
-
-    if (saleComplete) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-                <div className="w-24 h-24 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-6">
-                    <CheckCircle className="w-12 h-12 text-emerald-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">¡Venta Completada!</h2>
-                <p className="text-slate-500 mb-6">La venta se registró correctamente</p>
-                <p className="text-3xl font-bold text-emerald-600 mb-8">{formatCurrency(lastSaleTotal)}</p>
-                <Button size="lg" onClick={handleNewSale}>
-                    <ShoppingCart className="w-5 h-5 mr-2" />
-                    Nueva Venta
-                </Button>
-            </div>
-        );
-    }
-
-    return (
-        <div className="space-y-4">
-            {pendingProduct && (
-                <QuantityModal
-                    product={pendingProduct}
-                    adjustedPrice={getAdjustedPrice(pendingProduct)}
-                    onConfirm={(qty) => { addToCart(pendingProduct, qty); setPendingProduct(null); }}
-                    onCancel={() => setPendingProduct(null)}
-                />
-            )}
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  return (
+    <div className="space-y-6">
+      {isInTrial && trialDaysLeft > 0 && (
+        <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="w-6 h-6" />
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Venta Rápida</h1>
-                    <p className="text-slate-500">Escaneá o buscá productos para agregar al carrito</p>
+                  <p className="font-semibold">Te quedan {trialDaysLeft} días de prueba gratis</p>
+                  <p className="text-sm text-blue-100">Estás usando el Plan Profesional completo. ¡Aprovechalo!</p>
                 </div>
-                {priceLists.length > 1 && (
-                    <div className="flex items-center gap-2">
-                        <Tag className="w-5 h-5 text-slate-400" />
-                        <select
-                            value={selectedPriceList?.id || ''}
-                            onChange={(e) => { const list = priceLists.find(l => l.id === e.target.value); if (list) setSelectedPriceList(list); }}
-                            className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
-                        >
+              </div>
+              <Link href="/precios" className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors">
+                Ver Planes
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            ¡Hola, {session.profile.full_name?.split(' ')[0] || 'Usuario'}!
+          </h1>
+          <Badge variant={isInTrial ? 'info' : tenant?.plan_type === 'business' ? 'success' : tenant?.plan_type === 'professional' ? 'info' : 'default'}>
+            Plan {planName}
+          </Badge>
+        </div>
+        <p className="text-slate-500 dark:text-slate-400">Bienvenido a {session.tenant.name}</p>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                <DollarSign className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Ventas Hoy</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(todaySummary.data?.total_amount || 0)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Ventas Hoy</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{todaySummary.data?.total_sales || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+                <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Este Mes</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(monthSummary.data?.total_amount || 0)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Stock Bajo</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{lowStock.data?.length || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Link href="/ventas">
+          <Card className="hover:border-emerald-500 transition-colors cursor-pointer">
+            <CardContent className="p-6 flex flex-col items-center gap-2">
+              <div className="p-3 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500">
+                <ShoppingCart className="w-6 h-6 text-white" />
+              </div>
+              <span className="font-medium text-slate-900 dark:text-white">Nueva Venta</span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/productos">
+          <Card className="hover:border-blue-500 transition-colors cursor-pointer">
+            <CardContent className="p-6 flex flex-col items-center gap-2">
+              <div className="p-3 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <span className="font-medium text-slate-900 dark:text-white">Productos</span>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BarChart3 className="w-5 h-5 text-emerald-500" />
+            Top Productos del Mes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {topProducts.data && topProducts.data.length > 0 ? (
+            <div className="space-y-3">
+              {topProducts.data.map((product, index) => (
+                <div key={product.product_id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-medium">{index + 1}</span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">{product.product_name}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(product.total_revenue)}</p>
+                    <p className="text-xs text-slate-500">{formatQuantity(product.total_qty, product.unit_type)} vendidos</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-slate-500 py-4">No hay ventas este mes</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {lowStock.data && lowStock.data.length > 0 && (
+        <Card className="border-amber-200 dark:border-amber-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg text-amber-600">
+              <AlertTriangle className="w-5 h-5" />
+              Productos con Stock Bajo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {lowStock.data.slice(0, 5).map((product: LowStockProduct) => (
+                <div key={product.id} className="flex items-center justify-between">
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{product.name}</span>
+                  <Badge variant="warning">{formatQuantity(product.stock_on_hand, product.unit_type)}</Badge>
+                </div>
+              ))}
+            </div>
+            {lowStock.data.length > 5 && (
+              <Link href="/stock" className="block mt-3 text-center text-sm text-amber-600 hover:underline">
+                Ver todos ({lowStock.data.length})
+              </Link>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
