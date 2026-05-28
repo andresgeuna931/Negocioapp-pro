@@ -35,7 +35,6 @@ function isVariableUnit(unit: UnitType): boolean {
     return VARIABLE_UNITS.includes(unit);
 }
 
-// Input de cantidad con estado local para no borrar mientras escribís
 function QtyInput({ value, max, step, onCommit }: {
     value: number;
     max: number;
@@ -51,16 +50,14 @@ function QtyInput({ value, max, step, onCommit }: {
     const handleBlur = () => {
         const parsed = parseFloat(localValue);
         if (isNaN(parsed) || localValue === '') {
-            setLocalValue(String(value)); // Restaurar valor anterior
+            setLocalValue(String(value));
         } else {
             onCommit(Math.min(Math.max(0, parsed), max));
         }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            (e.target as HTMLInputElement).blur();
-        }
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
         if (e.key === 'Escape') {
             setLocalValue(String(value));
             (e.target as HTMLInputElement).blur();
@@ -214,7 +211,7 @@ function CheckoutModal({ total, cart, paymentSettings, onConfirm, onCancel, proc
                 <Building2 className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Transferencia</span>
             </button>
-            <button onClick={() => onConfirm('transfer', 0)} disabled={processing} className={btnSecondaryClass}>
+            <button onClick={() => onConfirm('qr', 0)} disabled={processing} className={btnSecondaryClass}>
                 <Smartphone className="w-5 h-5 mr-2 shrink-0" />
                 <span className="flex-1 text-left">Código QR</span>
             </button>
