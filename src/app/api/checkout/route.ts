@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { PLANS } from "@/lib/config/plans";
+import { PLANS, isAnnualPlan } from "@/lib/config/plans";
 
 // No MercadoPago SDK needed here.
 // For subscription PLANS, MP provides a ready-made checkout URL.
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
                 { status: 401 }
             );
         }
-        
+
         const payerEmail = user.email;
         if (!payerEmail) {
             return NextResponse.json({ error: "Email de usuario no encontrado" }, { status: 400 });
@@ -62,17 +62,28 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 4. Create dynamic PreApproval via POST /preapproval
-        // Using auto_recurring generates a new subscription checkout intent that respects external_reference.
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
-        
-        const response = await fetch('https://api.mercadopago.com/preapproval', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        const annual = isAnnualPlan(planId);
+
+        let mpBody: Record<string, any>;
+
+        if (annual) {
+            // 4a. Plan anual — 1 cobro por año
+            mpBody = {
+                auto_recurring: {
+                    frequency: 1,
+                    frequency_type: "years",
+                    transaction_amount: plan.price,
+                    currency_id: "ARS"
+                },
+                external_reference: `${profile.tenant_id}___${plan.id}`,
+                back_url: baseUrl,
+                reason: `Suscripción Anual NegocioApp Pro - ${plan.name}`,
+                payer_email: payerEmail,
+            };
+        } else {
+            // 4b. Plan mensual — lógica original intacta
+            mpBody = {
                 auto_recurring: {
                     frequency: 1,
                     frequency_type: "months",
@@ -80,10 +91,20 @@ export async function POST(request: NextRequest) {
                     currency_id: "ARS"
                 },
                 external_reference: `${profile.tenant_id}___${plan.id}`,
-                back_url: baseUrl, 
+                back_url: baseUrl,
                 reason: `Suscripción NegocioApp Pro - ${plan.name}`,
                 payer_email: payerEmail,
-            }),
+            };
+        }
+
+        // 5. Crear PreApproval en MP
+        const response = await fetch('https://api.mercadopago.com/preapproval', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(mpBody),
         });
 
         const data = await response.json();
@@ -93,7 +114,7 @@ export async function POST(request: NextRequest) {
             throw new Error(JSON.stringify(data));
         }
 
-        console.log(`Created MP dynamic PreApproval: ${data.id} for tenant ${profile.tenant_id}`);
+        console.log(`Created MP PreApproval (${annual ? 'anual' : 'mensual'}): ${data.id} for tenant ${profile.tenant_id}`);
 
         if (!data.init_point) {
             throw new Error("MP API no devolvió init_point");
@@ -102,6 +123,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             init_point: data.init_point,
         });
+
     } catch (error: any) {
         console.error("Global Checkout Error:", error);
         console.error("MP Error status:", error?.status);
