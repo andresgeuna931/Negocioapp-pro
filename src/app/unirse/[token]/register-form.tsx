@@ -1,0 +1,280 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Store, Mail, Lock, Eye, EyeOff, User, CheckCircle2, Shield, Calendar, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { formatPrice } from '@/lib/config/plans';
+
+interface RegisterFormProps {
+    token: string;
+    plan: any;
+    invitation: any;
+}
+
+// Calcula el proporcional hasta el día 10 del mes siguiente
+function calcularProporcional(precio: number): { monto: number; descripcion: string } {
+    const hoy = new Date();
+    const diaHoy = hoy.getDate();
+    const mesActual = hoy.getMonth();
+    const anioActual = hoy.getFullYear();
+
+    // Fecha de próximo cobro: día 10 del mes siguiente
+    const proximoCobro = new Date(anioActual, mesActual + 1, 10);
+    const diasHastaCobro = Math.ceil((proximoCobro.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    const diasDelMes = new Date(anioActual, mesActual + 1, 0).getDate();
+    const montoProporcional = Math.ceil((precio / diasDelMes) * diasHastaCobro);
+
+    return {
+        monto: montoProporcional,
+        descripcion: `${diasHastaCobro} días hasta el 10/${(mesActual + 2).toString().padStart(2, '0')}`
+    };
+}
+
+export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
+    const router = useRouter();
+    const [formData, setFormData] = useState({
+        fullName: '',
+        businessName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+    });
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
+
+    const isAnual = plan.billing === 'annual';
+    const proporcional = !isAnual ? calcularProporcional(plan.price) : null;
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Las contraseñas no coinciden');
+            return;
+        }
+        if (formData.password.length < 6) {
+            setError('La contraseña debe tener al menos 6 caracteres');
+            return;
+        }
+        const cleanEmail = formData.email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+            setError('Formato de email inválido');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            // 1. Crear cuenta y tenant
+            const regRes = await fetch('/api/auth/register-invited', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token,
+                    email: cleanEmail,
+                    password: formData.password,
+                    fullName: formData.fullName,
+                    businessName: formData.businessName,
+                    planId: plan.id,
+                }),
+            });
+
+            const regData = await regRes.json();
+            if (!regRes.ok) {
+                setError(regData.error || 'Error al crear la cuenta');
+                return;
+            }
+
+            // 2. Ir al checkout de MP
+            const checkoutRes = await fetch('/api/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ planId: plan.id }),
+            });
+
+            const checkoutData = await checkoutRes.json();
+            if (!checkoutRes.ok) {
+                setError(checkoutData.error || 'Error al iniciar el pago');
+                return;
+            }
+
+            // 3. Redirigir a MP
+            window.location.href = checkoutData.init_point;
+
+        } catch {
+            setError('Error inesperado. Intentá de nuevo.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="w-full max-w-lg relative space-y-4">
+
+            {/* Header del plan */}
+            <Card variant="glass" className="w-full">
+                <CardContent className="p-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 shrink-0">
+                            <Store className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-slate-400 text-sm">Tu plan seleccionado</p>
+                            <h2 className="text-white font-bold text-xl">{plan.name}</h2>
+                            <p className="text-slate-400 text-sm">{plan.description}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-2xl font-bold text-white">{formatPrice(plan.price)}</p>
+                            <p className="text-slate-400 text-xs">{isAnual ? '/año' : '/mes'}</p>
+                        </div>
+                    </div>
+
+                    {/* Info de cobro */}
+                    <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
+                        {isAnual ? (
+                            <>
+                                <div className="flex items-center gap-2 text-sm text-emerald-400">
+                                    <TrendingUp className="w-4 h-4" />
+                                    <span>Ahorrás {formatPrice(plan.savings)} — 2 meses gratis</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                    <Shield className="w-4 h-4" />
+                                    <span>Precio fijo por 12 meses — sin aumentos</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>1 solo cobro anual de {formatPrice(plan.price)}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2 text-sm text-amber-400">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>
+                                        Hoy pagás {formatPrice(proporcional!.monto)} ({proporcional!.descripcion})
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                    <Shield className="w-4 h-4" />
+                                    <span>Después {formatPrice(plan.price)}/mes los días 10</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Formulario de registro */}
+            <Card variant="glass" className="w-full">
+                <CardContent className="p-8">
+                    <h1 className="text-2xl font-bold text-white mb-1">Creá tu cuenta</h1>
+                    <p className="text-slate-400 text-sm mb-6">Completá tus datos y luego pasás al pago</p>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {error && (
+                            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        <Input
+                            type="text"
+                            name="fullName"
+                            label="Tu nombre completo"
+                            placeholder="Juan Pérez"
+                            value={formData.fullName}
+                            onChange={handleChange}
+                            icon={<User className="w-5 h-5" />}
+                            required
+                            className="bg-slate-800/50 border-slate-700 text-white"
+                        />
+
+                        <Input
+                            type="text"
+                            name="businessName"
+                            label="Nombre de tu negocio"
+                            placeholder="Kiosco El Barrio"
+                            value={formData.businessName}
+                            onChange={handleChange}
+                            icon={<Store className="w-5 h-5" />}
+                            required
+                            className="bg-slate-800/50 border-slate-700 text-white"
+                        />
+
+                        <Input
+                            type="email"
+                            name="email"
+                            label="Email"
+                            placeholder="tu@email.com"
+                            value={formData.email}
+                            onChange={handleChange}
+                            icon={<Mail className="w-5 h-5" />}
+                            required
+                            className="bg-slate-800/50 border-slate-700 text-white"
+                        />
+
+                        <div className="relative">
+                            <Input
+                                type={showPassword ? 'text' : 'password'}
+                                name="password"
+                                label="Contraseña"
+                                placeholder="••••••••"
+                                value={formData.password}
+                                onChange={handleChange}
+                                icon={<Lock className="w-5 h-5" />}
+                                required
+                                className="bg-slate-800/50 border-slate-700 text-white pr-12"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-[38px] text-slate-400 hover:text-white transition-colors"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+
+                        <Input
+                            type={showPassword ? 'text' : 'password'}
+                            name="confirmPassword"
+                            label="Confirmar contraseña"
+                            placeholder="••••••••"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            icon={<Lock className="w-5 h-5" />}
+                            required
+                            className="bg-slate-800/50 border-slate-700 text-white"
+                        />
+
+                        <Button
+                            type="submit"
+                            className="w-full mt-6"
+                            size="lg"
+                            loading={loading}
+                        >
+                            {loading ? 'Procesando...' : `Crear cuenta e ir al pago →`}
+                        </Button>
+                    </form>
+
+                    <div className="mt-6 text-center text-sm text-slate-500">
+                        ¿Ya tenés cuenta?{' '}
+                        <Link href="/login" className="text-emerald-400 hover:underline">
+                            Iniciá sesión
+                        </Link>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
