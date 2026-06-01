@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { PLANS, PlanId } from "@/lib/config/plans";
 
 // ─── GENERAR INVITACIÓN (solo admin) ─────────────────────────────────────────
@@ -12,7 +13,6 @@ export async function createTenantInvitation(planId: PlanId, notes?: string) {
         return { error: "No autenticado." };
     }
 
-    // Verificar que es admin (tu user ID hardcodeado por seguridad)
     const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
     if (user.id !== ADMIN_USER_ID) {
         return { error: "No tenés permisos para generar invitaciones." };
@@ -77,11 +77,14 @@ export async function validateInvitationToken(token: string) {
     };
 }
 
-// ─── MARCAR COMO USADA (después del pago exitoso) ────────────────────────────
+// ─── MARCAR COMO USADA — usa cliente admin para evitar problemas de sesión ───
 export async function markInvitationAsUsed(token: string, tenantId: string) {
-    const supabase = await createClient();
+    const adminSupabase = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    const { error } = await supabase
+    const { error } = await adminSupabase
         .from("tenant_invitations")
         .update({
             used_at: new Date().toISOString(),
@@ -118,7 +121,7 @@ export async function listTenantInvitations() {
     return { success: true, invitations: data };
 }
 
-// ─── REVOCAR INVITACIÓN (solo admin) ─────────────────────────────────────────
+// ─── REVOCAR INVITACIÓN — elimina directamente el registro ───────────────────
 export async function revokeInvitation(id: string) {
     const supabase = await createClient();
 
@@ -127,15 +130,14 @@ export async function revokeInvitation(id: string) {
         return { error: "No autenticado." };
     }
 
-    // Marcar como usada con fecha actual para invalidarla
     const { error } = await supabase
         .from("tenant_invitations")
-        .update({ used_at: new Date().toISOString() })
+        .delete()
         .eq("id", id)
-        .is("used_at", null); // Solo si no fue usada realmente
+        .is("used_at", null); // Solo elimina si no fue usada realmente
 
     if (error) {
-        return { error: "Error al revocar la invitación." };
+        return { error: "Error al eliminar la invitación." };
     }
 
     return { success: true };
