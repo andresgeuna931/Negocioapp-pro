@@ -10,11 +10,26 @@ function calcularProximoDiez(): Date {
     const anio = now.getFullYear();
 
     if (dia < 10) {
-        // Todavía no llegó el 10 de este mes
         return new Date(anio, mes, 10, 23, 59, 59);
     } else {
-        // Ya pasó el 10, el próximo es el mes siguiente
         return new Date(anio, mes + 1, 10, 23, 59, 59);
+    }
+}
+
+// Mapea el planId interno al plan de DB
+function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; internalPlanId: string } {
+    switch (planId) {
+        case 'starter':
+            return { dbSubPlan: 'basic', dbTenantPlan: 'starter', internalPlanId: 'starter' };
+        case 'business':
+            return { dbSubPlan: 'premium', dbTenantPlan: 'business', internalPlanId: 'business' };
+        case 'business_annual':
+            return { dbSubPlan: 'premium', dbTenantPlan: 'business', internalPlanId: 'business_annual' };
+        case 'professional_annual':
+            return { dbSubPlan: 'premium', dbTenantPlan: 'professional', internalPlanId: 'professional_annual' };
+        case 'professional':
+        default:
+            return { dbSubPlan: 'premium', dbTenantPlan: 'professional', internalPlanId: 'professional' };
     }
 }
 
@@ -39,7 +54,7 @@ export async function POST(request: NextRequest) {
             if (!resourceId) return NextResponse.json({ received: true }, { status: 200 });
 
             let tenantId: string | undefined;
-            let mpPlanId: string | undefined;
+            let planId: string | undefined;
             let status: string = 'pending';
             let transactionAmount: number = 0;
 
@@ -51,10 +66,10 @@ export async function POST(request: NextRequest) {
                     if (extRef.includes('___')) {
                         const parts = extRef.split('___');
                         tenantId = parts[0];
-                        mpPlanId = parts[1];
+                        planId = parts[1];
                     } else {
                         tenantId = extRef;
-                        mpPlanId = details.metadata?.plan_id;
+                        planId = details.metadata?.plan_id;
                     }
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
@@ -69,46 +84,23 @@ export async function POST(request: NextRequest) {
                     if (extRef.includes('___')) {
                         const parts = extRef.split('___');
                         tenantId = parts[0];
-                        mpPlanId = parts[1];
+                        planId = parts[1];
                     } else {
                         tenantId = extRef || details.external_id || details.metadata?.tenant_id;
-                        mpPlanId = details.preapproval_plan_id || details.metadata?.plan_id;
+                        planId = details.metadata?.plan_id;
                     }
                     status = "active";
                 }
             }
 
             if (tenantId && status === "active") {
-                // Map to DB-valid enum values
-                let dbSubPlan = 'premium';
-                let dbTenantPlan = 'professional';
-                let internalPlanId = 'professional';
-
-                const starterId = process.env.NEXT_PUBLIC_MP_PLAN_STARTER;
-                const profId = process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL;
-                const busId = process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS;
-                const testId = process.env.NEXT_PUBLIC_MP_PLAN_TEST;
-
-                if (mpPlanId === testId || mpPlanId === starterId) {
-                    dbSubPlan = 'basic';
-                    dbTenantPlan = 'starter';
-                    internalPlanId = mpPlanId === testId ? 'test' : 'starter';
-                } else if (mpPlanId === busId) {
-                    dbSubPlan = 'premium';
-                    dbTenantPlan = 'business';
-                    internalPlanId = 'business';
-                } else {
-                    dbSubPlan = 'premium';
-                    dbTenantPlan = 'professional';
-                    internalPlanId = 'professional';
-                }
+                const { dbSubPlan, dbTenantPlan, internalPlanId } = mapearPlan(planId || 'professional');
 
                 // Período: desde ahora hasta el próximo día 10
                 const now = new Date();
                 const periodStart = now;
                 const periodEnd = calcularProximoDiez();
 
-                // Update subscription
                 await supabaseAdmin
                     .from("subscriptions")
                     .upsert({
@@ -123,7 +115,6 @@ export async function POST(request: NextRequest) {
                         updated_at: now.toISOString(),
                     }, { onConflict: "tenant_id" });
 
-                // Update tenant
                 await supabaseAdmin
                     .from("tenants")
                     .update({
