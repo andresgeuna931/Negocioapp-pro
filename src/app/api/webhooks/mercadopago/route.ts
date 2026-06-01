@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
 
+// Calcula el próximo día 10 desde hoy
+function calcularProximoDiez(): Date {
+    const now = new Date();
+    const dia = now.getDate();
+    const mes = now.getMonth();
+    const anio = now.getFullYear();
+
+    if (dia < 10) {
+        // Todavía no llegó el 10 de este mes
+        return new Date(anio, mes, 10, 23, 59, 59);
+    } else {
+        // Ya pasó el 10, el próximo es el mes siguiente
+        return new Date(anio, mes + 1, 10, 23, 59, 59);
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const mpClient = new MercadoPagoConfig({
@@ -47,9 +63,8 @@ export async function POST(request: NextRequest) {
                 const preApproval = new PreApproval(mpClient);
                 const details: any = await preApproval.get({ id: resourceId });
                 console.log("PreApproval Details:", JSON.stringify(details, null, 2));
-                
+
                 if (details.status === "authorized") {
-                    // Extract tenantId and planId from composite external_reference
                     const extRef = details.external_reference || "";
                     if (extRef.includes('___')) {
                         const parts = extRef.split('___');
@@ -69,7 +84,6 @@ export async function POST(request: NextRequest) {
                 let dbTenantPlan = 'professional';
                 let internalPlanId = 'professional';
 
-                // Improved matching logic
                 const starterId = process.env.NEXT_PUBLIC_MP_PLAN_STARTER;
                 const profId = process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL;
                 const busId = process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS;
@@ -84,17 +98,15 @@ export async function POST(request: NextRequest) {
                     dbTenantPlan = 'business';
                     internalPlanId = 'business';
                 } else {
-                    // Default to professional if it matches or as fallback for paid status
                     dbSubPlan = 'premium';
                     dbTenantPlan = 'professional';
                     internalPlanId = 'professional';
                 }
 
-                // --- INDUSTRY STANDARD: Paid period starts NOW ---
+                // Período: desde ahora hasta el próximo día 10
                 const now = new Date();
-                let periodStart = now;
-                let periodEnd = new Date();
-                periodEnd.setDate(periodEnd.getDate() + 30);
+                const periodStart = now;
+                const periodEnd = calcularProximoDiez();
 
                 // Update subscription
                 await supabaseAdmin
@@ -111,11 +123,10 @@ export async function POST(request: NextRequest) {
                         updated_at: now.toISOString(),
                     }, { onConflict: "tenant_id" });
 
-                // Update tenant — ALWAYS set to 'active' after payment
-                // Trial days are preserved in the subscription expiry date, not in the status
+                // Update tenant
                 await supabaseAdmin
                     .from("tenants")
-                    .update({ 
+                    .update({
                         status: 'active',
                         plan_type: dbTenantPlan,
                         settings: {
@@ -125,7 +136,7 @@ export async function POST(request: NextRequest) {
                     })
                     .eq("id", tenantId);
 
-                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, expires=${periodEnd.toISOString()}`);
+                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()}`);
             }
         }
 
