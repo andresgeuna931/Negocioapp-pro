@@ -4,21 +4,24 @@ import { useEffect } from 'react';
 
 declare global {
     interface Window {
-        Tawk_API?: object;
+        Tawk_API?: any;
         Tawk_LoadStart?: Date;
     }
 }
 
 export function TawkToWidget() {
     useEffect(() => {
-        // Only load in browser
         if (typeof window === 'undefined') return;
-
-        // Prevent duplicate loading
         if (window.Tawk_API) return;
 
         window.Tawk_API = window.Tawk_API || {};
         window.Tawk_LoadStart = new Date();
+
+        // Arranca minimizado — solo se abre cuando el usuario hace clic
+        window.Tawk_API.onLoad = function () {
+            window.Tawk_API?.hideWidget?.();
+            window.Tawk_API?.showWidget?.();
+        };
 
         const script = document.createElement('script');
         script.async = true;
@@ -30,13 +33,10 @@ export function TawkToWidget() {
         firstScript?.parentNode?.insertBefore(script, firstScript);
 
         return () => {
-            // Cleanup on unmount (optional)
             const tawkScript = document.querySelector('script[src*="tawk.to"]');
-            if (tawkScript) {
-                tawkScript.remove();
-            }
+            if (tawkScript) tawkScript.remove();
         };
     }, []);
 
-    return null; // This component doesn't render anything visible
+    return null;
 }
