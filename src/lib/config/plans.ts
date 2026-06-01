@@ -67,7 +67,7 @@ export const PLANS = {
     BUSINESS: {
         id: 'business',
         name: 'Business',
-        price: 49000,
+        price: 15,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS,
         limits: {
