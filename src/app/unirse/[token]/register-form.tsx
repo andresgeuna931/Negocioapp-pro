@@ -15,22 +15,29 @@ interface RegisterFormProps {
     invitation: any;
 }
 
-// Calcula el proporcional hasta el día 10 del mes siguiente
+// Calcula el proporcional hasta el día 10 más próximo
 function calcularProporcional(precio: number): { monto: number; descripcion: string } {
     const hoy = new Date();
     const diaHoy = hoy.getDate();
     const mesActual = hoy.getMonth();
     const anioActual = hoy.getFullYear();
 
-    // Fecha de próximo cobro: día 10 del mes siguiente
-    const proximoCobro = new Date(anioActual, mesActual + 1, 10);
+    // Si hoy es antes del día 10 → cobrar hasta el 10 de este mes
+    // Si hoy es después del día 10 → cobrar hasta el 10 del mes siguiente
+    const diaCorte = 10;
+    const proximoCobro = diaHoy < diaCorte
+        ? new Date(anioActual, mesActual, diaCorte)
+        : new Date(anioActual, mesActual + 1, diaCorte);
+
     const diasHastaCobro = Math.ceil((proximoCobro.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
     const diasDelMes = new Date(anioActual, mesActual + 1, 0).getDate();
     const montoProporcional = Math.ceil((precio / diasDelMes) * diasHastaCobro);
 
+    const mesCorte = diaHoy < diaCorte ? mesActual + 1 : mesActual + 2;
+
     return {
         monto: montoProporcional,
-        descripcion: `${diasHastaCobro} días hasta el 10/${(mesActual + 2).toString().padStart(2, '0')}`
+        descripcion: `${diasHastaCobro} días hasta el 10/${mesCorte.toString().padStart(2, '0')}`
     };
 }
 
@@ -77,7 +84,7 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
 
         try {
             // 1. Crear cuenta y tenant
-            const regRes = await fetch('/api/auth/register-invited', {
+            const regRes = await fetch('/api/register-invited', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
