@@ -3,6 +3,18 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { validateInvitationToken, markInvitationAsUsed } from "@/lib/actions/tenant-invitations";
 
+// Genera un slug único a partir del nombre del negocio
+function generateSlug(name: string): string {
+    return name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // elimina acentos
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        + '-' + Math.random().toString(36).substring(2, 7);
+}
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -41,11 +53,13 @@ export async function POST(request: NextRequest) {
 
         const userId = authData.user.id;
 
-        // 4. Crear tenant — solo con name y status pending
+        // 4. Crear tenant con slug generado automáticamente
+        const slug = generateSlug(businessName);
         const { data: tenant, error: tenantError } = await adminSupabase
             .from("tenants")
             .insert({
                 name: businessName,
+                slug: slug,
                 status: 'trial',
             })
             .select()
@@ -93,7 +107,6 @@ export async function POST(request: NextRequest) {
 
         if (subError) {
             console.error("Subscription error:", subError);
-            // No hacemos rollback aquí — el webhook lo va a activar igual
         }
 
         // 7. Marcar invitación como usada
