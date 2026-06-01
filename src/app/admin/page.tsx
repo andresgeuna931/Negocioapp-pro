@@ -1,12 +1,16 @@
 import { getAdminMetrics } from '@/lib/actions/admin';
+import { listTenantInvitations, createTenantInvitation } from '@/lib/actions/tenant-invitations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, CreditCard, TrendingUp } from 'lucide-react';
+import { Building2, Users, CreditCard, TrendingUp, Link2, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { PLANS, formatPrice } from '@/lib/config/plans';
+import { InvitationManager } from '@/components/admin/invitation-manager';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
     const metrics = await getAdminMetrics();
+    const { invitations = [] } = await listTenantInvitations();
 
     const statCards = [
         {
@@ -39,6 +43,12 @@ export default async function AdminDashboard() {
         },
     ];
 
+    // Clasificar invitaciones
+    const now = new Date();
+    const invitacionesPendientes = invitations.filter((i: any) => !i.used_at && new Date(i.expires_at) > now);
+    const invitacionesUsadas = invitations.filter((i: any) => i.used_at);
+    const invitacionesVencidas = invitations.filter((i: any) => !i.used_at && new Date(i.expires_at) <= now);
+
     return (
         <div className="space-y-8">
             <div>
@@ -46,6 +56,7 @@ export default async function AdminDashboard() {
                 <p className="text-slate-500 mt-1">Resumen del estado actual de NegocioApp Pro</p>
             </div>
 
+            {/* Métricas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {statCards.map((stat) => (
                     <Card key={stat.title}>
@@ -62,6 +73,54 @@ export default async function AdminDashboard() {
                 ))}
             </div>
 
+            {/* ─── SECCIÓN DE INVITACIONES ─── */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-500/10">
+                        <Link2 className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Links de Invitación</h2>
+                        <p className="text-sm text-slate-500">Generá links únicos para que nuevos clientes se registren</p>
+                    </div>
+                </div>
+
+                {/* Resumen de invitaciones */}
+                <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                        <CardContent className="pt-4 flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-amber-500" />
+                            <div>
+                                <p className="text-2xl font-bold">{invitacionesPendientes.length}</p>
+                                <p className="text-xs text-slate-500">Pendientes</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-4 flex items-center gap-3">
+                            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                            <div>
+                                <p className="text-2xl font-bold">{invitacionesUsadas.length}</p>
+                                <p className="text-xs text-slate-500">Usadas</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="pt-4 flex items-center gap-3">
+                            <XCircle className="w-5 h-5 text-red-500" />
+                            <div>
+                                <p className="text-2xl font-bold">{invitacionesVencidas.length}</p>
+                                <p className="text-xs text-slate-500">Vencidas</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Componente interactivo de invitaciones */}
+                <InvitationManager invitations={invitations} />
+            </div>
+
+            {/* Próximos Pasos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
                     <CardHeader>
@@ -79,14 +138,14 @@ export default async function AdminDashboard() {
                         </div>
                     </CardContent>
                 </Card>
-                
+
                 <Card className="bg-gradient-to-br from-purple-500/5 to-indigo-500/5 border-purple-500/20">
                     <CardHeader>
                         <CardTitle className="text-purple-600 dark:text-purple-400">Modo Administrador</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                            Desde este panel tenés acceso total a todos los datos del sistema. 
+                            Desde este panel tenés acceso total a todos los datos del sistema.
                             Podés gestionar negocios, ver facturación y realizar tareas de mantenimiento global.
                             <br /><br />
                             <b>Atención:</b> Los cambios realizados aquí impactan directamente en la producción de tus clientes.
