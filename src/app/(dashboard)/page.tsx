@@ -104,6 +104,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </Badge>
         </div>
         <p className="text-slate-500 dark:text-slate-400">Bienvenido a {session.tenant.name}</p>
+        {subscription?.current_period_end && (
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+            Próximo pago:{' '}
+            {new Date(subscription.current_period_end).toLocaleDateString('es-AR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'America/Argentina/Buenos_Aires'
+            })}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
