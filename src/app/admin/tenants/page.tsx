@@ -1,13 +1,22 @@
 import { getAllTenants } from '@/lib/actions/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { formatDate } from '@/lib/utils';
-import { Building2, Mail, Calendar, CreditCard, ShieldCheck } from 'lucide-react';
+import { Building2, Mail, Calendar } from 'lucide-react';
 import { TenantActions } from '@/components/admin/tenant-actions';
 
 export const dynamic = 'force-dynamic';
+
+// Formatea fecha en zona horaria Argentina
+function formatFechaAR(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        day: 'numeric',
+        month: 'numeric',
+        year: '2-digit',
+    });
+}
 
 export default async function AdminTenantsPage() {
     const { tenants } = await getAllTenants();
@@ -25,41 +34,35 @@ export default async function AdminTenantsPage() {
                 {tenants.map((tenant) => {
                     const sub = tenant.subscriptions?.[0];
                     const settings = tenant.settings as any;
-                    
-                    // --- REFINED PLAN LOGIC ---
+
+                    // --- PLAN LOGIC ---
                     const hasSub = sub?.status === 'active' && sub?.plan && !['free', 'trial'].includes(sub.plan);
                     let planDisplay = settings?.plan_id || tenant.plan_type || 'starter';
-                    
+
                     if (tenant.status === 'trial' && !hasSub) {
-                        // Pure trial, no payment yet
                         planDisplay = 'profesional (prueba)';
                     } else if (hasSub) {
-                        // Has paid - use the real plan from settings
                         planDisplay = settings?.plan_id || tenant.plan_type || 'professional';
                     }
-                    
+
                     const isManual = sub?.payment_provider === 'manual_admin';
 
-                    // --- REFINED EXPIRY LOGIC ---
+                    // --- EXPIRY LOGIC ---
                     let expiryDate = sub?.current_period_end;
-                    
+
                     if (!expiryDate) {
                         if (tenant.status === 'active') {
-                            // Fallback for active tenants without sub record (e.g. manual)
-                            // Use the manually_activated date or just 30 days from creation/sync
                             const baseDate = settings?.activated_at ? new Date(settings.activated_at) : new Date();
                             baseDate.setDate(baseDate.getDate() + 30);
                             expiryDate = baseDate.toISOString();
                         } else if (tenant.status === 'trial') {
-                            // Trial fallback
                             const trialEnd = new Date(tenant.created_at);
                             trialEnd.setDate(trialEnd.getDate() + 14);
                             expiryDate = trialEnd.toISOString();
                         }
                     }
-                    
-                    // --- REFINED EMAIL LOGIC ---
-                    // Use business email first, then fallback to the owner's registration email
+
+                    // --- EMAIL LOGIC ---
                     const ownerProfile = tenant.profiles?.find((p: any) => p.role === 'owner' || p.role === 'admin');
                     const displayEmail = tenant.email || ownerProfile?.email || 'Sin email';
 
@@ -95,39 +98,3 @@ export default async function AdminTenantsPage() {
                                     </div>
 
                                     <div className="grid grid-cols-2 lg:flex lg:items-center gap-10 border-t lg:border-t-0 pt-6 lg:pt-0">
-                                        <div>
-                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1 font-bold">
-                                                <Calendar className="w-3 h-3" /> Creado
-                                            </p>
-                                            <p className="text-sm font-medium">{formatDate(tenant.created_at)}</p>
-                                        </div>
-                                        <div>
-                                            <div className="flex flex-col items-end">
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                                    <Calendar className="w-3 h-3" />
-                                                    {tenant.status === 'active' ? 'Próximo Cobro' : 'Vence Prueba'}
-                                                </div>
-                                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                                    {expiryDate ? format(new Date(expiryDate), 'd/M/yy', { locale: es }) : '-'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-end">
-                                            <TenantActions tenantId={tenant.id} tenantName={tenant.name} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-
-                {tenants.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-slate-500">No se encontraron negocios registrados.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
