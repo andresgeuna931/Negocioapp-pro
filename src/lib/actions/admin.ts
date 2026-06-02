@@ -1,5 +1,5 @@
 'use server';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin } from './auth';
 
 /**
@@ -7,7 +7,7 @@ import { requireAdmin } from './auth';
  */
 export async function getAdminMetrics() {
     await requireAdmin();
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const [tenantsCount, activeSubs, usersCount] = await Promise.all([
         supabase.from('tenants').select('id', { count: 'exact', head: true }),
         supabase.from('tenants').select('id', { count: 'exact', head: true }).eq('status', 'active'),
@@ -26,7 +26,7 @@ export async function getAdminMetrics() {
  */
 export async function getAllTenants(page = 1, limit = 20) {
     await requireAdmin();
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { data, error } = await supabase
         .from('tenants')
         .select(`
