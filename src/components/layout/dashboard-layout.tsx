@@ -23,6 +23,7 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
     const subscription = session?.subscription;
     const createdAt = tenant?.created_at ? new Date(tenant.created_at) : null;
     const isActive = tenant?.status === 'active';
+    const isSuspended = tenant?.status === 'suspended';
 
     let isTrial = false;
 
@@ -37,12 +38,13 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
         }
     }
 
-    const hasPaidSubscription = isActive || !!(
+    // Si está suspendido, no consideramos la suscripción como activa
+    const hasPaidSubscription = !isSuspended && (isActive || !!(
         subscription &&
         subscription.status === 'active' &&
         subscription.plan &&
         !['free', 'trial'].includes(subscription.plan)
-    );
+    ));
 
     const paidPlanName = hasPaidSubscription && subscription?.plan
         ? getPlanDetails(subscription.plan).name
