@@ -40,29 +40,24 @@ export async function getCurrentSession(): Promise<UserSession | null> {
     const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-        return null;
-    }
+    if (!user) return null;
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select(`
-      *,
-      tenant:tenants(*),
-      subscription:tenants(
-        subscriptions(*)
-      )
-    `)
+        .select('*, tenant:tenants(*)')
         .eq('id', user.id)
         .single();
 
-    if (!profile) {
-        return null;
-    }
+    if (!profile) return null;
 
-    // Extract subscription from nested structure
-    const subscription = (profile.subscription as { subscriptions: Subscription[] })?.subscriptions?.[0];
+    const tenant = Array.isArray(profile.tenant) ? profile.tenant[0] : profile.tenant;
+    if (!tenant) return null;
+
+    const { data: subscriptionData } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('tenant_id', tenant.id)
+        .single();
 
     return {
         user: {
@@ -70,8 +65,8 @@ export async function getCurrentSession(): Promise<UserSession | null> {
             email: user.email || '',
         },
         profile: profile as Profile,
-        tenant: profile.tenant as Tenant,
-        subscription: subscription as Subscription,
+        tenant: tenant as Tenant,
+        subscription: subscriptionData as Subscription,
     };
 }
 
@@ -132,7 +127,6 @@ export async function getTenantSettings(): Promise<Tenant | null> {
 
     if (!profile?.tenant) return null;
 
-    // Handle the case where tenant might be an array or object
     const tenant = Array.isArray(profile.tenant) ? profile.tenant[0] : profile.tenant;
     return tenant as Tenant;
 }
@@ -181,16 +175,11 @@ export async function createStaffUser(
 ) {
     const supabase = await createClient();
 
-    // Get current user's tenant
     const session = await getCurrentSession();
 
     if (!session || session.profile.role !== 'owner') {
         return { error: 'Solo el dueño puede crear usuarios' };
     }
-
-    // Note: In production, you'd use a server-side admin client
-    // For MVP, staff creation would be done manually in Supabase dashboard
-    // Then linked via link_user_to_tenant function
 
     return {
         error: null,
@@ -202,7 +191,6 @@ export async function createStaffUser(
 export async function getTeamMembers() {
     const supabase = await createClient();
 
-    // First get current user's tenant_id
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         return { data: null, error: 'No autenticado' };
@@ -218,7 +206,6 @@ export async function getTeamMembers() {
         return { data: null, error: 'Perfil no encontrado' };
     }
 
-    // Now get only team members from the SAME tenant
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -289,7 +276,6 @@ export async function signUp(data: {
     const supabase = await createClient();
     const email = data.email.trim().toLowerCase();
 
-    // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
         email: email,
         password: data.password,
@@ -310,7 +296,6 @@ export async function signUp(data: {
 
     const userId = authData.user.id;
 
-    // 2. Check for pending invitations
     const { data: invitation } = await supabase
         .from('team_invitations')
         .select('*')
@@ -320,10 +305,8 @@ export async function signUp(data: {
         .maybeSingle();
 
     if (invitation) {
-        // FLOW: JOIN EXISTING TEAM
         console.log('Invitation found! Linking user to tenant:', invitation.tenant_id);
 
-        // Create profile linked to existing tenant
         const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -340,7 +323,6 @@ export async function signUp(data: {
             return { error: 'Error al vincular con el equipo: ' + profileError.message };
         }
 
-        // Mark invitation as accepted
         await supabase
             .from('team_invitations')
             .update({ status: 'accepted', updated_at: new Date().toISOString() })
@@ -350,8 +332,6 @@ export async function signUp(data: {
         return { error: null };
     }
 
-    // FLOW: CREATE NEW BUSINESS (Legacy flow)
-    // 3. Create slug from business name
     const slug = data.businessName
         .toLowerCase()
         .normalize('NFD')
@@ -360,7 +340,6 @@ export async function signUp(data: {
         .replace(/(^-|-$)/g, '')
         + '-' + Date.now().toString(36);
 
-    // 4. Call RPC to create tenant, profile, subscription safely
     console.log('Calling register_new_tenant RPC with:', {
         p_user_id: userId,
         p_email: email,
@@ -381,11 +360,8 @@ export async function signUp(data: {
         return { error: 'Error al registrar negocio (RPC): ' + rpcError.message };
     }
 
-    // 5. Seed initial data based on business type
     await seedTenantData(tenantId, data.businessType);
 
     revalidatePath('/');
     return { error: null };
 }
-
-
