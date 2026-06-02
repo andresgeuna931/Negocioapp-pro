@@ -94,8 +94,8 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo importo productos desde Excel?',
-                answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.',
-                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla']
+    answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.\n\nSi un producto ya existe (mismo código de barras o SKU), se actualizará automáticamente con los nuevos datos. Si no existe, se creará como producto nuevo.',
+    keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla', 'actualizar', 'duplicar']
             },
             {
                 question: '¿Cómo filtro productos por categoría?',
