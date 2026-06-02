@@ -262,12 +262,14 @@ export async function getSubscriptionStatus() {
 
     if (!session) return null;
 
+    const periodEnd = session.subscription?.current_period_end;
+
     return {
         subscription: session.subscription,
         tenant: session.tenant,
         isActive: ['trial', 'active'].includes(session.tenant.status),
-        daysRemaining: session.subscription
-            ? Math.ceil((new Date(session.subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        daysRemaining: periodEnd
+            ? Math.ceil((new Date(periodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
             : 0,
     };
 }
