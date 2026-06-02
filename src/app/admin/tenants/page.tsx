@@ -98,3 +98,41 @@ export default async function AdminTenantsPage() {
                                     </div>
 
                                     <div className="grid grid-cols-2 lg:flex lg:items-center gap-10 border-t lg:border-t-0 pt-6 lg:pt-0">
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1 font-bold">
+                                                <Calendar className="w-3 h-3" /> Creado
+                                            </p>
+                                            <p className="text-sm font-medium">
+                                                {formatFechaAR(tenant.created_at)}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <div className="flex flex-col items-end">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {tenant.status === 'active' ? 'Próximo Cobro' : 'Vence Prueba'}
+                                                </div>
+                                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                    {expiryDate ? formatFechaAR(expiryDate) : '-'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-end">
+                                            <TenantActions tenantId={tenant.id} tenantName={tenant.name} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+
+                {tenants.length === 0 && (
+                    <div className="text-center py-12">
+                        <p className="text-slate-500">No se encontraron negocios registrados.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
