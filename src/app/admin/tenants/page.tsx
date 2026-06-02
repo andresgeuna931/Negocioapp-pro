@@ -1,13 +1,11 @@
 import { getAllTenants } from '@/lib/actions/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatDate } from '@/lib/utils';
 import { Building2, Mail, Calendar } from 'lucide-react';
 import { TenantActions } from '@/components/admin/tenant-actions';
 
 export const dynamic = 'force-dynamic';
 
-// Formatea fecha en zona horaria Argentina
 function formatFechaAR(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString('es-AR', {
@@ -48,18 +46,13 @@ export default async function AdminTenantsPage() {
                     const isManual = sub?.payment_provider === 'manual_admin';
 
                     // --- EXPIRY LOGIC ---
-                    let expiryDate = sub?.current_period_end;
+                    // Solo usar lo que viene de Supabase, sin fallbacks que generen fechas incorrectas
+                    let expiryDate: string | null = sub?.current_period_end || null;
 
-                    if (!expiryDate) {
-                        if (tenant.status === 'active') {
-                            const baseDate = settings?.activated_at ? new Date(settings.activated_at) : new Date();
-                            baseDate.setDate(baseDate.getDate() + 30);
-                            expiryDate = baseDate.toISOString();
-                        } else if (tenant.status === 'trial') {
-                            const trialEnd = new Date(tenant.created_at);
-                            trialEnd.setDate(trialEnd.getDate() + 14);
-                            expiryDate = trialEnd.toISOString();
-                        }
+                    if (!expiryDate && tenant.status === 'trial') {
+                        const trialEnd = new Date(tenant.created_at);
+                        trialEnd.setDate(trialEnd.getDate() + 14);
+                        expiryDate = trialEnd.toISOString();
                     }
 
                     // --- EMAIL LOGIC ---
