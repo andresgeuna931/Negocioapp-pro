@@ -46,7 +46,6 @@ export default async function AdminTenantsPage() {
                     const isManual = sub?.payment_provider === 'manual_admin';
 
                     // --- EXPIRY LOGIC ---
-                    // Solo usar lo que viene de Supabase, sin fallbacks que generen fechas incorrectas
                     let expiryDate: string | null = sub?.current_period_end || null;
 
                     if (!expiryDate && tenant.status === 'trial') {
@@ -57,6 +56,7 @@ export default async function AdminTenantsPage() {
 
                     // --- EMAIL LOGIC ---
                     const ownerProfile = tenant.profiles?.find((p: any) => p.role === 'owner' || p.role === 'admin');
+                    const isSystemAdmin = ownerProfile?.role === 'admin';
                     const displayEmail = tenant.email || ownerProfile?.email || 'Sin email';
 
                     return (
@@ -106,7 +106,7 @@ export default async function AdminTenantsPage() {
                                                     {tenant.status === 'active' ? 'Próximo Cobro' : 'Vence Prueba'}
                                                 </div>
                                                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                                                    {expiryDate ? formatFechaAR(expiryDate) : '-'}
+                                                    {isSystemAdmin ? '—' : expiryDate ? formatFechaAR(expiryDate) : '-'}
                                                 </span>
                                             </div>
                                         </div>
