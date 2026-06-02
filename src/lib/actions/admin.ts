@@ -2,9 +2,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin } from './auth';
 
-/**
- * Fetches global metrics for the super admin dashboard.
- */
 export async function getAdminMetrics() {
     await requireAdmin();
     const supabase = createAdminClient();
@@ -21,25 +18,29 @@ export async function getAdminMetrics() {
     };
 }
 
-/**
- * Fetches all tenants with their subscription info for the admin list.
- */
 export async function getAllTenants(page = 1, limit = 20) {
     await requireAdmin();
     const supabase = createAdminClient();
-    const { data, error } = await supabase
+
+    const { data: tenantsData, error } = await supabase
         .from('tenants')
-        .select(`
-            *,
-            subscriptions(*),
-            profiles(*)
-        `)
+        .select('*, profiles(*)')
         .order('created_at', { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
+
     if (error) throw error;
 
-    const tenants = (data || []).map((tenant) => {
-        const subs = Array.isArray(tenant.subscriptions) ? [...tenant.subscriptions] : [];
+    // Query subscriptions por separado para evitar problemas de RLS
+    const tenantIds = (tenantsData || []).map((t) => t.id);
+
+    const { data: subsData } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .in('tenant_id', tenantIds);
+
+    // Combinar manualmente
+    const tenants = (tenantsData || []).map((tenant) => {
+        const subs = (subsData || []).filter((s) => s.tenant_id === tenant.id);
         subs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
         return { ...tenant, subscriptions: subs };
     });
