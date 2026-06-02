@@ -33,14 +33,19 @@ export function formatDate(date: string | Date, format: 'short' | 'long' | 'time
             return new Intl.DateTimeFormat('es-AR', {
                 dateStyle: 'long',
                 timeStyle: 'short',
+                timeZone: 'America/Argentina/Buenos_Aires',
             }).format(d);
         case 'time':
             return new Intl.DateTimeFormat('es-AR', {
                 timeStyle: 'short',
+                timeZone: 'America/Argentina/Buenos_Aires',
             }).format(d);
         default:
             return new Intl.DateTimeFormat('es-AR', {
-                dateStyle: 'short',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'America/Argentina/Buenos_Aires',
             }).format(d);
     }
 }
@@ -81,12 +86,7 @@ export function formatQuantity(qty: number, unitType: string): string {
     if (unitType === 'unit') {
         return `${Math.round(qty)} ${getUnitLabel(unitType, qty)}`;
     }
-    // Mostrar hasta 3 decimales pero sin ceros innecesarios
-    const formatted = new Intl.NumberFormat('es-AR', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 3,
-    }).format(qty);
-    return `${formatted} ${getUnitLabel(unitType, qty)}`;
+    return `${formatNumber(qty, 3)} ${getUnitLabel(unitType, qty)}`;
 }
 
 // Generate slug from text
@@ -119,7 +119,6 @@ export function isMobile(): boolean {
 
 // Validate barcode format
 export function isValidBarcode(barcode: string): boolean {
-    // EAN-13, EAN-8, UPC-A, UPC-E formats
     return /^[\d]{8,14}$/.test(barcode);
 }
 
