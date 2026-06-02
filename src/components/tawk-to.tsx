@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect } from 'react';
 
 declare global {
@@ -19,8 +18,7 @@ export function TawkToWidget() {
 
         // Arranca minimizado — solo se abre cuando el usuario hace clic
         window.Tawk_API.onLoad = function () {
-            window.Tawk_API?.hideWidget?.();
-            window.Tawk_API?.showWidget?.();
+            window.Tawk_API?.minimize?.();
         };
 
         const script = document.createElement('script');
