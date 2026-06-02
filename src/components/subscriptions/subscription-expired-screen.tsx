@@ -10,14 +10,13 @@ export function SubscriptionExpiredScreen({ tenantName }: SubscriptionExpiredScr
     return (
         <div className="min-h-[80vh] flex items-center justify-center p-6">
             <div className="max-w-md w-full text-center space-y-6">
-                {/* Ícono */}
+
                 <div className="flex justify-center">
                     <div className="w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                         <AlertCircle className="w-10 h-10 text-red-500" />
                     </div>
                 </div>
 
-                {/* Título */}
                 <div className="space-y-2">
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                         Tu suscripción venció
@@ -32,20 +31,12 @@ export function SubscriptionExpiredScreen({ tenantName }: SubscriptionExpiredScr
                     </p>
                 </div>
 
-                {/* Info */}
                 <div className="bg-slate-800/50 rounded-xl p-4 text-left space-y-2">
-                    <p className="text-sm text-slate-400">
-                        ✅ Tus datos están seguros y guardados
-                    </p>
-                    <p className="text-sm text-slate-400">
-                        ✅ Nada se borra al vencer la suscripción
-                    </p>
-                    <p className="text-sm text-slate-400">
-                        ✅ Al renovar, recuperás acceso inmediato
-                    </p>
+                    <p className="text-sm text-slate-400">✅ Tus datos están seguros y guardados</p>
+                    <p className="text-sm text-slate-400">✅ Nada se borra al vencer la suscripción</p>
+                    <p className="text-sm text-slate-400">✅ Al renovar, recuperás acceso inmediato</p>
                 </div>
 
-                {/* Botones */}
                 <div className="space-y-3">
                     <button
                         onClick={() => {
@@ -68,7 +59,6 @@ export function SubscriptionExpiredScreen({ tenantName }: SubscriptionExpiredScr
                     </button>
                 </div>
 
-                {/* Email alternativo */}
                 <p className="text-xs text-slate-500">
                     También podés escribirnos a{' '}
                     
@@ -78,6 +68,7 @@ export function SubscriptionExpiredScreen({ tenantName }: SubscriptionExpiredScr
                         amgdigital.ok@gmail.com
                     </a>
                 </p>
+
             </div>
         </div>
     );
