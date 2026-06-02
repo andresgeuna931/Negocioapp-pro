@@ -1,5 +1,4 @@
 'use server';
-
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from './auth';
 
@@ -9,18 +8,16 @@ import { requireAdmin } from './auth';
 export async function getAdminMetrics() {
     await requireAdmin();
     const supabase = await createClient();
-
     const [tenantsCount, activeSubs, usersCount] = await Promise.all([
         supabase.from('tenants').select('id', { count: 'exact', head: true }),
         supabase.from('tenants').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('profiles').select('id', { count: 'exact', head: true })
     ]);
-
     return {
         totalTenants: tenantsCount.count || 0,
         activeSubscriptions: activeSubs.count || 0,
         totalUsers: usersCount.count || 0,
-        revenueEstimate: (activeSubs.count || 0) * 18000, // Just an estimate based on Starter price
+        revenueEstimate: (activeSubs.count || 0) * 18000,
     };
 }
 
@@ -30,7 +27,6 @@ export async function getAdminMetrics() {
 export async function getAllTenants(page = 1, limit = 20) {
     await requireAdmin();
     const supabase = await createClient();
-
     const { data, error, count } = await supabase
         .from('tenants')
         .select(`
@@ -40,11 +36,18 @@ export async function getAllTenants(page = 1, limit = 20) {
         `)
         .order('created_at', { ascending: false })
         .range((page - 1) * limit, page * limit - 1);
-
     if (error) throw error;
 
+    // Ordenar subscriptions por updated_at descendente para tomar siempre la más reciente
+    const tenants = (data || []).map((tenant: any) => ({
+        ...tenant,
+        subscriptions: (tenant.subscriptions || []).sort(
+            (a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        )
+    }));
+
     return {
-        tenants: data || [],
+        tenants,
         total: count || 0
     };
 }
