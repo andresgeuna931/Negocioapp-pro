@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { TrialBanner } from '@/components/subscriptions/trial-banner';
+import { SubscriptionExpiredScreen } from '@/components/subscriptions/subscription-expired-screen';
 import { TawkToWidget } from '@/components/tawk-to';
 import type { UserSession } from '@/lib/types';
 import { getPlanDetails } from '@/lib/config/plans';
@@ -18,7 +19,6 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, session, isExpired = false, daysRemaining = 0 }: DashboardLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Calculate trial status
     const tenant = session?.tenant;
     const subscription = session?.subscription;
     const createdAt = tenant?.created_at ? new Date(tenant.created_at) : null;
@@ -37,8 +37,6 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
         }
     }
 
-    // Check if user has a PAID subscription
-    // tenant.status === 'active' means payment was verified (by webhook or MP API check)
     const hasPaidSubscription = isActive || !!(
         subscription &&
         subscription.status === 'active' &&
@@ -46,31 +44,28 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
         !['free', 'trial'].includes(subscription.plan)
     );
 
-    // Get plan name for display
     const paidPlanName = hasPaidSubscription && subscription?.plan
         ? getPlanDetails(subscription.plan).name
         : undefined;
 
-    // Calculate subscription days remaining
     let subscriptionDaysLeft: number | undefined = undefined;
     if (hasPaidSubscription && subscription?.current_period_end) {
         const endDate = new Date(subscription.current_period_end);
         subscriptionDaysLeft = Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
     }
 
+    const showExpiredScreen = isExpired && !hasPaidSubscription;
+
     return (
         <div className="min-h-screen bg-slate-900">
-            {/* Sidebar */}
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            {/* Main content */}
             <div className="lg:pl-72">
                 <Header
                     onMenuClick={() => setSidebarOpen(true)}
                     session={session}
                 />
 
-                {/* Trial/Expired/Subscription banners */}
                 {session?.tenant && (
                     <TrialBanner
                         isTrial={isTrial}
@@ -82,12 +77,12 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
                     />
                 )}
 
-                <main className="p-4 lg:p-6 relative">
-                    {/* Overlay that blocks interactions when expired and NO paid subscription */}
-                    {isExpired && !hasPaidSubscription && (
-                        <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px] z-10 rounded-lg pointer-events-none" />
+                <main className="p-4 lg:p-6">
+                    {showExpiredScreen ? (
+                        <SubscriptionExpiredScreen tenantName={tenant?.name} />
+                    ) : (
+                        children
                     )}
-                    {children}
                 </main>
             </div>
 
