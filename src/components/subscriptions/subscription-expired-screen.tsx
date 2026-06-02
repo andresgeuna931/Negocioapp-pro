@@ -61,12 +61,7 @@ export function SubscriptionExpiredScreen({ tenantName }: SubscriptionExpiredScr
 
                 <p className="text-xs text-slate-500">
                     También podés escribirnos a{' '}
-                    
-                        href="mailto:amgdigital.ok@gmail.com"
-                        className="text-emerald-400 hover:underline"
-                    >
-                        amgdigital.ok@gmail.com
-                    </a>
+                    <a href="mailto:amgdigital.ok@gmail.com" className="text-emerald-400 hover:underline">amgdigital.ok@gmail.com</a>
                 </p>
 
             </div>
