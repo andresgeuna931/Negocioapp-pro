@@ -27,7 +27,7 @@ export async function getAdminMetrics() {
 export async function getAllTenants(page = 1, limit = 20) {
     await requireAdmin();
     const supabase = await createClient();
-    const { data, error, count } = await supabase
+    const { data, error } = await supabase
         .from('tenants')
         .select(`
             *,
@@ -38,16 +38,14 @@ export async function getAllTenants(page = 1, limit = 20) {
         .range((page - 1) * limit, page * limit - 1);
     if (error) throw error;
 
-    // Ordenar subscriptions por updated_at descendente para tomar siempre la más reciente
-    const tenants = (data || []).map((tenant: any) => ({
-        ...tenant,
-        subscriptions: (tenant.subscriptions || []).sort(
-            (a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        )
-    }));
+    const tenants = (data || []).map((tenant) => {
+        const subs = Array.isArray(tenant.subscriptions) ? [...tenant.subscriptions] : [];
+        subs.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+        return { ...tenant, subscriptions: subs };
+    });
 
     return {
         tenants,
-        total: count || 0
+        total: tenants.length
     };
 }
