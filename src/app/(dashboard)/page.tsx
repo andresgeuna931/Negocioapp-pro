@@ -105,7 +105,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
         <p className="text-slate-500 dark:text-slate-400">Bienvenido a {session.tenant.name}</p>
         {subscription?.current_period_end && (
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+          <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-0.5 font-medium">
             Próximo pago:{' '}
             {new Date(subscription.current_period_end).toLocaleDateString('es-AR', {
               day: 'numeric',
