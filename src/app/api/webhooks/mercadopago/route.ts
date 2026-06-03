@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
 
-// Calcula el próximo día 10 desde hoy
 function calcularProximoDiez(): Date {
     const now = new Date();
     const dia = now.getDate();
@@ -16,20 +15,19 @@ function calcularProximoDiez(): Date {
     }
 }
 
-// Mapea el planId interno al plan de DB
 function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; internalPlanId: string } {
     switch (planId) {
         case 'starter':
-            return { dbSubPlan: 'basic', dbTenantPlan: 'starter', internalPlanId: 'starter' };
+            return { dbSubPlan: 'starter', dbTenantPlan: 'starter', internalPlanId: 'starter' };
         case 'business':
-            return { dbSubPlan: 'premium', dbTenantPlan: 'business', internalPlanId: 'business' };
+            return { dbSubPlan: 'business', dbTenantPlan: 'business', internalPlanId: 'business' };
         case 'business_annual':
-            return { dbSubPlan: 'premium', dbTenantPlan: 'business', internalPlanId: 'business_annual' };
+            return { dbSubPlan: 'business_annual', dbTenantPlan: 'business', internalPlanId: 'business_annual' };
         case 'professional_annual':
-            return { dbSubPlan: 'premium', dbTenantPlan: 'professional', internalPlanId: 'professional_annual' };
+            return { dbSubPlan: 'professional_annual', dbTenantPlan: 'professional', internalPlanId: 'professional_annual' };
         case 'professional':
         default:
-            return { dbSubPlan: 'premium', dbTenantPlan: 'professional', internalPlanId: 'professional' };
+            return { dbSubPlan: 'professional', dbTenantPlan: 'professional', internalPlanId: 'professional' };
     }
 }
 
@@ -96,7 +94,6 @@ export async function POST(request: NextRequest) {
             if (tenantId && status === "active") {
                 const { dbSubPlan, dbTenantPlan, internalPlanId } = mapearPlan(planId || 'professional');
 
-                // Período: desde ahora hasta el próximo día 10
                 const now = new Date();
                 const periodStart = now;
                 const periodEnd = calcularProximoDiez();
