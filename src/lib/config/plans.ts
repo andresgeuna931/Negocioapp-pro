@@ -23,7 +23,7 @@ export const PLANS = {
     PROFESSIONAL: {
         id: 'professional',
         name: 'Profesional',
-        price: 20,
+        price: 39000,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL,
         limits: {
@@ -34,7 +34,7 @@ export const PLANS = {
             multi_price_lists: true,
             cash_control: true,
             reports: 'advanced',
-            support: 'whatsapp_business',
+            support: 'live_chat',
             current_account: true,
             bulk_products_update: true,
             excel_reports_export: true,
@@ -57,7 +57,7 @@ export const PLANS = {
             multi_price_lists: true,
             cash_control: true,
             reports: 'advanced',
-            support: 'whatsapp_business',
+            support: 'live_chat',
             current_account: true,
             bulk_products_update: true,
             excel_reports_export: true,
@@ -67,7 +67,7 @@ export const PLANS = {
     BUSINESS: {
         id: 'business',
         name: 'Business',
-        price: 15,
+        price: 49000,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS,
         limits: {
@@ -75,15 +75,13 @@ export const PLANS = {
             users: 5,
         },
         features: {
-            multi_branch: true,
             multi_price_lists: true,
             cash_control: true,
-            reports: 'advanced_excel',
-            support: 'priority',
+            reports: 'advanced',
+            support: 'vip_telegram',
             current_account: true,
             bulk_products_update: true,
             excel_reports_export: true,
-            audit_logs: true,
         },
         description: 'Gestión total sin límites para comercios establecidos.'
     },
@@ -100,15 +98,13 @@ export const PLANS = {
             users: 5,
         },
         features: {
-            multi_branch: true,
             multi_price_lists: true,
             cash_control: true,
-            reports: 'advanced_excel',
-            support: 'priority',
+            reports: 'advanced',
+            support: 'vip_telegram',
             current_account: true,
             bulk_products_update: true,
             excel_reports_export: true,
-            audit_logs: true,
         },
         description: 'Gestión total sin límites para comercios establecidos.'
     },
