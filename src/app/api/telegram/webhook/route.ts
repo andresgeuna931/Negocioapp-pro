@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID!;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
 
 const SYSTEM_PROMPT = `Sos un asistente de soporte de NegocioApp Pro, una app para kioscos y almacenes en Argentina.
@@ -22,11 +23,14 @@ Planes disponibles:
 - Profesional: $39.000/mes o $390.000/año
 - Business: $49.000/mes o $490.000/año
 
-Si el cliente tiene un problema técnico grave que no podés resolver, decile que vas a escalar el caso y que en breve lo contacta el equipo.
+Si el cliente tiene un problema técnico grave que no podés resolver:
+1. Decile al cliente que vas a escalar el caso y que en breve lo contacta el equipo.
+2. Al final de tu respuesta, en una línea nueva, escribí exactamente: [ESCALAR_CASO]
+
 Nunca menciones que sos una IA o un bot. Si te preguntan directamente si sos un bot, decí que sos parte del equipo de soporte de NegocioApp Pro.
 Respondé siempre de forma concisa, máximo 3-4 oraciones por respuesta salvo que sea necesario más detalle.`;
 
-async function sendMessage(chatId: number, text: string) {
+async function sendMessage(chatId: number | string, text: string) {
   await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,6 +53,12 @@ async function sendTyping(chatId: number) {
   });
 }
 
+async function notifyAdmin(firstName: string, chatId: number, userMessage: string) {
+  if (!ADMIN_CHAT_ID) return;
+  const text = `🚨 *Caso escalado — Soporte VIP*\n\n👤 Cliente: ${firstName}\n🆔 Chat ID: ${chatId}\n💬 Último mensaje: "${userMessage}"\n\n_Sofía no pudo resolver esta consulta._`;
+  await sendMessage(ADMIN_CHAT_ID, text);
+}
+
 async function getClaudeResponse(userMessage: string, history: Array<{role: string, content: string}>) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -69,16 +79,15 @@ async function getClaudeResponse(userMessage: string, history: Array<{role: stri
   });
 
   const data = await response.json();
-  
+
   if (!data.content || !data.content[0]) {
     console.error('Claude API error:', JSON.stringify(data));
     throw new Error('Respuesta inválida de Claude API');
   }
-  
+
   return data.content[0].text;
 }
 
-// Memoria en RAM por sesión (se resetea con cada deploy)
 const conversationHistory: Map<number, Array<{role: string, content: string}>> = new Map();
 
 export async function POST(request: NextRequest) {
@@ -105,15 +114,23 @@ export async function POST(request: NextRequest) {
     await sendTyping(chatId);
 
     const history = conversationHistory.get(chatId) || [];
-
     const reply = await getClaudeResponse(userText, history);
 
+    // Detectar si Sofía escaló el caso
+    const shouldEscalate = reply.includes('[ESCALAR_CASO]');
+    const cleanReply = reply.replace('[ESCALAR_CASO]', '').trim();
+
     history.push({ role: 'user', content: userText });
-    history.push({ role: 'assistant', content: reply });
+    history.push({ role: 'assistant', content: cleanReply });
     if (history.length > 20) history.splice(0, 2);
     conversationHistory.set(chatId, history);
 
-    await sendMessage(chatId, reply);
+    await sendMessage(chatId, cleanReply);
+
+    // Notificar al admin si se escaló
+    if (shouldEscalate) {
+      await notifyAdmin(firstName, chatId, userText);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (error) {
