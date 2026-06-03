@@ -58,7 +58,7 @@ async function getClaudeResponse(userMessage: string, history: Array<{role: stri
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1000,
       system: SYSTEM_PROMPT,
       messages: [
@@ -69,6 +69,12 @@ async function getClaudeResponse(userMessage: string, history: Array<{role: stri
   });
 
   const data = await response.json();
+  
+  if (!data.content || !data.content[0]) {
+    console.error('Claude API error:', JSON.stringify(data));
+    throw new Error('Respuesta inválida de Claude API');
+  }
+  
   return data.content[0].text;
 }
 
@@ -88,7 +94,6 @@ export async function POST(request: NextRequest) {
     const userText = message.text;
     const firstName = message.from?.first_name || 'cliente';
 
-    // Ignorar comandos por ahora
     if (userText.startsWith('/start')) {
       await sendMessage(
         chatId,
@@ -97,22 +102,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Mostrar "escribiendo..."
     await sendTyping(chatId);
 
-    // Obtener historial de conversación
     const history = conversationHistory.get(chatId) || [];
 
-    // Obtener respuesta de Claude
     const reply = await getClaudeResponse(userText, history);
 
-    // Actualizar historial (máximo 10 mensajes para no gastar tokens)
     history.push({ role: 'user', content: userText });
     history.push({ role: 'assistant', content: reply });
     if (history.length > 20) history.splice(0, 2);
     conversationHistory.set(chatId, history);
 
-    // Enviar respuesta
     await sendMessage(chatId, reply);
 
     return NextResponse.json({ ok: true });
