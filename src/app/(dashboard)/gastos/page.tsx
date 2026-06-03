@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { getExpenses, createExpense, deleteExpense, getExpensesSummary, EXPENSE_CATEGORIES } from '@/lib/actions/expenses';
 import type { Expense } from '@/lib/actions/expenses';
-import { Plus, Trash2, TrendingDown, DollarSign, Tag } from 'lucide-react';
+import { Plus, Trash2, TrendingDown, Tag, DollarSign } from 'lucide-react';
 
 export default function GastosPage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -14,7 +13,12 @@ export default function GastosPage() {
     const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
     const [showForm, setShowForm] = useState(false);
     const [isPending, startTransition] = useTransition();
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<{
+        amount: string;
+        category: string;
+        description: string;
+        date: string;
+    }>({
         amount: '',
         category: EXPENSE_CATEGORIES[0],
         description: '',
@@ -239,21 +243,19 @@ export default function GastosPage() {
                         <div className="space-y-3">
                             {expenses.map(expense => (
                                 <div key={expense.id} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
-                                    <div className="flex items-center gap-3">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-white">{expense.category}</span>
-                                                {expense.description && (
-                                                    <span className="text-xs text-slate-500">— {expense.description}</span>
-                                                )}
-                                            </div>
-                                            <span className="text-xs text-slate-500">
-                                                {new Date(expense.date + 'T12:00:00').toLocaleDateString('es-AR', {
-                                                    day: 'numeric',
-                                                    month: 'long',
-                                                })}
-                                            </span>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-white">{expense.category}</span>
+                                            {expense.description && (
+                                                <span className="text-xs text-slate-500">— {expense.description}</span>
+                                            )}
                                         </div>
+                                        <span className="text-xs text-slate-500">
+                                            {new Date(expense.date + 'T12:00:00').toLocaleDateString('es-AR', {
+                                                day: 'numeric',
+                                                month: 'long',
+                                            })}
+                                        </span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm font-bold text-red-400">{formatCurrency(Number(expense.amount))}</span>
