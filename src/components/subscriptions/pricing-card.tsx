@@ -12,10 +12,25 @@ interface PricingCardProps {
 }
 
 export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTrial, hasPaidSubscription }: PricingCardProps) {
-    const plan = getPlanDetails(planId);
+    const plan = getPlanDetails(planId) as any;
     const isCurrent = currentPlanId === plan.id;
     const isPro = plan.id === 'professional';
+    const isAnnual = plan.id.endsWith('_annual');
     const isDisabled = hasPaidSubscription && isCurrent;
+    const isBusinessPlan = plan.id === 'business' || plan.id === 'business_annual';
+
+    const supportText = () => {
+        if (plan.id === 'starter') {
+            return 'Chatbot IA (Autogestión)';
+        }
+        if (plan.id === 'professional' || plan.id === 'professional_annual') {
+            return 'Chatbot IA + Chat en vivo (Lun-Vie)';
+        }
+        if (plan.id === 'business' || plan.id === 'business_annual') {
+            return 'Chatbot IA + Chat en vivo + Bot Telegram 24/7';
+        }
+        return '';
+    };
 
     return (
         <div className={cn(
@@ -31,7 +46,14 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                 </div>
             )}
 
-            <div className={cn("flex flex-col h-full p-6 gap-5")}>
+            {/* Savings badge para planes anuales */}
+            {isAnnual && plan.savings && (
+                <div className="bg-amber-500 text-white text-xs font-bold text-center py-1.5 uppercase tracking-widest">
+                    Ahorrás {formatPrice(plan.savings)} pagando anual
+                </div>
+            )}
+
+            <div className="flex flex-col h-full p-6 gap-5">
 
                 {/* Header */}
                 <div>
@@ -47,9 +69,16 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                 </div>
 
                 {/* Price */}
-                <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">{formatPrice(plan.price)}</span>
-                    <span className="text-slate-400 text-sm">/mes</span>
+                <div>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-4xl font-bold text-white">{formatPrice(plan.price)}</span>
+                        <span className="text-slate-400 text-sm">/{isAnnual ? 'año' : 'mes'}</span>
+                    </div>
+                    {isAnnual && plan.monthlyEquivalent && (
+                        <p className="text-sm text-emerald-400 mt-1 font-medium">
+                            Equivale a {formatPrice(plan.monthlyEquivalent)}/mes
+                        </p>
+                    )}
                 </div>
 
                 {/* Features */}
@@ -66,11 +95,31 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
 
                     <div className="border-t border-slate-700 my-1" />
 
-                    <FeatureRow included={plan.features.current_account} text="Cuentas Corrientes (Fiado)" tooltip="Vender a crédito y registrar deudas de clientes" highlight={plan.features.current_account} />
-                    <FeatureRow included={plan.features.multi_price_lists} text="Listas de precios múltiples" tooltip="Precios diferenciados por mayorista, minorista, etc." />
-                    <FeatureRow included={plan.features.bulk_products_update} text="Actualización masiva de precios" tooltip="Actualizar todos los precios por porcentaje" />
-                    <FeatureRow included={true} text={plan.features.reports === 'basic' ? 'Reportes básicos' : 'Reportes avanzados'} />
-                    <FeatureRow included={plan.features.excel_reports_export} text="Exportar a Excel" tooltip="Descargar reportes en formato Excel" />
+                    <FeatureRow
+                        included={plan.features.current_account}
+                        text="Cuentas Corrientes (Fiado)"
+                        tooltip="Vender a crédito y registrar deudas de clientes"
+                        highlight={plan.features.current_account}
+                    />
+                    <FeatureRow
+                        included={plan.features.multi_price_lists}
+                        text="Listas de precios múltiples"
+                        tooltip="Precios diferenciados por mayorista, minorista, etc."
+                    />
+                    <FeatureRow
+                        included={plan.features.bulk_products_update}
+                        text="Actualización masiva de precios"
+                        tooltip="Actualizar todos los precios por porcentaje"
+                    />
+                    <FeatureRow
+                        included={true}
+                        text={plan.features.reports === 'basic' ? 'Reportes básicos' : 'Reportes avanzados'}
+                    />
+                    <FeatureRow
+                        included={plan.features.excel_reports_export}
+                        text="Exportar a Excel"
+                        tooltip="Descargar reportes en formato Excel"
+                    />
 
                     {/* Support */}
                     <div className="pt-2 border-t border-slate-700">
@@ -78,38 +127,26 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                         <div className="flex items-start gap-2">
                             <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                             <span className={cn(
-                                "text-slate-300 text-sm",
-                                plan.id === 'business' && "font-semibold text-emerald-400"
+                                "text-sm",
+                                isBusinessPlan ? "font-semibold text-emerald-400" : "text-slate-300"
                             )}>
-                                {plan.id === 'starter' && 'Chatbot IA (Autogestión)'}
-                                {plan.id === 'professional' && 'Chatbot + WhatsApp (Lun-Vie)'}
-                                {plan.id === 'business' && 'WhatsApp Prioritario VIP'}
+                                {supportText()}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Button */}
+                {/* Button — deshabilitado, modelo por invitación */}
                 <button
                     className={cn(
                         "w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 mt-2",
                         isDisabled
                             ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                            : isPro
-                                ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
-                                : "border border-slate-500 text-white hover:bg-slate-700 hover:border-slate-400"
+                            : "bg-slate-700 text-slate-400 cursor-not-allowed opacity-60"
                     )}
-                    disabled={isDisabled || !!loading}
-                    onClick={() => onSelect?.(plan.id)}
+                    disabled={true}
                 >
-                    {loading
-                        ? 'Procesando...'
-                        : isDisabled
-                            ? 'Plan Actual'
-                            : isInTrial && isCurrent
-                                ? 'Suscribirme a este plan'
-                                : 'Elegir Plan'
-                    }
+                    {isDisabled ? 'Plan Actual' : 'Contactanos para suscribirte'}
                 </button>
             </div>
         </div>
