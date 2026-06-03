@@ -2,32 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-
-export const EXPENSE_CATEGORIES = [
-    'Mercadería',
-    'Alquiler',
-    'Electricidad',
-    'Agua',
-    'Gas',
-    'Internet/Teléfono',
-    'Sueldos',
-    'Limpieza',
-    'Mantenimiento',
-    'Impuestos',
-    'Otros',
-] as const;
-
-export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
-
-export interface Expense {
-    id: string;
-    tenant_id: string;
-    amount: number;
-    category: string;
-    description: string | null;
-    date: string;
-    created_at: string;
-}
+import { EXPENSE_CATEGORIES } from '@/lib/config/expenses-config';
+export type { Expense } from '@/lib/config/expenses-config';
+export { EXPENSE_CATEGORIES };
 
 async function getCurrentTenantId() {
     const supabase = await createClient();
@@ -75,7 +52,7 @@ export async function getExpenses(period: 'today' | 'week' | 'month' | 'year' = 
 
     if (error) return { data: null, error: error.message };
 
-    return { data: data as Expense[], error: null };
+    return { data, error: null };
 }
 
 export async function getExpensesSummary(period: 'today' | 'week' | 'month' | 'year' = 'month') {
