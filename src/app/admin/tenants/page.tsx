@@ -20,8 +20,8 @@ function getPlanVariant(planDisplay: string): 'success' | 'info' | 'warning' | '
     const plan = planDisplay.toLowerCase();
     if (plan.includes('business')) return 'success';
     if (plan.includes('profesional') || plan.includes('professional')) return 'info';
-    if (plan.includes('starter') || plan.includes('basic')) return 'warning';
-    return 'default';
+    if (plan.includes('starter') || plan.includes('basic')) return 'success';
+    return 'success';
 }
 
 export default async function AdminTenantsPage() {
