@@ -27,7 +27,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
             return 'Chatbot IA + Chat en vivo (Lun-Vie)';
         }
         if (plan.id === 'business' || plan.id === 'business_annual') {
-            return 'Chatbot IA + Chat en vivo + Bot Telegram 24/7';
+            return 'Chatbot IA + Chat en vivo + Soporte VIP Telegram 24/7';
         }
         return '';
     };
