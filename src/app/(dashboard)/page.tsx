@@ -100,7 +100,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             ¡Hola, {session.profile.full_name?.split(' ')[0] || 'Usuario'}!
           </h1>
-          <Badge variant={isInTrial ? 'info' : tenant?.plan_type === 'business' ? 'success' : tenant?.plan_type === 'professional' ? 'info' : 'default'}>
+          <Badge variant={isInTrial ? 'info' : tenant?.plan_type === 'business' ? 'success' : tenant?.plan_type === 'professional' ? 'info' : 'success'}>
             Plan {planName}
           </Badge>
         </div>
