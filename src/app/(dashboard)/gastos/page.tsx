@@ -8,8 +8,10 @@ import { EXPENSE_CATEGORIES } from '@/lib/config/expenses-config';
 import type { Expense } from '@/lib/config/expenses-config';
 import { Plus, Trash2, TrendingDown, Tag, DollarSign } from 'lucide-react';
 
+type ExpenseWithCash = Expense & { from_cash?: boolean };
+
 export default function GastosPage() {
-    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expenses, setExpenses] = useState<ExpenseWithCash[]>([]);
     const [summary, setSummary] = useState<{ total: number; byCategory: Record<string, number> }>({ total: 0, byCategory: {} });
     const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
     const [showForm, setShowForm] = useState(false);
@@ -35,7 +37,7 @@ export default function GastosPage() {
             getExpenses(period),
             getExpensesSummary(period),
         ]);
-        if (expensesRes.data) setExpenses(expensesRes.data);
+        if (expensesRes.data) setExpenses(expensesRes.data as ExpenseWithCash[]);
         setSummary(summaryRes);
     }
 
@@ -239,8 +241,13 @@ export default function GastosPage() {
                             {expenses.map(expense => (
                                 <div key={expense.id} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
                                     <div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-sm font-medium text-white">{expense.category}</span>
+                                            {expense.from_cash && (
+                                                <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full">
+                                                    De Caja
+                                                </span>
+                                            )}
                                             {expense.description && (
                                                 <span className="text-xs text-slate-500">— {expense.description}</span>
                                             )}
@@ -254,13 +261,15 @@ export default function GastosPage() {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm font-bold text-red-400">{formatCurrency(Number(expense.amount))}</span>
-                                        <button
-                                            onClick={() => handleDelete(expense.id)}
-                                            disabled={isPending}
-                                            className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        {!expense.from_cash && (
+                                            <button
+                                                onClick={() => handleDelete(expense.id)}
+                                                disabled={isPending}
+                                                className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
