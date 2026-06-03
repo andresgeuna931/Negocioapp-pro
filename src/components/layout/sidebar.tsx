@@ -13,7 +13,8 @@ import {
     X,
     Wallet,
     ClipboardList,
-    Users
+    Users,
+    Receipt
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ const navItems = [
     { href: '/productos', label: 'Productos', icon: Package },
     { href: '/stock', label: 'Stock Bajo', icon: AlertTriangle },
     { href: '/caja', label: 'Caja', icon: Wallet },
+    { href: '/gastos', label: 'Gastos', icon: Receipt },
     { href: '/inventario', label: 'Inventario', icon: ClipboardList },
     { href: '/reportes', label: 'Reportes', icon: BarChart3 },
     { href: '/config', label: 'Configuración', icon: Settings },
