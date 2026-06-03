@@ -1,8 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks'];
+const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/precios'];
 
 export async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
@@ -34,17 +33,14 @@ export async function middleware(request: NextRequest) {
 
     const pathname = request.nextUrl.pathname;
 
-    // Check if public route
     const isPublicRoute = PUBLIC_ROUTES.some((route) =>
         pathname.startsWith(route)
     );
 
-    // Refresh session - this is required by Supabase
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
-    // If not authenticated and trying to access protected route → login
     if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone();
         url.pathname = '/login';
@@ -52,15 +48,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // If authenticated and on login/register → dashboard
     if (user && (pathname === '/login' || pathname === '/register')) {
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
     }
-
-    // NOTE: Subscription and tenant checks are done in the dashboard layout,
-    // NOT here. This keeps the middleware fast and avoids Vercel timeouts.
 
     return supabaseResponse;
 }
