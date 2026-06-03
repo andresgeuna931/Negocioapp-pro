@@ -2,9 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { EXPENSE_CATEGORIES } from '@/lib/config/expenses-config';
-export type { Expense } from '@/lib/config/expenses-config';
-export { EXPENSE_CATEGORIES };
 
 async function getCurrentTenantId() {
     const supabase = await createClient();
