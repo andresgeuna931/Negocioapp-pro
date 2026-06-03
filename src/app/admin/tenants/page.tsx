@@ -16,6 +16,14 @@ function formatFechaAR(dateStr: string): string {
     });
 }
 
+function getPlanVariant(planDisplay: string): 'success' | 'info' | 'warning' | 'default' {
+    const plan = planDisplay.toLowerCase();
+    if (plan.includes('business')) return 'success';
+    if (plan.includes('profesional') || plan.includes('professional')) return 'info';
+    if (plan.includes('starter') || plan.includes('basic')) return 'warning';
+    return 'default';
+}
+
 export default async function AdminTenantsPage() {
     const { tenants } = await getAllTenants();
 
@@ -44,8 +52,11 @@ export default async function AdminTenantsPage() {
                     }
 
                     const isManual = sub?.payment_provider === 'manual_admin';
+                    const ownerProfile = tenant.profiles?.find((p: any) => p.role === 'owner' || p.role === 'admin');
+                    const isSystemAdmin = ownerProfile?.role === 'admin';
+                    const displayEmail = tenant.email || ownerProfile?.email || 'Sin email';
 
-                    // --- EXPIRY LOGIC ---
+                    // --- EXPIRY LOGIC — solo de Supabase, sin fallbacks ---
                     let expiryDate: string | null = sub?.current_period_end || null;
 
                     if (!expiryDate && tenant.status === 'trial') {
@@ -53,11 +64,6 @@ export default async function AdminTenantsPage() {
                         trialEnd.setDate(trialEnd.getDate() + 14);
                         expiryDate = trialEnd.toISOString();
                     }
-
-                    // --- EMAIL LOGIC ---
-                    const ownerProfile = tenant.profiles?.find((p: any) => p.role === 'owner' || p.role === 'admin');
-                    const isSystemAdmin = ownerProfile?.role === 'admin';
-                    const displayEmail = tenant.email || ownerProfile?.email || 'Sin email';
 
                     return (
                         <Card key={tenant.id} className="overflow-hidden hover:border-purple-300 transition-all border-slate-200 dark:border-slate-800">
@@ -83,7 +89,7 @@ export default async function AdminTenantsPage() {
                                                 <Badge variant={tenant.status === 'active' ? 'success' : tenant.status === 'trial' ? 'info' : 'danger'}>
                                                     {tenant.status.toUpperCase()}
                                                 </Badge>
-                                                <Badge variant="default" className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700">
+                                                <Badge variant={getPlanVariant(planDisplay)}>
                                                     PLAN: {planDisplay.toUpperCase()}
                                                 </Badge>
                                             </div>
