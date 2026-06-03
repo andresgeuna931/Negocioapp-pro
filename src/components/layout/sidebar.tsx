@@ -22,6 +22,7 @@ interface SidebarProps {
     isOpen: boolean;
     onClose: () => void;
     planName?: string;
+    userRole?: string;
 }
 
 const navItems = [
@@ -31,7 +32,6 @@ const navItems = [
     { href: '/productos', label: 'Productos', icon: Package },
     { href: '/stock', label: 'Stock Bajo', icon: AlertTriangle },
     { href: '/caja', label: 'Caja', icon: Wallet },
-    { href: '/gastos', label: 'Gastos', icon: Receipt },
     { href: '/inventario', label: 'Inventario', icon: ClipboardList },
     { href: '/reportes', label: 'Reportes', icon: BarChart3 },
     { href: '/config', label: 'Configuración', icon: Settings },
@@ -44,9 +44,10 @@ const TelegramIcon = () => (
     </svg>
 );
 
-export function Sidebar({ isOpen, onClose, planName }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
     const pathname = usePathname();
     const isBusiness = planName?.toLowerCase().includes('business');
+    const isOwner = userRole === 'owner' || userRole === 'admin';
 
     return (
         <>
@@ -91,6 +92,22 @@ export function Sidebar({ isOpen, onClose, planName }: SidebarProps) {
                             </Link>
                         );
                     })}
+
+                    {isOwner && (
+                        <Link
+                            href="/gastos"
+                            onClick={onClose}
+                            className={cn(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                                pathname.startsWith('/gastos')
+                                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            )}
+                        >
+                            <Receipt className="w-5 h-5" />
+                            Gastos
+                        </Link>
+                    )}
 
                     {isBusiness && (
                         <button
