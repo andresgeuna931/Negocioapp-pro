@@ -96,7 +96,7 @@ async function notifyAdmin(
   userMessage: string
 ) {
   if (!ADMIN_CHAT_ID) return;
-  const contactInfo = username ? `@${username}` : `Chat ID: ${chatId}`;
+  const contactInfo = username ? `@${username.replace(/_/g, '\\_')}` : `Chat ID: ${chatId}`;
   const text = `🚨 *Caso escalado — Soporte VIP*\n\n👤 Cliente: ${firstName}\n📲 Telegram: ${contactInfo}\n💬 Último mensaje: "${userMessage}"\n\n_Contactalo directamente en Telegram._`;
   await sendMessage(ADMIN_CHAT_ID, text);
 }
