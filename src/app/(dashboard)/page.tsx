@@ -44,6 +44,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   ]);
 
   const subscription = subscriptionResult?.subscription;
+  const isAdmin = session.profile.role === 'admin';
 
   let planName = 'Pendiente de Pago';
   let isInTrial = false;
@@ -104,7 +105,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </Badge>
         </div>
         <p className="text-slate-500 dark:text-slate-400">Bienvenido a {session.tenant.name}</p>
-        {subscription?.current_period_end && (
+        {subscription?.current_period_end && !isAdmin && (
           <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-0.5 font-medium">
             Próximo pago:{' '}
             {new Date(subscription.current_period_end).toLocaleDateString('es-AR', {
