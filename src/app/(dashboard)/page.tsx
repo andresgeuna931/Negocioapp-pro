@@ -36,6 +36,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await getCurrentSession();
   if (!session) redirect('/login');
 
+  const isOwnerOrAdmin = session.profile.role === 'owner' || session.profile.role === 'admin';
+  const isAdmin = session.profile.role === 'admin';
+
   const [todaySummary, monthSummary, topProducts, lowStock, tenant, subscriptionResult, expensesSummary] = await Promise.all([
     getSalesSummary('today'),
     getSalesSummary('month'),
@@ -43,11 +46,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getLowStockProducts(),
     getTenantSettings(),
     getSubscriptionStatus(),
-    getExpensesSummary('month'),
+    isOwnerOrAdmin ? getExpensesSummary('month') : Promise.resolve({ total: 0, byCategory: {} }),
   ]);
 
   const subscription = subscriptionResult?.subscription;
-  const isAdmin = session.profile.role === 'admin';
 
   const monthIncome = monthSummary.data?.total_amount || 0;
   const monthExpenses = expensesSummary.total || 0;
@@ -180,50 +182,52 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </Card>
       </div>
 
-      {/* Balance del mes */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+      {/* Balance del mes — solo owner/admin */}
+      {isOwnerOrAdmin && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                  <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Ingresos del mes</p>
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(monthIncome)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Ingresos del mes</p>
-                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(monthIncome)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                  <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Gastos del mes</p>
+                  <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(monthExpenses)}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <TrendingDown className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </CardContent>
+          </Card>
+          <Card className={monthProfit >= 0 ? 'border-emerald-500/30' : 'border-red-500/30'}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${monthProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                  <DollarSign className={`w-5 h-5 ${monthProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Ganancia del mes</p>
+                  <p className={`text-lg font-bold ${monthProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(monthProfit)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Gastos del mes</p>
-                <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(monthExpenses)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className={monthProfit >= 0 ? 'border-emerald-500/30' : 'border-red-500/30'}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-xl ${monthProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                <DollarSign className={`w-5 h-5 ${monthProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Ganancia del mes</p>
-                <p className={`text-lg font-bold ${monthProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {formatCurrency(monthProfit)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <Link href="/ventas">
