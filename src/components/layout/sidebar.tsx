@@ -91,19 +91,14 @@ export function Sidebar({ isOpen, onClose, planName }: SidebarProps) {
                     })}
 
                     {isBusiness && (
-                        
-                            href="https://t.me/negocioapp_soporte_bot"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={onClose}
-                            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border border-[#229ED9]/30 text-[#229ED9] hover:text-white mt-2"
+                        <button
+                            onClick={() => { window.open('https://t.me/negocioapp_soporte_bot', '_blank'); onClose(); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border border-[#229ED9]/30 text-[#229ED9] hover:text-white mt-2"
                         >
                             <TelegramIcon />
-                            <span className="flex-1">Soporte VIP</span>
-                            <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">
-                                24/7
-                            </span>
-                        </a>
+                            <span className="flex-1 text-left">Soporte VIP</span>
+                            <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">24/7</span>
+                        </button>
                     )}
                 </nav>
 
