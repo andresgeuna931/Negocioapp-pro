@@ -21,13 +21,13 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
 
     const supportText = () => {
         if (plan.id === 'starter') {
-            return 'Chatbot IA (Autogestión)';
+            return 'Chat en vivo Tawk.to (Autogestión)';
         }
         if (plan.id === 'professional' || plan.id === 'professional_annual') {
-            return 'Chatbot IA + Chat en vivo (Lun-Vie)';
+            return 'Chat en vivo Tawk.to (Lun-Vie horario comercial)';
         }
         if (plan.id === 'business' || plan.id === 'business_annual') {
-            return 'Chatbot IA + Chat en vivo + Soporte VIP Telegram 24/7';
+            return 'Soporte VIP Telegram 24/7';
         }
         return '';
     };
@@ -39,14 +39,12 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                 ? "border-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.15)] scale-105 z-10 bg-slate-800"
                 : "border-slate-700 bg-slate-800 hover:border-slate-500"
         )}>
-            {/* Recommended badge */}
             {isPro && (
                 <div className="bg-emerald-500 text-white text-xs font-bold text-center py-1.5 uppercase tracking-widest">
                     Recomendado
                 </div>
             )}
 
-            {/* Savings badge para planes anuales */}
             {isAnnual && plan.savings && (
                 <div className="bg-amber-500 text-white text-xs font-bold text-center py-1.5 uppercase tracking-widest">
                     Ahorrás {formatPrice(plan.savings)} pagando anual
@@ -55,7 +53,6 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
 
             <div className="flex flex-col h-full p-6 gap-5">
 
-                {/* Header */}
                 <div>
                     <div className="flex justify-between items-start mb-1">
                         <h3 className="text-xl font-bold text-white">{plan.name}</h3>
@@ -68,7 +65,6 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                     <p className="text-slate-400 text-sm min-h-[36px] leading-snug">{plan.description}</p>
                 </div>
 
-                {/* Price */}
                 <div>
                     <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-bold text-white">{formatPrice(plan.price)}</span>
@@ -81,7 +77,6 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                     )}
                 </div>
 
-                {/* Features */}
                 <div className="flex-1 space-y-2.5 text-sm">
                     <FeatureRow
                         included={true}
@@ -120,8 +115,12 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                         text="Exportar a Excel"
                         tooltip="Descargar reportes en formato Excel"
                     />
+                    <FeatureRow
+                        included={true}
+                        text="Módulo de Gastos"
+                        tooltip="Registrá gastos del negocio y visualizá tu ganancia real"
+                    />
 
-                    {/* Support */}
                     <div className="pt-2 border-t border-slate-700">
                         <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Soporte</p>
                         <div className="flex items-start gap-2">
@@ -136,7 +135,6 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                     </div>
                 </div>
 
-                {/* Button — deshabilitado, modelo por invitación */}
                 <button
                     className={cn(
                         "w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 mt-2",
