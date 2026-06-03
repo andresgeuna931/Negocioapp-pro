@@ -3,8 +3,9 @@
 import { useState, useEffect, useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
-import { getExpenses, createExpense, deleteExpense, getExpensesSummary, EXPENSE_CATEGORIES } from '@/lib/actions/expenses';
-import type { Expense } from '@/lib/actions/expenses';
+import { getExpenses, createExpense, deleteExpense, getExpensesSummary } from '@/lib/actions/expenses';
+import { EXPENSE_CATEGORIES } from '@/lib/config/expenses-config';
+import type { Expense } from '@/lib/config/expenses-config';
 import { Plus, Trash2, TrendingDown, Tag, DollarSign } from 'lucide-react';
 
 export default function GastosPage() {
@@ -76,7 +77,6 @@ export default function GastosPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Gastos</h1>
@@ -91,7 +91,6 @@ export default function GastosPage() {
                 </button>
             </div>
 
-            {/* Filtro período */}
             <div className="flex gap-2">
                 {(['today', 'week', 'month', 'year'] as const).map(p => (
                     <button
@@ -108,7 +107,6 @@ export default function GastosPage() {
                 ))}
             </div>
 
-            {/* Formulario nuevo gasto */}
             {showForm && (
                 <Card className="border-emerald-500/30 bg-slate-800">
                     <CardHeader>
@@ -177,7 +175,6 @@ export default function GastosPage() {
                 </Card>
             )}
 
-            {/* Cards resumen */}
             <div className="grid grid-cols-2 gap-4">
                 <Card>
                     <CardContent className="p-4">
@@ -207,7 +204,6 @@ export default function GastosPage() {
                 </Card>
             </div>
 
-            {/* Por categoría */}
             {Object.keys(summary.byCategory).length > 0 && (
                 <Card>
                     <CardHeader>
@@ -229,7 +225,6 @@ export default function GastosPage() {
                 </Card>
             )}
 
-            {/* Lista de gastos */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-white text-base">
