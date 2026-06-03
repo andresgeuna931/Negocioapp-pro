@@ -15,7 +15,8 @@ import {
     AlertTriangle,
     CreditCard,
     MessageCircle,
-    LayoutGrid
+    LayoutGrid,
+    Receipt
 } from 'lucide-react';
 
 interface FAQItem {
@@ -94,8 +95,8 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo importo productos desde Excel?',
-    answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.\n\nSi un producto ya existe (mismo código de barras o SKU), se actualizará automáticamente con los nuevos datos. Si no existe, se creará como producto nuevo.',
-    keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla', 'actualizar', 'duplicar']
+                answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.\n\nSi un producto ya existe (mismo código de barras o SKU), se actualizará automáticamente con los nuevos datos. Si no existe, se creará como producto nuevo.',
+                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla', 'actualizar', 'duplicar']
             },
             {
                 question: '¿Cómo filtro productos por categoría?',
@@ -124,11 +125,6 @@ const faqData: FAQCategory[] = [
                 question: '¿Qué pasa si elimino una categoría que tiene productos?',
                 answer: 'Si eliminás una categoría, los productos que tenían esa categoría quedan "sin categoría" pero no se borran. Podés reasignarlos a otra categoría editando cada producto.',
                 keywords: ['eliminar', 'categoria', 'productos', 'borrar']
-            },
-            {
-                question: '¿Por qué ya tengo categorías cuando recién me registré?',
-                answer: 'Al registrarte, el sistema detecta el tipo de negocio que elegiste (kiosco, ferretería, verdulería, etc.) y carga automáticamente una lista de categorías sugeridas para ese tipo de negocio. Podés editarlas o agregar las tuyas.',
-                keywords: ['categorias', 'automatico', 'registro', 'tipo', 'negocio']
             }
         ]
     },
@@ -184,6 +180,44 @@ const faqData: FAQCategory[] = [
         ]
     },
     {
+        id: 'gastos',
+        title: 'Gastos',
+        icon: <Receipt className="w-5 h-5" />,
+        color: 'red',
+        items: [
+            {
+                question: '¿Qué es el módulo de Gastos?',
+                answer: 'El módulo de Gastos es visible solo para el dueño y administrador del negocio. Permite registrar todos los gastos del negocio (alquiler, luz, mercadería, sueldos, etc.) y ver la ganancia real del mes: Ingresos - Gastos = Ganancia.',
+                keywords: ['gastos', 'modulo', 'ganancia', 'ingresos']
+            },
+            {
+                question: '¿Cómo registro un gasto?',
+                answer: 'Andá a Gastos y tocá "+ Nuevo gasto". Ingresá el monto, la fecha, la categoría (Mercadería, Alquiler, Electricidad, etc.) y una descripción opcional. El gasto queda registrado inmediatamente.',
+                keywords: ['registrar', 'gasto', 'nuevo', 'cargar']
+            },
+            {
+                question: '¿Cómo aparecen los egresos de caja en Gastos?',
+                answer: 'Cuando un empleado registra un "Retiro/Gasto" en la sección de Caja, ese egreso aparece automáticamente en el módulo de Gastos del dueño con el badge "De Caja". No hace falta cargarlo dos veces. Los egresos de caja no se pueden eliminar desde Gastos, solo desde Caja.',
+                keywords: ['caja', 'egreso', 'retiro', 'automatico', 'badge']
+            },
+            {
+                question: '¿Dónde veo la ganancia del mes?',
+                answer: 'En el Dashboard principal (solo visible para dueño y administrador) hay tres cards: Ingresos del mes, Gastos del mes y Ganancia del mes. La ganancia se calcula automáticamente como Ingresos - Gastos.',
+                keywords: ['ganancia', 'dashboard', 'ingresos', 'balance']
+            },
+            {
+                question: '¿Los empleados pueden ver los gastos?',
+                answer: 'No. El módulo de Gastos y el balance financiero del Dashboard son visibles únicamente para el dueño y el administrador. Los empleados solo ven sus ventas y el control de caja.',
+                keywords: ['empleado', 'ver', 'gastos', 'permiso']
+            },
+            {
+                question: '¿Puedo filtrar los gastos por período?',
+                answer: 'Sí. En la página de Gastos podés filtrar por: Hoy, Esta semana, Este mes o Este año. El resumen y la lista se actualizan automáticamente según el período seleccionado.',
+                keywords: ['filtrar', 'periodo', 'mes', 'año', 'semana']
+            }
+        ]
+    },
+    {
         id: 'reportes',
         title: 'Reportes',
         icon: <BarChart3 className="w-5 h-5" />,
@@ -213,24 +247,24 @@ const faqData: FAQCategory[] = [
         color: 'indigo',
         items: [
             {
-                question: '¿Cuánto dura la prueba gratis?',
-                answer: 'La prueba gratis dura 14 días e incluye todas las funciones del Plan Profesional. No se requiere tarjeta de crédito para empezar.',
-                keywords: ['prueba', 'gratis', 'trial', 'dias']
+                question: '¿Cómo accedo a NegocioApp Pro?',
+                answer: 'El acceso a NegocioApp Pro es solo por invitación. Para obtener acceso contactá al equipo. Una vez que te enviamos la invitación, recibís un email para crear tu cuenta.',
+                keywords: ['acceso', 'registro', 'invitacion', 'como entrar']
             },
             {
-                question: '¿Cómo me suscribo a un plan?',
-                answer: 'Andá a Configuración y tocá el link "Cambiar de plan" en la sección Suscripción, o tocá el botón "Suscribirme ahora" del banner. Elegí el plan que prefieras y completá el pago con MercadoPago. Una vez confirmado el pago, el banner de prueba desaparece automáticamente y tu cuenta queda activa.',
-                keywords: ['plan', 'suscribir', 'pagar', 'mercadopago', 'activar']
+                question: '¿Cuándo se cobra la suscripción?',
+                answer: 'Los cobros se realizan el día 10 de cada mes a través de MercadoPago. El primer cobro es proporcional a los días que quedan hasta el día 10 más próximo. Desde el segundo cobro en adelante, se cobra el monto completo cada día 10.',
+                keywords: ['cobro', 'fecha', 'cuando', 'dia 10', 'suscripcion']
             },
             {
-                question: '¿Cómo cambio de plan?',
-                answer: 'Andá a Configuración y tocá el link "Cambiar de plan" en la sección Suscripción. Tu plan actual aparece marcado como "Plan Actual". Hacé clic en "Elegir Plan" en el plan al que querés cambiar y seguí los pasos.',
-                keywords: ['plan', 'cambiar', 'upgrade', 'suscripcion']
+                question: '¿Qué métodos de pago aceptan?',
+                answer: 'Aceptamos tarjetas de crédito y débito a través de MercadoPago. El cobro es automático cada mes.',
+                keywords: ['pago', 'tarjeta', 'credito', 'debito', 'mercadopago']
             },
             {
-                question: '¿Qué pasa si no pago?',
-                answer: 'Si tu suscripción vence y no renovás, el acceso al sistema se suspende hasta que regularices el pago. Tus datos se mantienen seguros, pero no podrás usar la aplicación hasta completar el pago.',
-                keywords: ['pago', 'vence', 'expira', 'cancelar', 'suspende']
+                question: '¿Qué pasa si el pago falla?',
+                answer: 'Si el pago no se puede procesar, MercadoPago reintenta automáticamente. Si finalmente no se puede cobrar, la cuenta se suspende hasta que regularices el pago. Tus datos se mantienen seguros.',
+                keywords: ['pago', 'falla', 'error', 'suspende', 'vence']
             },
             {
                 question: '¿Cómo configuro los datos de mi negocio?',
@@ -239,7 +273,7 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo invito a un empleado?',
-                answer: 'Andá a Configuración > Gestión de Equipo. Ingresá el email del empleado y enviá la invitación. El empleado recibirá un correo para registrarse. Los empleados pueden hacer ventas pero no pueden editar productos, categorías ni ver reportes.',
+                answer: 'Andá a Configuración > Gestión de Equipo. Ingresá el email del empleado y enviá la invitación. El empleado recibirá un correo para registrarse.\n\nLos empleados pueden hacer ventas, manejar caja y registrar egresos, pero NO pueden ver el módulo de Gastos, el balance financiero del Dashboard ni editar productos o categorías.',
                 keywords: ['empleado', 'invitar', 'equipo', 'usuario', 'rol']
             }
         ]
