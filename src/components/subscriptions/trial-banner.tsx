@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { X, Clock, AlertTriangle, CheckCircle, CreditCard } from 'lucide-react';
+import { X, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -26,12 +26,11 @@ export function TrialBanner({
     const [isVisible, setIsVisible] = useState(true);
 
     // STATE 5: Active paid subscription — no banner needed.
-    // Subscription is auto-renewing. User manages plan from Config page.
     if (!isTrial && !isExpired && hasPaidSubscription) {
         return null;
     }
 
-    // STATE 4: Expired — no paid subscription — CANNOT be dismissed
+    // STATE 4: Expired/Suspended — no paid subscription — CANNOT be dismissed
     if (isExpired && !hasPaidSubscription) {
         return (
             <div className="w-full bg-red-600 text-white px-4 py-4 shadow-md relative z-40">
@@ -40,22 +39,13 @@ export function TrialBanner({
                         <AlertTriangle className="w-5 h-5 flex-shrink-0 animate-pulse" />
                         <div>
                             <span className="font-bold text-sm md:text-base block">
-                                Tu período de prueba ha finalizado
+                                Tu suscripción está suspendida
                             </span>
                             <span className="text-red-100 text-xs md:text-sm">
-                                Suscribite para seguir usando todas las funciones de NegocioApp Pro.
+                                Contactanos para renovar y recuperar el acceso completo.
                             </span>
                         </div>
                     </div>
-                    <Link href="/precios">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            className="bg-white text-red-600 hover:bg-red-50 border-none font-bold text-xs md:text-sm h-9 px-5 whitespace-nowrap"
-                        >
-                            Ver Planes
-                        </Button>
-                    </Link>
                 </div>
             </div>
         );
