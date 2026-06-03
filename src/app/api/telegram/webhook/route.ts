@@ -29,6 +29,19 @@ FUNCIONES DE LA APP:
 - Auditoría de operaciones — solo Business
 - Hasta 1 usuario en Starter, 2 en Profesional, 5 en Business
 
+MÓDULO DE GASTOS (solo visible para dueño/administrador):
+- El dueño puede registrar gastos del negocio con categoría, monto, fecha y descripción
+- Categorías disponibles: Mercadería, Alquiler, Electricidad, Agua, Gas, Internet/Teléfono, Sueldos, Limpieza, Mantenimiento, Impuestos, Otros
+- Los egresos que los empleados registran en Caja aparecen automáticamente en Gastos con el badge "De Caja"
+- El dueño puede filtrar gastos por: Hoy, Esta semana, Este mes, Este año
+- Los gastos de caja no se pueden eliminar desde el módulo de Gastos (solo desde Caja)
+- En el Dashboard el dueño ve: Ingresos del mes, Gastos del mes y Ganancia real del mes
+- Los empleados NO ven el módulo de Gastos ni el balance financiero del dashboard
+
+PERMISOS POR ROL:
+- Dueño/Admin: acceso completo a todo incluyendo Gastos y balance financiero
+- Empleado (staff): puede vender, manejar caja y registrar egresos, pero NO ve Gastos ni el balance financiero
+
 PLANES Y PRECIOS:
 - Starter: $19.000/mes — hasta 1.000 productos, 1 usuario, soporte por Chatbot IA
 - Profesional: $39.000/mes o $390.000/año — hasta 5.000 productos, 2 usuarios, soporte Chatbot IA + Chat en vivo Tawk.to (Lun-Vie horario comercial)
