@@ -20,7 +20,6 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
         setError(null);
 
         try {
-            // Call our checkout API
             const response = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: {
@@ -32,14 +31,12 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
             const data = await response.json();
 
             if (!response.ok) {
-                // If there's detailed info, we want to know it
-                const errorMsg = data.details 
-                    ? `${data.error} (${data.details})` 
+                const errorMsg = data.details
+                    ? `${data.error} (${data.details})`
                     : (data.error || 'Error al crear el checkout');
                 throw new Error(errorMsg);
             }
 
-            // Redirect to Mercado Pago checkout
             const checkoutUrl = data.init_point || data.sandbox_init_point;
 
             if (checkoutUrl) {
@@ -55,6 +52,9 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
         }
     };
 
+    const topPlans = ['STARTER', 'PROFESSIONAL', 'PROFESSIONAL_ANNUAL'] as const;
+    const bottomPlans = ['BUSINESS', 'BUSINESS_ANNUAL'] as const;
+
     return (
         <div>
             {error && (
@@ -64,12 +64,32 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                     </div>
                     <p className="text-center font-medium">{error}</p>
                     <p className="text-xs text-center mt-4 opacity-70 italic border-t border-red-200 pt-4">
-                        💡 **Tip para pruebas**: No podés usar tu propio mail de MercadoPago para suscribirte. Usá un mail distinto (ej. el de tu hermano).
+                        💡 No podés usar tu propio mail de MercadoPago para suscribirte. Usá un mail distinto.
                     </p>
                 </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8 items-stretch max-w-5xl mx-auto">
-                {(Object.keys(PLANS) as Array<keyof typeof PLANS>).map((key) => {
+
+            {/* Fila 1: Starter, Profesional, Profesional Anual */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch max-w-5xl mx-auto">
+                {topPlans.map((key) => {
+                    const plan = PLANS[key];
+                    return (
+                        <PricingCard
+                            key={plan.id}
+                            planId={plan.id}
+                            currentPlanId={currentPlanId}
+                            onSelect={handleSelectPlan}
+                            loading={loadingPlan === plan.id}
+                            isInTrial={isInTrial}
+                            hasPaidSubscription={hasPaidSubscription}
+                        />
+                    );
+                })}
+            </div>
+
+            {/* Fila 2: Business y Business Anual centrados */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch max-w-3xl mx-auto mt-6">
+                {bottomPlans.map((key) => {
                     const plan = PLANS[key];
                     return (
                         <PricingCard
