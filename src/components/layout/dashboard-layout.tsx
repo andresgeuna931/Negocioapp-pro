@@ -60,7 +60,7 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
 
     return (
         <div className="min-h-screen bg-slate-900">
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} planName={paidPlanName} />
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} planName={tenant?.plan_type} />
 
             <div className="lg:pl-72">
                 <Header
