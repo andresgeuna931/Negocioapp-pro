@@ -13,18 +13,12 @@ export function TawkToWidget() {
         if (typeof window === 'undefined') return;
         if (window.Tawk_API) return;
 
-        window.Tawk_API = {
-            autoStart: false,
-            onLoad: function () {
-                window.Tawk_API?.hideWidget?.();
-                setTimeout(() => {
-                    window.Tawk_API?.showWidget?.();
-                    window.Tawk_API?.minimize?.();
-                }, 500);
-            }
-        };
-
+        window.Tawk_API = {};
         window.Tawk_LoadStart = new Date();
+
+        window.Tawk_API.onLoad = function () {
+            window.Tawk_API?.minimize?.();
+        };
 
         const script = document.createElement('script');
         script.async = true;
