@@ -1,5 +1,6 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { MessageCircle, X } from 'lucide-react';
 
 declare global {
     interface Window {
@@ -9,16 +10,28 @@ declare global {
 }
 
 export function TawkToWidget() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
+
     useEffect(() => {
         if (typeof window === 'undefined') return;
         if (window.Tawk_API) return;
 
-        window.Tawk_API = {};
-        window.Tawk_LoadStart = new Date();
-
-        window.Tawk_API.onLoad = function () {
-            window.Tawk_API?.minimize?.();
+        window.Tawk_API = {
+            onLoad: function () {
+                // Ocultar el botón nativo de Tawk
+                window.Tawk_API?.hideWidget?.();
+                setIsLoaded(true);
+            },
+            onChatMinimized: function () {
+                setIsOpen(false);
+            },
+            onChatMaximized: function () {
+                setIsOpen(true);
+            }
         };
+
+        window.Tawk_LoadStart = new Date();
 
         const script = document.createElement('script');
         script.async = true;
@@ -36,5 +49,31 @@ export function TawkToWidget() {
         };
     }, []);
 
-    return null;
+    const handleToggle = () => {
+        if (!isLoaded) return;
+        if (isOpen) {
+            window.Tawk_API?.minimize?.();
+            setIsOpen(false);
+        } else {
+            window.Tawk_API?.maximize?.();
+            setIsOpen(true);
+        }
+    };
+
+    if (!isLoaded) return null;
+
+    return (
+        <button
+            onClick={handleToggle}
+            className="fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg text-white font-medium text-sm transition-all hover:scale-105"
+            style={{ backgroundColor: '#274234' }}
+        >
+            {isOpen ? (
+                <X className="w-5 h-5" />
+            ) : (
+                <MessageCircle className="w-5 h-5" />
+            )}
+            {!isOpen && <span>Soporte Virtual</span>}
+        </button>
+    );
 }
