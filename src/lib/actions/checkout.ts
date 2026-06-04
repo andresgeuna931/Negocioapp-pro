@@ -31,7 +31,6 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
 
         const supabaseAdmin = await createClient();
 
-        // Check if tenant exists
         const { data: tenant } = await supabaseAdmin
             .from("tenants")
             .select("created_at, status")
@@ -46,7 +45,6 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
             trialEndDate.setDate(trialEndDate.getDate() + 14);
 
             if (new Date() < trialEndDate) {
-                // Still in trial
                 periodStart = trialEndDate;
                 periodEnd = new Date(trialEndDate);
                 periodEnd.setDate(periodEnd.getDate() + 30);
@@ -57,23 +55,20 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
             periodEnd.setDate(periodEnd.getDate() + 30);
         }
 
-        // --- ENUM MAPPING FIX ---
-        // Map to DB-valid enum values
-        let dbSubPlan = 'premium'; 
+        let dbSubPlan = 'professional';
         let dbTenantPlan = 'professional';
         let internalPlanId = 'professional';
 
-        // Check plan mapping based on MP Plan ID or metadata
         if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_TEST || mpPlanId === 'test' || mpPlanId === 'starter') {
-            dbSubPlan = 'basic';
+            dbSubPlan = 'starter';
             dbTenantPlan = 'starter';
             internalPlanId = mpPlanId === 'test' ? 'test' : 'starter';
         } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL || mpPlanId === 'professional') {
-            dbSubPlan = 'premium';
+            dbSubPlan = 'professional';
             dbTenantPlan = 'professional';
             internalPlanId = 'professional';
         } else if (mpPlanId === process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS || mpPlanId === 'business') {
-            dbSubPlan = 'premium';
+            dbSubPlan = 'business';
             dbTenantPlan = 'business';
             internalPlanId = 'business';
         }
@@ -85,13 +80,12 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
 
         const now = new Date().toISOString();
 
-        // Update Subscription
         const { error: subError } = await supabaseServiceRole
             .from("subscriptions")
             .upsert({
                 tenant_id: tenantId,
                 status: "active",
-                plan: dbSubPlan, // Correct enum value
+                plan: dbSubPlan,
                 current_period_start: periodStart.toISOString(),
                 current_period_end: periodEnd.toISOString(),
                 last_payment_at: now,
@@ -107,14 +101,13 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
             return { success: false, error: 'Database update failed (sub)' };
         }
 
-        // Update Tenant
         const { error: tenantError } = await supabaseServiceRole
             .from("tenants")
-            .update({ 
+            .update({
                 status: 'active',
-                plan_type: dbTenantPlan, // Correct enum value
+                plan_type: dbTenantPlan,
                 settings: {
-                    plan_id: internalPlanId, // Display bypass
+                    plan_id: internalPlanId,
                     last_sync_at: now
                 }
             })
