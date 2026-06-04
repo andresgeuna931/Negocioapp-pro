@@ -73,7 +73,7 @@ export function TawkToWidget() {
             ) : (
                 <MessageCircle className="w-5 h-5" />
             )}
-            {!isOpen && <span>Soporte Virtual</span>}
+            {!isOpen && <span>Ayuda Rápida</span>}
         </button>
     );
 }
