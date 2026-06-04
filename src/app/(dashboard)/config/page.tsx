@@ -18,6 +18,7 @@ export default async function ConfigPage() {
 
     const team = teamResult.data || [];
     const isOwner = session?.profile.role === 'owner';
+    const isAdmin = session?.profile.role === 'admin';
 
     return (
         <div className="space-y-6 max-w-4xl">
@@ -158,8 +159,8 @@ export default async function ConfigPage() {
                 </CardContent>
             </Card>
 
-            {/* Categories — solo owners */}
-            {isOwner && (
+            {/* Categories — owner y admin */}
+            {(isOwner || isAdmin) && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
