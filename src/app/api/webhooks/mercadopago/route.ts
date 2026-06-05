@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
             let planId: string | undefined;
             let status: string = 'pending';
             let transactionAmount: number = 0;
+            let externalSubscriptionId: string | undefined;
 
             if (topic === "payment") {
                 const payment = new Payment(mpClient);
@@ -84,6 +85,8 @@ export async function POST(request: NextRequest) {
                     }
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
+                    // Guardar el preapproval_id si viene en el payment
+                    externalSubscriptionId = (details as any).preapproval_id || undefined;
                 }
             } else if (topic === "preapproval") {
                 const preApproval = new PreApproval(mpClient);
@@ -101,6 +104,8 @@ export async function POST(request: NextRequest) {
                         planId = details.metadata?.plan_id;
                     }
                     status = "active";
+                    // Guardar el ID del preapproval para poder cancelarlo después
+                    externalSubscriptionId = details.id || resourceId;
                 }
             }
 
@@ -122,6 +127,7 @@ export async function POST(request: NextRequest) {
                         last_payment_at: now.toISOString(),
                         last_payment_amount: transactionAmount,
                         payment_provider: 'mercadopago',
+                        external_subscription_id: externalSubscriptionId,
                         updated_at: now.toISOString(),
                     }, { onConflict: "tenant_id" });
 
@@ -137,7 +143,7 @@ export async function POST(request: NextRequest) {
                     })
                     .eq("id", tenantId);
 
-                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()}`);
+                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()}, preapproval_id=${externalSubscriptionId}`);
             }
         }
 
