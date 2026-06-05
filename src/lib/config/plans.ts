@@ -23,7 +23,7 @@ export const PLANS = {
     PROFESSIONAL: {
         id: 'professional',
         name: 'Profesional',
-        price: 15,
+        price: 39000,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL,
         limits: {
