@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
                     currency_id: "ARS"
                 },
                 external_reference: `${profile.tenant_id}___${plan.id}`,
-                back_url: baseUrl,
+                back_url: `${baseUrl}/precios?pago=exitoso`,
                 reason: `Suscripción Anual NegocioApp Pro - ${plan.name}`,
                 payer_email: payerEmail,
             };
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
                     currency_id: "ARS"
                 },
                 external_reference: `${profile.tenant_id}___${plan.id}`,
-                back_url: baseUrl,
+                back_url: `${baseUrl}/precios?pago=exitoso`,
                 reason: `Suscripción NegocioApp Pro - ${plan.name}`,
                 payer_email: payerEmail,
             };
