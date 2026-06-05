@@ -15,19 +15,32 @@ function calcularProximoDiez(): Date {
     }
 }
 
-function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; internalPlanId: string } {
+function calcularProximoDiezAnual(): Date {
+    const now = new Date();
+    const dia = now.getDate();
+    const mes = now.getMonth();
+    const anio = now.getFullYear();
+
+    if (dia < 10) {
+        return new Date(anio + 1, mes, 10, 23, 59, 59);
+    } else {
+        return new Date(anio + 1, mes + 1, 10, 23, 59, 59);
+    }
+}
+
+function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; internalPlanId: string; isAnnual: boolean } {
     switch (planId) {
         case 'starter':
-            return { dbSubPlan: 'starter', dbTenantPlan: 'starter', internalPlanId: 'starter' };
+            return { dbSubPlan: 'starter', dbTenantPlan: 'starter', internalPlanId: 'starter', isAnnual: false };
         case 'business':
-            return { dbSubPlan: 'business', dbTenantPlan: 'business', internalPlanId: 'business' };
+            return { dbSubPlan: 'business', dbTenantPlan: 'business', internalPlanId: 'business', isAnnual: false };
         case 'business_annual':
-            return { dbSubPlan: 'business_annual', dbTenantPlan: 'business', internalPlanId: 'business_annual' };
+            return { dbSubPlan: 'business_annual', dbTenantPlan: 'business', internalPlanId: 'business_annual', isAnnual: true };
         case 'professional_annual':
-            return { dbSubPlan: 'professional_annual', dbTenantPlan: 'professional', internalPlanId: 'professional_annual' };
+            return { dbSubPlan: 'professional_annual', dbTenantPlan: 'professional', internalPlanId: 'professional_annual', isAnnual: true };
         case 'professional':
         default:
-            return { dbSubPlan: 'professional', dbTenantPlan: 'professional', internalPlanId: 'professional' };
+            return { dbSubPlan: 'professional', dbTenantPlan: 'professional', internalPlanId: 'professional', isAnnual: false };
     }
 }
 
@@ -92,11 +105,11 @@ export async function POST(request: NextRequest) {
             }
 
             if (tenantId && status === "active") {
-                const { dbSubPlan, dbTenantPlan, internalPlanId } = mapearPlan(planId || 'professional');
+                const { dbSubPlan, dbTenantPlan, internalPlanId, isAnnual } = mapearPlan(planId || 'professional');
 
                 const now = new Date();
                 const periodStart = now;
-                const periodEnd = calcularProximoDiez();
+                const periodEnd = isAnnual ? calcularProximoDiezAnual() : calcularProximoDiez();
 
                 await supabaseAdmin
                     .from("subscriptions")
