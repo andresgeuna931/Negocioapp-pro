@@ -1,7 +1,6 @@
 'use client';
-
 import { useState } from 'react';
-import { activateTenantManual } from '@/lib/actions/admin-actions';
+import { activateTenantManual, suspendTenant } from '@/lib/actions/admin-actions';
 import { toast } from 'sonner';
 import { 
     DropdownMenu, 
@@ -11,19 +10,33 @@ import {
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { CreditCard, MoreHorizontal, CheckCircle2, Loader2 } from 'lucide-react';
+import { CreditCard, MoreHorizontal, CheckCircle2, Loader2, XCircle } from 'lucide-react';
 
 export function TenantActions({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleActivate = async (planId: string) => {
         if (!confirm(`¿Estás seguro de activar el plan ${planId.toUpperCase()} para ${tenantName}?`)) return;
-
         setIsLoading(true);
         try {
             const result = await activateTenantManual(tenantId, planId);
             if (result.success) {
                 toast.success(`Plan ${planId.toUpperCase()} activado correctamente para ${tenantName}`);
+            }
+        } catch (error: any) {
+            toast.error(`Error: ${error.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSuspend = async () => {
+        if (!confirm(`¿Estás seguro de suspender ${tenantName}? Se cancelará su suscripción en MercadoPago.`)) return;
+        setIsLoading(true);
+        try {
+            const result = await suspendTenant(tenantId);
+            if (result.success) {
+                toast.success(`${tenantName} suspendido correctamente`);
             }
         } catch (error: any) {
             toast.error(`Error: ${error.message}`);
@@ -68,13 +81,16 @@ export function TenantActions({ tenantId, tenantName }: { tenantId: string; tena
                     <CheckCircle2 className="w-4 h-4 mr-2 text-purple-500" />
                     Activar BUSINESS
                 </DropdownMenuItem>
-
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer">
+                <DropdownMenuItem 
+                    disabled={isLoading}
+                    onClick={handleSuspend}
+                    className="text-red-600 focus:text-red-600 cursor-pointer"
+                >
+                    <XCircle className="w-4 h-4 mr-2" />
                     Suspender Negocio
                 </DropdownMenuItem>
             </DropdownMenuContent>
-
             {isLoading && (
                 <div className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[100] flex items-center justify-center">
                     <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
