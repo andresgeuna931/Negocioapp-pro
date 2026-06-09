@@ -10,7 +10,6 @@ export default async function PricingPage() {
         getSubscriptionStatus()
     ]);
 
-    // Si no hay sesión, mostrar precios como visitante
     const isGuest = !session || !tenant;
 
     let isInTrial = false;
@@ -20,6 +19,9 @@ export default async function PricingPage() {
         subscription &&
         subscription.status === 'active'
     );
+
+    // Detectar si el tenant está suspendido
+    const isSuspended = tenant?.status === 'suspended';
 
     if (!isGuest && !hasPaidSubscription && tenant?.created_at) {
         const createdAt = new Date(tenant.created_at);
@@ -61,11 +63,19 @@ export default async function PricingPage() {
                         Elegí el plan perfecto para tu negocio
                     </h1>
                     <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                        {hasPaidSubscription
-                            ? 'Gestioná tu suscripción o cambiá de plan.'
-                            : 'Planes diseñados para kioscos y almacenes en Argentina.'
+                        {isSuspended
+                            ? 'Tu suscripción está suspendida. Elegí un plan para recuperar el acceso.'
+                            : hasPaidSubscription
+                                ? 'Gestioná tu suscripción o cambiá de plan.'
+                                : 'Planes diseñados para kioscos y almacenes en Argentina.'
                         }
                     </p>
+                    {isSuspended && (
+                        <div className="mt-6 inline-flex items-center gap-3 bg-red-500/20 text-red-400 px-6 py-2.5 rounded-full text-sm font-semibold border border-red-500/30">
+                            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                            Tu cuenta está suspendida — elegí un plan para reactivarla
+                        </div>
+                    )}
                     {isInTrial && trialDaysLeft > 0 && !hasPaidSubscription && (
                         <div className="mt-6 inline-flex items-center gap-3 bg-slate-800 text-slate-100 px-6 py-2.5 rounded-full text-sm font-semibold border border-slate-700">
                             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -85,6 +95,7 @@ export default async function PricingPage() {
                     tenantId={tenant?.id || ''}
                     isInTrial={isInTrial}
                     hasPaidSubscription={hasPaidSubscription}
+                    isSuspended={isSuspended}
                 />
 
                 <div className="mt-16 text-center">
