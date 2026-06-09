@@ -58,7 +58,13 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         console.log("Webhook received:", JSON.stringify(body, null, 2));
 
-        if (body.type === "payment" || body.type === "preapproval" || body.action?.includes("subscription") || body.action?.includes("payment")) {
+        if (
+            body.type === "payment" ||
+            body.type === "preapproval" ||
+            body.type === "subscription_preapproval" ||
+            body.action?.includes("subscription") ||
+            body.action?.includes("payment")
+        ) {
             const resourceId = body.data?.id;
             const topic = body.type || body.topic;
 
@@ -85,10 +91,9 @@ export async function POST(request: NextRequest) {
                     }
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
-                    // Guardar el preapproval_id si viene en el payment
                     externalSubscriptionId = (details as any).preapproval_id || undefined;
                 }
-            } else if (topic === "preapproval") {
+            } else if (topic === "preapproval" || topic === "subscription_preapproval") {
                 const preApproval = new PreApproval(mpClient);
                 const details: any = await preApproval.get({ id: resourceId });
                 console.log("PreApproval Details:", JSON.stringify(details, null, 2));
@@ -104,7 +109,6 @@ export async function POST(request: NextRequest) {
                         planId = details.metadata?.plan_id;
                     }
                     status = "active";
-                    // Guardar el ID del preapproval para poder cancelarlo después
                     externalSubscriptionId = details.id || resourceId;
                 }
             }
