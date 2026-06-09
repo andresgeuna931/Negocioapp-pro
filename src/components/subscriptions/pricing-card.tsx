@@ -9,9 +9,10 @@ interface PricingCardProps {
     loading?: boolean;
     isInTrial?: boolean;
     hasPaidSubscription?: boolean;
+    isSuspended?: boolean;
 }
 
-export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTrial, hasPaidSubscription }: PricingCardProps) {
+export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTrial, hasPaidSubscription, isSuspended }: PricingCardProps) {
     const plan = getPlanDetails(planId) as any;
     const isCurrent = currentPlanId === plan.id;
     const isPro = plan.id === 'professional';
@@ -136,15 +137,18 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                 </div>
 
                 <button
+                    onClick={() => isSuspended && onSelect?.(plan.id)}
                     className={cn(
                         "w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 mt-2",
-                        isDisabled
-                            ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                            : "bg-slate-700 text-slate-400 cursor-not-allowed opacity-60"
+                        isSuspended
+                            ? "bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer"
+                            : isDisabled
+                                ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                                : "bg-slate-700 text-slate-400 cursor-not-allowed opacity-60"
                     )}
-                    disabled={true}
+                    disabled={!isSuspended}
                 >
-                    {isDisabled ? 'Plan Actual' : 'Contactanos para suscribirte'}
+                    {isSuspended ? 'Reactivar con este plan' : isDisabled ? 'Plan Actual' : 'Contactanos para suscribirte'}
                 </button>
             </div>
         </div>
