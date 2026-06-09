@@ -9,9 +9,10 @@ interface PricingSectionProps {
     tenantId: string;
     isInTrial?: boolean;
     hasPaidSubscription?: boolean;
+    isSuspended?: boolean;
 }
 
-export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubscription }: PricingSectionProps) {
+export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubscription, isSuspended }: PricingSectionProps) {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +70,6 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                 </div>
             )}
 
-            {/* Fila 1: Starter, Profesional, Profesional Anual */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch max-w-5xl mx-auto">
                 {topPlans.map((key) => {
                     const plan = PLANS[key];
@@ -82,12 +82,12 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                             loading={loadingPlan === plan.id}
                             isInTrial={isInTrial}
                             hasPaidSubscription={hasPaidSubscription}
+                            isSuspended={isSuspended}
                         />
                     );
                 })}
             </div>
 
-            {/* Fila 2: Business y Business Anual centrados */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch max-w-3xl mx-auto mt-6">
                 {bottomPlans.map((key) => {
                     const plan = PLANS[key];
@@ -100,6 +100,7 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
                             loading={loadingPlan === plan.id}
                             isInTrial={isInTrial}
                             hasPaidSubscription={hasPaidSubscription}
+                            isSuspended={isSuspended}
                         />
                     );
                 })}
