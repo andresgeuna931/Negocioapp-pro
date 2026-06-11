@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import type { SalesSummary, TopProduct, LowStockProduct } from '@/lib/types';
+import type { SalesSummary, TopProduct, LowStockProduct, UnitType } from '@/lib/types';
 
 // Helper to get current user's tenant_id
 async function getCurrentTenantId() {
@@ -122,7 +122,7 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
     }
 
     // Agrupar por producto
-    const productMap: Record<string, { product_id: string; product_name: string; total_qty: number; total_revenue: number; unit_type: string }> = {};
+    const productMap: Record<string, TopProduct> = {};
 
     for (const item of data as any[]) {
         const id = item.product_id;
@@ -132,7 +132,7 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
                 product_name: item.product_name || id,
                 total_qty: 0,
                 total_revenue: 0,
-                unit_type: item.unit_type || 'unit',
+                unit_type: (item.unit_type || 'unit') as UnitType,
             };
         }
         productMap[id].total_qty += Number(item.quantity);
@@ -143,7 +143,7 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
         .sort((a, b) => b.total_revenue - a.total_revenue)
         .slice(0, limit);
 
-    return { data: sorted as TopProduct[], error: null };
+    return { data: sorted, error: null };
 }
 
 // Get low stock products
@@ -235,7 +235,7 @@ export async function getInventoryValue() {
         .eq('is_active', true);
 
     if (error) {
-        return { data: null, error: error.message }
+        return { data: null, error: error.message };
     }
 
     const atCost = data.reduce((sum, p) => {
