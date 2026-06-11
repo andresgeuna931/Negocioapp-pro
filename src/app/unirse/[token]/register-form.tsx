@@ -100,6 +100,7 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
             const regData = await regRes.json();
             if (!regRes.ok) {
                 setError(regData.error || 'Error al crear la cuenta');
+                setLoading(false);
                 return;
             }
 
@@ -113,17 +114,18 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
             const checkoutData = await checkoutRes.json();
             if (!checkoutRes.ok) {
                 setError(checkoutData.error || 'Error al iniciar el pago');
+                setLoading(false);
                 return;
             }
 
-            // 3. Redirigir a MP
+            // 3. Redirigir a MP — botón queda bloqueado intencionalmente hasta que carga MP
             window.location.href = checkoutData.init_point;
 
         } catch {
             setError('Error inesperado. Intentá de nuevo.');
-        } finally {
             setLoading(false);
         }
+        // Sin finally — el botón no se libera si la redirección fue exitosa
     };
 
     return (
@@ -269,6 +271,7 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
                             className="w-full mt-6"
                             size="lg"
                             loading={loading}
+                            disabled={loading}
                         >
                             {loading ? 'Procesando...' : `Crear cuenta e ir al pago →`}
                         </Button>
