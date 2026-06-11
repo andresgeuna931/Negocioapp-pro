@@ -46,11 +46,16 @@ export async function createTenantInvitation(planId: PlanId, notes?: string) {
     return { success: true, token: data.token, url: inviteUrl, data };
 }
 
-// ─── VALIDAR TOKEN (público — para la página /unirse/[token]) ────────────────
+// ─── VALIDAR TOKEN (público — usa admin client para bypassear RLS) ────────────
 export async function validateInvitationToken(token: string) {
-    const supabase = await createClient();
+    // Usamos el cliente admin porque esta página es pública (sin sesión de usuario)
+    // El cliente normal falla con RLS cuando no hay sesión activa
+    const adminSupabase = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-    const { data, error } = await supabase
+    const { data, error } = await adminSupabase
         .from("tenant_invitations")
         .select("*")
         .eq("token", token)
