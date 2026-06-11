@@ -5,6 +5,8 @@ import { AlertTriangle, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 interface JoinPageProps {
     params: Promise<{ token: string }>;
 }
