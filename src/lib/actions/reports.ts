@@ -44,6 +44,36 @@ export async function getSalesSummary(period: 'today' | 'week' | 'month' | 'year
     };
 }
 
+// Get sales summary for a custom date range
+export async function getSalesSummaryByRange(from: string, to: string) {
+    const supabase = await createClient();
+    const tenantId = await getCurrentTenantId();
+
+    if (!tenantId) {
+        return { data: null, error: 'No autenticado' };
+    }
+
+    const { data, error } = await supabase
+        .from('sales')
+        .select('total_amount')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', from)
+        .lte('created_at', to);
+
+    if (error) {
+        return { data: null, error: error.message };
+    }
+
+    const total_sales = data.length;
+    const total_amount = data.reduce((sum, s) => sum + Number(s.total_amount), 0);
+    const average_sale = total_sales > 0 ? total_amount / total_sales : 0;
+
+    return {
+        data: { total_sales, total_amount, average_sale } as SalesSummary,
+        error: null,
+    };
+}
+
 // Get top selling products
 export async function getTopProducts(
     limit: number = 5,
@@ -62,6 +92,58 @@ export async function getTopProducts(
     }
 
     return { data: data as TopProduct[], error: null };
+}
+
+// Get top selling products for a custom date range
+export async function getTopProductsByRange(limit: number = 10, from: string, to: string) {
+    const supabase = await createClient();
+    const tenantId = await getCurrentTenantId();
+
+    if (!tenantId) {
+        return { data: null, error: 'No autenticado' };
+    }
+
+    const { data, error } = await supabase
+        .from('sale_items')
+        .select(`
+            product_id,
+            quantity,
+            subtotal,
+            unit_type,
+            sales!inner(created_at, tenant_id)
+        `)
+        .eq('sales.tenant_id', tenantId)
+        .gte('sales.created_at', from)
+        .lte('sales.created_at', to);
+
+    if (error) {
+        console.error('Error fetching top products by range:', error);
+        return { data: null, error: error.message };
+    }
+
+    // Agrupar por producto
+    const productMap: Record<string, { product_id: string; product_name: string; total_qty: number; total_revenue: number; unit_type: string }> = {};
+
+    for (const item of data as any[]) {
+        const id = item.product_id;
+        if (!productMap[id]) {
+            productMap[id] = {
+                product_id: id,
+                product_name: item.product_name || id,
+                total_qty: 0,
+                total_revenue: 0,
+                unit_type: item.unit_type || 'unit',
+            };
+        }
+        productMap[id].total_qty += Number(item.quantity);
+        productMap[id].total_revenue += Number(item.subtotal);
+    }
+
+    const sorted = Object.values(productMap)
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, limit);
+
+    return { data: sorted as TopProduct[], error: null };
 }
 
 // Get low stock products
@@ -107,7 +189,7 @@ export async function getSalesByDateRange(from: string, to: string) {
     const { data, error } = await supabase
         .from('sales')
         .select('created_at, total_amount')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .gte('created_at', from)
         .lte('created_at', to)
         .order('created_at');
@@ -149,11 +231,11 @@ export async function getInventoryValue() {
     const { data, error } = await supabase
         .from('products')
         .select('stock_on_hand, cost, price')
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
     if (error) {
-        return { data: null, error: error.message };
+        return { data: null, error: error.message }
     }
 
     const atCost = data.reduce((sum, p) => {
