@@ -23,3 +23,64 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* ─── ESTILOS DE IMPRESIÓN ─────────────────────────────────────────────────── */
+@media print {
+  /* Fondo blanco, texto oscuro */
+  body {
+    background: white !important;
+    color: #1e293b !important;
+  }
+
+  /* Ocultar elementos que no deben imprimirse */
+  nav,
+  aside,
+  header,
+  [data-sidebar],
+  .print\:hidden,
+  button:not(.print-visible) {
+    display: none !important;
+  }
+
+  /* Ocultar botón Ayuda Rápida y Soporte VIP */
+  [class*="fixed"],
+  [class*="bottom-"],
+  [class*="right-"] {
+    display: none !important;
+  }
+
+  /* Forzar que el gráfico se vea completo */
+  .recharts-wrapper,
+  .recharts-surface {
+    width: 100% !important;
+    min-width: 600px !important;
+  }
+
+  /* Evitar cortes de página dentro de cards */
+  .rounded-xl,
+  .rounded-lg {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Cards con fondo blanco al imprimir */
+  [class*="bg-slate"],
+  [class*="bg-gray"],
+  [class*="dark:bg-"] {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Texto oscuro al imprimir */
+  [class*="text-slate"],
+  [class*="text-white"],
+  [class*="dark:text-"] {
+    color: #1e293b !important;
+  }
+
+  /* Mantener colores emerald para valores */
+  .text-emerald-600,
+  [class*="text-emerald"] {
+    color: #059669 !important;
+  }
+}
