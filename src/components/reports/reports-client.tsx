@@ -1,56 +1,82 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSalesSummaryByRange, getTopProductsByRange, getInventoryValue, getSalesByDateRange } from '@/lib/actions/reports';
+import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { SalesChart } from '@/components/reports/sales-chart';
 
 type PeriodMode = 'last30' | 'thisMonth' | 'prevMonth' | 'custom';
 
-function getDateRange(mode: PeriodMode, customYear: number, customMonth: number): {
-    from: Date; to: Date; label: string; chartType: 'area' | 'bar'
-} {
+interface DateRange {
+    fromISO: string;
+    toISO: string;
+    label: string;
+    chartType: 'area' | 'bar';
+}
+
+function computeDateRange(mode: PeriodMode, customYear: number, customMonth: number): DateRange {
     const now = new Date();
 
     if (mode === 'last30') {
         const from = new Date();
         from.setDate(from.getDate() - 30);
-        return { from, to: now, label: 'Últimos 30 días', chartType: 'area' };
+        from.setHours(0, 0, 0, 0);
+        return {
+            fromISO: from.toISOString(),
+            toISO: now.toISOString(),
+            label: 'Últimos 30 días',
+            chartType: 'area',
+        };
     }
 
     if (mode === 'thisMonth') {
         const from = new Date(now.getFullYear(), now.getMonth(), 1);
         const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-        const label = now.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-        return { from, to, label: label.charAt(0).toUpperCase() + label.slice(1), chartType: 'bar' };
+        const label = from.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+        return {
+            fromISO: from.toISOString(),
+            toISO: to.toISOString(),
+            label: label.charAt(0).toUpperCase() + label.slice(1),
+            chartType: 'bar',
+        };
     }
 
     if (mode === 'prevMonth') {
         const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const to = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
         const label = from.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-        return { from, to, label: label.charAt(0).toUpperCase() + label.slice(1), chartType: 'bar' };
+        return {
+            fromISO: from.toISOString(),
+            toISO: to.toISOString(),
+            label: label.charAt(0).toUpperCase() + label.slice(1),
+            chartType: 'bar',
+        };
     }
 
     // custom
     const from = new Date(customYear, customMonth, 1);
     const to = new Date(customYear, customMonth + 1, 0, 23, 59, 59);
     const label = from.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-    return { from, to, label: label.charAt(0).toUpperCase() + label.slice(1), chartType: 'bar' };
+    return {
+        fromISO: from.toISOString(),
+        toISO: to.toISOString(),
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+        chartType: 'bar',
+    };
 }
 
 function fillDays(
     data: { date: string; total: number; count: number }[],
-    from: Date,
-    to: Date
+    fromISO: string,
+    toISO: string
 ) {
     const filled = [];
-    const current = new Date(from);
+    const current = new Date(fromISO);
     current.setHours(0, 0, 0, 0);
-    const end = new Date(to);
+    const end = new Date(toISO);
     end.setHours(23, 59, 59, 999);
 
     while (current <= end) {
@@ -83,16 +109,17 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
     const [topProducts, setTopProducts] = useState<any[]>([]);
     const [chartData, setChartData] = useState<{ date: string; total: number; count: number }[]>([]);
 
-    const { from, to, label, chartType } = getDateRange(mode, customYear, customMonth);
+    // Calcular fechas solo cuando cambia mode/customYear/customMonth
+    const { fromISO, toISO, label, chartType } = useMemo(
+        () => computeDateRange(mode, customYear, customMonth),
+        [mode, customYear, customMonth]
+    );
 
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const fromISO = from.toISOString();
-            const toISO = to.toISOString();
-
-            const diffMs = to.getTime() - from.getTime();
-            const prevTo = new Date(from.getTime() - 1);
+            const diffMs = new Date(toISO).getTime() - new Date(fromISO).getTime();
+            const prevTo = new Date(new Date(fromISO).getTime() - 1);
             const prevFrom = new Date(prevTo.getTime() - diffMs);
 
             const [summaryRes, prevRes, topRes, histRes] = await Promise.all([
@@ -109,11 +136,13 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             });
             setPrevSummary({ total_amount: prevRes.data?.total_amount ?? 0 });
             setTopProducts(topRes.data ?? []);
-            setChartData(fillDays(histRes.data ?? [], from, to));
+            setChartData(fillDays(histRes.data ?? [], fromISO, toISO));
+        } catch (e) {
+            console.error('Error cargando datos:', e);
         } finally {
             setLoading(false);
         }
-    }, [from.toISOString(), to.toISOString()]);
+    }, [fromISO, toISO]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
