@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
     Area,
     AreaChart,
@@ -66,6 +67,19 @@ const commonAxisProps = {
 };
 
 export function SalesChart({ data, title, chartType }: SalesChartProps) {
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    useEffect(() => {
+        const onBeforePrint = () => setIsPrinting(true);
+        const onAfterPrint = () => setIsPrinting(false);
+        window.addEventListener('beforeprint', onBeforePrint);
+        window.addEventListener('afterprint', onAfterPrint);
+        return () => {
+            window.removeEventListener('beforeprint', onBeforePrint);
+            window.removeEventListener('afterprint', onAfterPrint);
+        };
+    }, []);
+
     if (!data || data.length === 0) return null;
 
     const xAxisFormatter = (str: string) => {
@@ -73,68 +87,51 @@ export function SalesChart({ data, title, chartType }: SalesChartProps) {
         return `${parts[2]}/${parts[1]}`;
     };
 
+    // Al imprimir usamos ancho fijo para que Recharts renderice bien
+    const chartWidth = isPrinting ? 700 : undefined;
+    const chartHeight = isPrinting ? 250 : '100%';
+
+    const sharedChart = chartType === 'area' ? (
+        <AreaChart data={data} width={chartWidth} height={isPrinting ? 250 : undefined} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <defs>
+                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+            </defs>
+            <XAxis dataKey="date" tickFormatter={xAxisFormatter} interval="preserveStartEnd" {...commonAxisProps} />
+            <YAxis tickFormatter={formatYAxis} width={60} {...commonAxisProps} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorTotal)" />
+        </AreaChart>
+    ) : (
+        <BarChart data={data} width={chartWidth} height={isPrinting ? 250 : undefined} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+            <XAxis dataKey="date" tickFormatter={xAxisFormatter} interval="preserveStartEnd" {...commonAxisProps} />
+            <YAxis tickFormatter={formatYAxis} width={60} {...commonAxisProps} />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
+        </BarChart>
+    );
+
     return (
         <Card className="col-span-1 lg:col-span-4">
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
             </CardHeader>
             <CardContent className="pl-0">
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        {chartType === 'area' ? (
-                            <AreaChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <XAxis
-                                    dataKey="date"
-                                    tickFormatter={xAxisFormatter}
-                                    interval="preserveStartEnd"
-                                    {...commonAxisProps}
-                                />
-                                <YAxis
-                                    tickFormatter={formatYAxis}
-                                    width={60}
-                                    {...commonAxisProps}
-                                />
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Area
-                                    type="monotone"
-                                    dataKey="total"
-                                    stroke="#10b981"
-                                    strokeWidth={2}
-                                    fillOpacity={1}
-                                    fill="url(#colorTotal)"
-                                />
-                            </AreaChart>
-                        ) : (
-                            <BarChart data={data} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-                                <XAxis
-                                    dataKey="date"
-                                    tickFormatter={xAxisFormatter}
-                                    interval="preserveStartEnd"
-                                    {...commonAxisProps}
-                                />
-                                <YAxis
-                                    tickFormatter={formatYAxis}
-                                    width={60}
-                                    {...commonAxisProps}
-                                />
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Bar
-                                    dataKey="total"
-                                    fill="#10b981"
-                                    radius={[4, 4, 0, 0]}
-                                />
-                            </BarChart>
-                        )}
-                    </ResponsiveContainer>
-                </div>
+                {isPrinting ? (
+                    <div style={{ width: 700, height: 250 }}>
+                        {sharedChart}
+                    </div>
+                ) : (
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            {sharedChart}
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
