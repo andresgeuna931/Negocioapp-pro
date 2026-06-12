@@ -9,11 +9,11 @@ import {
 } from '@/lib/utils/export-excel';
 
 interface ExportButtonsProps {
-    todayTotal: number;
-    todaySales: number;
-    monthTotal: number;
-    monthSales: number;
-    averageTicket: number;
+    periodLabel: string;
+    totalVentas: number;
+    cantidadVentas: number;
+    ticketPromedio: number;
+    variacionPct: number | null;
     inventoryValue: number;
     inventoryCost: number;
     potentialProfit: number;
@@ -21,11 +21,11 @@ interface ExportButtonsProps {
 }
 
 export function ExportButtons({
-    todayTotal,
-    todaySales,
-    monthTotal,
-    monthSales,
-    averageTicket,
+    periodLabel,
+    totalVentas,
+    cantidadVentas,
+    ticketPromedio,
+    variacionPct,
     inventoryValue,
     inventoryCost,
     potentialProfit,
@@ -37,11 +37,11 @@ export function ExportButtons({
         setLoading(true);
         try {
             exportSummaryToExcel({
-                todayTotal,
-                todaySales,
-                monthTotal,
-                monthSales,
-                averageTicket,
+                periodLabel,
+                totalVentas,
+                cantidadVentas,
+                ticketPromedio,
+                variacionPct,
                 inventoryValue,
                 inventoryCost,
                 potentialProfit,
