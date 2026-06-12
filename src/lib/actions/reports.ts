@@ -138,7 +138,7 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
     // Obtener items de esas ventas
     const { data: items, error: itemsError } = await supabase
         .from('sale_items')
-        .select('product_id, product_name, quantity, subtotal, unit_type')
+        .select('product_id, product_name, qty, line_total')
         .in('sale_id', saleIds);
 
     if (itemsError) {
@@ -156,11 +156,11 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
                 product_name: item.product_name || id,
                 total_qty: 0,
                 total_revenue: 0,
-                unit_type: (item.unit_type || 'unit') as UnitType,
+                unit_type: 'unit' as UnitType,
             };
         }
-        productMap[id].total_qty += Number(item.quantity);
-        productMap[id].total_revenue += Number(item.subtotal);
+        productMap[id].total_qty += Number(item.qty);
+        productMap[id].total_revenue += Number(item.line_total);
     }
 
     const sorted = Object.values(productMap)
