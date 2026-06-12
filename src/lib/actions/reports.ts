@@ -3,6 +3,21 @@
 import { createClient } from '@/lib/supabase/server';
 import type { SalesSummary, TopProduct, LowStockProduct, UnitType } from '@/lib/types';
 
+const TZ = 'America/Argentina/Buenos_Aires';
+
+// Convierte una fecha UTC a fecha string YYYY-MM-DD en timezone Argentina
+function toArgDate(utcString: string): string {
+    return new Date(utcString).toLocaleDateString('en-CA', { timeZone: TZ }); // en-CA usa formato YYYY-MM-DD
+}
+
+// Ajusta el toISO para incluir hasta el final del día en Argentina
+function endOfDayAR(isoString: string): string {
+    // Suma 3 horas para compensar UTC-3 y cubrir hasta medianoche Argentina
+    const d = new Date(isoString);
+    d.setHours(d.getHours() + 3);
+    return d.toISOString();
+}
+
 // Helper to get current user's tenant_id
 async function getCurrentTenantId() {
     const supabase = await createClient();
@@ -57,7 +72,7 @@ export async function getSalesSummaryByRange(from: string, to: string) {
         .select('total_amount')
         .eq('tenant_id', tenantId)
         .gte('created_at', from)
-        .lte('created_at', to);
+        .lte('created_at', endOfDayAR(to));
 
     if (error) {
         return { data: null, error: error.message };
@@ -94,7 +109,6 @@ export async function getTopProducts(
 }
 
 // Get top selling products for a custom date range
-// Parte de sales para evitar problemas de join con tenant_id
 export async function getTopProductsByRange(limit: number = 10, from: string, to: string) {
     const supabase = await createClient();
     const tenantId = await getCurrentTenantId();
@@ -103,13 +117,13 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
         return { data: null, error: 'No autenticado' };
     }
 
-    // Primero obtenemos los sale_ids del rango
+    // Obtener sale_ids del rango (con ajuste de timezone)
     const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select('id')
         .eq('tenant_id', tenantId)
         .gte('created_at', from)
-        .lte('created_at', to);
+        .lte('created_at', endOfDayAR(to));
 
     if (salesError) {
         return { data: null, error: salesError.message };
@@ -121,7 +135,7 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
 
     const saleIds = sales.map(s => s.id);
 
-    // Luego obtenemos los items de esas ventas
+    // Obtener items de esas ventas
     const { data: items, error: itemsError } = await supabase
         .from('sale_items')
         .select('product_id, product_name, quantity, subtotal, unit_type')
@@ -187,7 +201,7 @@ export async function getDashboardData() {
     };
 }
 
-// Get sales by date range for charts
+// Get sales by date range for charts — agrupa por fecha en timezone Argentina
 export async function getSalesByDateRange(from: string, to: string) {
     const supabase = await createClient();
     const tenantId = await getCurrentTenantId();
@@ -201,17 +215,18 @@ export async function getSalesByDateRange(from: string, to: string) {
         .select('created_at, total_amount')
         .eq('tenant_id', tenantId)
         .gte('created_at', from)
-        .lte('created_at', to)
+        .lte('created_at', endOfDayAR(to))
         .order('created_at');
 
     if (error) {
         return { data: null, error: error.message };
     }
 
+    // Agrupar por fecha en timezone Argentina
     const salesByDate: Record<string, { count: number; total: number }> = {};
 
     data.forEach((sale) => {
-        const date = new Date(sale.created_at).toISOString().split('T')[0];
+        const date = toArgDate(sale.created_at); // YYYY-MM-DD en AR
         if (!salesByDate[date]) {
             salesByDate[date] = { count: 0, total: 0 };
         }
