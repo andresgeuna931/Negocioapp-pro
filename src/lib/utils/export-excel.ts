@@ -43,6 +43,63 @@ function formatPaymentMethod(method: string): string {
     return methods[method] || method;
 }
 
+function formatPesos(n: number): string {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(n);
+}
+
+// Aplica estilo a una celda
+function styleCell(ws: XLSX.WorkSheet, cellRef: string, style: any) {
+    if (!ws[cellRef]) ws[cellRef] = { t: 's', v: '' };
+    ws[cellRef].s = style;
+}
+
+// Estilos reutilizables
+const STYLES = {
+    header: {
+        font: { bold: true, sz: 16, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '10B981' } }, // emerald-500
+        alignment: { horizontal: 'left', vertical: 'center' },
+    },
+    subheader: {
+        font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '059669' } }, // emerald-600
+        alignment: { horizontal: 'left' },
+    },
+    label: {
+        font: { sz: 10, color: { rgb: '374151' } },
+        alignment: { horizontal: 'left' },
+    },
+    value: {
+        font: { bold: true, sz: 11, color: { rgb: '065F46' } },
+        alignment: { horizontal: 'right' },
+    },
+    tableHeader: {
+        font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '1F2937' } },
+        alignment: { horizontal: 'center' },
+        border: {
+            bottom: { style: 'thin', color: { rgb: '10B981' } },
+        },
+    },
+    tableRowEven: {
+        fill: { fgColor: { rgb: 'F0FDF4' } },
+        font: { sz: 10 },
+        alignment: { horizontal: 'left' },
+    },
+    tableRowOdd: {
+        fill: { fgColor: { rgb: 'FFFFFF' } },
+        font: { sz: 10 },
+        alignment: { horizontal: 'left' },
+    },
+    tableNumber: {
+        font: { bold: true, sz: 10, color: { rgb: '059669' } },
+        alignment: { horizontal: 'right' },
+    },
+    meta: {
+        font: { sz: 9, color: { rgb: '9CA3AF' }, italic: true },
+    },
+};
+
 // Export sales to Excel
 export function exportSalesToExcel(
     sales: SaleExportData[],
@@ -50,7 +107,6 @@ export function exportSalesToExcel(
 ) {
     const today = format(new Date(), 'dd-MM-yyyy', { locale: es });
 
-    // Transform data for Excel
     const data = sales.map((sale, index) => ({
         '#': index + 1,
         'Fecha': format(new Date(sale.created_at), 'dd/MM/yyyy', { locale: es }),
@@ -61,24 +117,21 @@ export function exportSalesToExcel(
         'Vendedor': sale.seller_name || '-',
     }));
 
-    // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
 
-    // Add column widths
     ws['!cols'] = [
-        { wch: 5 },  // #
-        { wch: 12 }, // Fecha
-        { wch: 8 },  // Hora
-        { wch: 12 }, // Total
-        { wch: 15 }, // Método
-        { wch: 8 },  // Items
-        { wch: 15 }, // Vendedor
+        { wch: 5 },
+        { wch: 12 },
+        { wch: 8 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 8 },
+        { wch: 15 },
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, period);
 
-    // Generate and download
     const filename = `ventas_${today}.xlsx`;
     XLSX.writeFile(wb, filename);
 }
@@ -103,15 +156,15 @@ export function exportProductsToExcel(products: ProductExportData[]) {
     const ws = XLSX.utils.json_to_sheet(data);
 
     ws['!cols'] = [
-        { wch: 5 },  // #
-        { wch: 30 }, // Nombre
-        { wch: 12 }, // SKU
-        { wch: 15 }, // Código
-        { wch: 15 }, // Categoría
-        { wch: 12 }, // Precio
-        { wch: 12 }, // Costo
-        { wch: 10 }, // Stock
-        { wch: 10 }, // Unidad
+        { wch: 5 },
+        { wch: 30 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 10 },
+        { wch: 10 },
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Productos');
@@ -139,11 +192,11 @@ export function exportTopProductsToExcel(
     const ws = XLSX.utils.json_to_sheet(data);
 
     ws['!cols'] = [
-        { wch: 10 }, // Posición
-        { wch: 30 }, // Producto
-        { wch: 18 }, // Cantidad
-        { wch: 10 }, // Unidad
-        { wch: 15 }, // Ingresos
+        { wch: 10 },
+        { wch: 30 },
+        { wch: 18 },
+        { wch: 10 },
+        { wch: 15 },
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, `Top Productos ${period}`);
@@ -152,68 +205,103 @@ export function exportTopProductsToExcel(
     XLSX.writeFile(wb, filename);
 }
 
-// Export summary report to Excel
+// Export summary report to Excel — con formato y colores
 export function exportSummaryToExcel(data: {
-    todayTotal: number;
-    todaySales: number;
-    monthTotal: number;
-    monthSales: number;
-    averageTicket: number;
+    periodLabel: string;
+    totalVentas: number;
+    cantidadVentas: number;
+    ticketPromedio: number;
+    variacionPct: number | null;
     inventoryValue: number;
     inventoryCost: number;
     potentialProfit: number;
     topProducts: TopProductExportData[];
 }) {
     const today = format(new Date(), 'dd-MM-yyyy', { locale: es });
-    const monthName = format(new Date(), 'MMMM yyyy', { locale: es });
+    const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: es });
 
     const wb = XLSX.utils.book_new();
 
-    // Summary sheet
-    const summaryData = [
-        ['RESUMEN DE NEGOCIO', ''],
-        ['Fecha del reporte', format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })],
-        ['', ''],
-        ['VENTAS DE HOY', ''],
-        ['Total vendido', data.todayTotal],
-        ['Cantidad de ventas', data.todaySales],
-        ['', ''],
-        ['VENTAS DEL MES', ''],
-        ['Total vendido', data.monthTotal],
-        ['Cantidad de ventas', data.monthSales],
-        ['Ticket promedio', data.averageTicket],
-        ['', ''],
-        ['INVENTARIO', ''],
-        ['Valor al costo', data.inventoryCost],
-        ['Valor de venta', data.inventoryValue],
-        ['Ganancia potencial', data.potentialProfit],
+    // ─── HOJA RESUMEN ────────────────────────────────────────────────────────
+    const summaryRows: any[][] = [
+        // Fila 1: título
+        ['NegocioApp Pro — Reporte de Ventas', '', ''],
+        // Fila 2: período y fecha
+        [`Período: ${data.periodLabel}`, '', `Generado: ${now}`],
+        ['', '', ''],
+        // Ventas
+        ['RESUMEN DE VENTAS', '', ''],
+        ['Total vendido', '', formatPesos(data.totalVentas)],
+        ['Cantidad de ventas', '', data.cantidadVentas],
+        ['Ticket promedio', '', formatPesos(data.ticketPromedio)],
+        ['vs. período anterior', '', data.variacionPct !== null ? `${data.variacionPct >= 0 ? '↑' : '↓'} ${Math.abs(data.variacionPct).toFixed(0)}%` : 'N/A'],
+        ['', '', ''],
+        // Inventario
+        ['INVENTARIO', '', ''],
+        ['Valor al costo', '', formatPesos(data.inventoryCost)],
+        ['Valor de venta', '', formatPesos(data.inventoryValue)],
+        ['Ganancia potencial', '', formatPesos(data.potentialProfit)],
     ];
 
-    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-    summaryWs['!cols'] = [{ wch: 25 }, { wch: 20 }];
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryRows);
+
+    summaryWs['!cols'] = [{ wch: 28 }, { wch: 4 }, { wch: 22 }];
+    summaryWs['!rows'] = [{ hpt: 28 }, { hpt: 16 }];
+
+    // Aplicar estilos
+    styleCell(summaryWs, 'A1', STYLES.header);
+    styleCell(summaryWs, 'A2', STYLES.meta);
+    styleCell(summaryWs, 'C2', STYLES.meta);
+    styleCell(summaryWs, 'A4', STYLES.subheader);
+    ['A5','A6','A7','A8'].forEach(r => styleCell(summaryWs, r, STYLES.label));
+    ['C5','C6','C7','C8'].forEach(r => styleCell(summaryWs, r, STYLES.value));
+    styleCell(summaryWs, 'A10', STYLES.subheader);
+    ['A11','A12','A13'].forEach(r => styleCell(summaryWs, r, STYLES.label));
+    ['C11','C12','C13'].forEach(r => styleCell(summaryWs, r, STYLES.value));
+
     XLSX.utils.book_append_sheet(wb, summaryWs, 'Resumen');
 
-    // Top products sheet
+    // ─── HOJA TOP PRODUCTOS ───────────────────────────────────────────────────
     if (data.topProducts && data.topProducts.length > 0) {
-        const topData = data.topProducts.map((p, i) => ({
-            'Pos': i + 1,
-            'Producto': p.product_name,
-            'Cantidad': p.total_qty,
-            'Ingresos': p.total_revenue,
-        }));
-        const topWs = XLSX.utils.json_to_sheet(topData);
-        topWs['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 12 }, { wch: 15 }];
+        const headerRow = ['#', 'Producto', 'Cant. Vendida', 'Ingresos'];
+        const productRows = data.topProducts.map((p, i) => [
+            i + 1,
+            p.product_name,
+            p.total_qty,
+            formatPesos(p.total_revenue),
+        ]);
+
+        const topWs = XLSX.utils.aoa_to_sheet([
+            [`Top 10 Productos — ${data.periodLabel}`, '', '', ''],
+            ['', '', '', ''],
+            headerRow,
+            ...productRows,
+        ]);
+
+        topWs['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 16 }, { wch: 18 }];
+        topWs['!rows'] = [{ hpt: 22 }];
+
+        // Estilos encabezado
+        styleCell(topWs, 'A1', STYLES.header);
+        ['A3','B3','C3','D3'].forEach(r => styleCell(topWs, r, STYLES.tableHeader));
+
+        // Filas alternadas
+        productRows.forEach((_, i) => {
+            const row = i + 4;
+            const style = i % 2 === 0 ? STYLES.tableRowEven : STYLES.tableRowOdd;
+            ['A','B','C'].forEach(col => styleCell(topWs, `${col}${row}`, style));
+            styleCell(topWs, `D${row}`, STYLES.tableNumber);
+        });
+
         XLSX.utils.book_append_sheet(wb, topWs, 'Top Productos');
     }
 
-    // Generate filename without special characters
+    // ─── DESCARGAR ────────────────────────────────────────────────────────────
     const filename = `reporte_negocio_${today}.xlsx`;
-
-    // Use Blob method for explicit filename control
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-    // Create download link
+    const blob = new Blob([wbout], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
