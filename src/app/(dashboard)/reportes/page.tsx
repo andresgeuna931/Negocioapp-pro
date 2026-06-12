@@ -2,23 +2,10 @@ import { Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getInventoryValue } from '@/lib/actions/reports';
 import { formatCurrency } from '@/lib/utils';
-import { ExportButtons } from '@/components/reports/export-buttons';
 import { ReportsClient } from '@/components/reports/reports-client';
 
 export default async function ReportsPage() {
     const inventory = await getInventoryValue();
-
-    const exportData = {
-        todayTotal: 0,
-        todaySales: 0,
-        monthTotal: 0,
-        monthSales: 0,
-        averageTicket: 0,
-        inventoryValue: inventory.data?.valueAtPrice || 0,
-        inventoryCost: inventory.data?.valueAtCost || 0,
-        potentialProfit: inventory.data?.potentialProfit || 0,
-        topProducts: [],
-    };
 
     return (
         <div className="space-y-6">
@@ -32,10 +19,9 @@ export default async function ReportsPage() {
                         Estadísticas y métricas de tu negocio
                     </p>
                 </div>
-                <ExportButtons {...exportData} />
             </div>
 
-            {/* Selector de período + cards + gráfico + top productos */}
+            {/* Selector de período + cards + gráfico + top productos + botones exportar */}
             <ReportsClient inventoryData={inventory.data} />
 
             {/* Inventory Summary — estático, no cambia con el período */}
