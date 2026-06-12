@@ -31,7 +31,6 @@ export async function getSalesSummary(period: 'today' | 'week' | 'month' | 'year
         return { data: null, error: error.message };
     }
 
-    // RPC returns array, get first item
     const summary = Array.isArray(data) ? data[0] : data;
 
     return {
@@ -95,6 +94,7 @@ export async function getTopProducts(
 }
 
 // Get top selling products for a custom date range
+// Parte de sales para evitar problemas de join con tenant_id
 export async function getTopProductsByRange(limit: number = 10, from: string, to: string) {
     const supabase = await createClient();
     const tenantId = await getCurrentTenantId();
@@ -103,28 +103,38 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
         return { data: null, error: 'No autenticado' };
     }
 
-    const { data, error } = await supabase
-        .from('sale_items')
-        .select(`
-            product_id,
-            quantity,
-            subtotal,
-            unit_type,
-            sales!inner(created_at, tenant_id)
-        `)
-        .eq('sales.tenant_id', tenantId)
-        .gte('sales.created_at', from)
-        .lte('sales.created_at', to);
+    // Primero obtenemos los sale_ids del rango
+    const { data: sales, error: salesError } = await supabase
+        .from('sales')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', from)
+        .lte('created_at', to);
 
-    if (error) {
-        console.error('Error fetching top products by range:', error);
-        return { data: null, error: error.message };
+    if (salesError) {
+        return { data: null, error: salesError.message };
+    }
+
+    if (!sales || sales.length === 0) {
+        return { data: [], error: null };
+    }
+
+    const saleIds = sales.map(s => s.id);
+
+    // Luego obtenemos los items de esas ventas
+    const { data: items, error: itemsError } = await supabase
+        .from('sale_items')
+        .select('product_id, product_name, quantity, subtotal, unit_type')
+        .in('sale_id', saleIds);
+
+    if (itemsError) {
+        return { data: null, error: itemsError.message };
     }
 
     // Agrupar por producto
     const productMap: Record<string, TopProduct> = {};
 
-    for (const item of data as any[]) {
+    for (const item of (items || []) as any[]) {
         const id = item.product_id;
         if (!productMap[id]) {
             productMap[id] = {
@@ -177,7 +187,7 @@ export async function getDashboardData() {
     };
 }
 
-// Get sales by date range for charts - WITH TENANT FILTER
+// Get sales by date range for charts
 export async function getSalesByDateRange(from: string, to: string) {
     const supabase = await createClient();
     const tenantId = await getCurrentTenantId();
@@ -198,7 +208,6 @@ export async function getSalesByDateRange(from: string, to: string) {
         return { data: null, error: error.message };
     }
 
-    // Group by date
     const salesByDate: Record<string, { count: number; total: number }> = {};
 
     data.forEach((sale) => {
@@ -219,7 +228,7 @@ export async function getSalesByDateRange(from: string, to: string) {
     };
 }
 
-// Get inventory value - WITH TENANT FILTER
+// Get inventory value
 export async function getInventoryValue() {
     const supabase = await createClient();
     const tenantId = await getCurrentTenantId();
@@ -238,13 +247,8 @@ export async function getInventoryValue() {
         return { data: null, error: error.message };
     }
 
-    const atCost = data.reduce((sum, p) => {
-        return sum + (Number(p.stock_on_hand) * Number(p.cost || 0));
-    }, 0);
-
-    const atPrice = data.reduce((sum, p) => {
-        return sum + (Number(p.stock_on_hand) * Number(p.price));
-    }, 0);
+    const atCost = data.reduce((sum, p) => sum + (Number(p.stock_on_hand) * Number(p.cost || 0)), 0);
+    const atPrice = data.reduce((sum, p) => sum + (Number(p.stock_on_hand) * Number(p.price)), 0);
 
     return {
         data: {
@@ -269,7 +273,6 @@ export async function getSalesHistory(days: number = 30) {
         const d = new Date(from);
         d.setDate(d.getDate() + i);
         const dateStr = d.toISOString().split('T')[0];
-
         const existing = data?.find(item => item.date === dateStr);
         filledData.push({
             date: dateStr,
