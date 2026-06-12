@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { BarChart3, TrendingUp, DollarSign, Package, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, Package, Calendar, ChevronLeft, ChevronRight, FileSpreadsheet, Printer, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { SalesChart } from '@/components/reports/sales-chart';
+import { exportSummaryToExcel } from '@/lib/utils/export-excel';
 
 type PeriodMode = 'last30' | 'thisMonth' | 'prevMonth' | 'custom';
 
@@ -103,6 +104,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
     const [customYear, setCustomYear] = useState(now.getFullYear());
     const [customMonth, setCustomMonth] = useState(now.getMonth());
     const [loading, setLoading] = useState(true);
+    const [loadingExport, setLoadingExport] = useState(false);
 
     const [summary, setSummary] = useState({ total_sales: 0, total_amount: 0, average_sale: 0 });
     const [prevSummary, setPrevSummary] = useState({ total_amount: 0 });
@@ -164,6 +166,34 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
         else setCustomMonth(m => m + 1);
     };
 
+    const handleExport = () => {
+        setLoadingExport(true);
+        try {
+            exportSummaryToExcel({
+                periodLabel: label,
+                totalVentas: summary.total_amount,
+                cantidadVentas: summary.total_sales,
+                ticketPromedio: summary.average_sale,
+                variacionPct: variacion,
+                inventoryValue: inventoryData?.valueAtPrice ?? 0,
+                inventoryCost: inventoryData?.valueAtCost ?? 0,
+                potentialProfit: inventoryData?.potentialProfit ?? 0,
+                topProducts: topProducts.map(p => ({
+                    product_name: p.product_name,
+                    total_qty: p.total_qty,
+                    total_revenue: p.total_revenue,
+                    unit_type: p.unit_type || 'unit',
+                })),
+            });
+        } catch (e) {
+            console.error('Error exportando:', e);
+        } finally {
+            setLoadingExport(false);
+        }
+    };
+
+    const handlePrint = () => { window.print(); };
+
     return (
         <div className="space-y-6">
             {/* Selector de período */}
@@ -207,6 +237,25 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                         <ChevronRight className="w-4 h-4 text-slate-600 dark:text-slate-300" />
                     </button>
                 </div>
+            </div>
+
+            {/* Botones exportar */}
+            <div className="flex justify-end gap-2">
+                <button
+                    onClick={handleExport}
+                    disabled={loadingExport || loading}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                >
+                    {loadingExport ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                    Exportar Excel
+                </button>
+                <button
+                    onClick={handlePrint}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                    <Printer className="w-4 h-4" />
+                    Imprimir / PDF
+                </button>
             </div>
 
             {/* Summary Cards */}
