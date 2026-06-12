@@ -265,7 +265,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             </div>
 
             {/* Chart */}
-            {!loading && chartData.length > 0 && (
+            {!loading && (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <SalesChart
                         data={chartData}
