@@ -112,7 +112,19 @@ export async function POST(request: NextRequest) {
         // 7. Marcar invitación como usada
         await markInvitationAsUsed(token, tenant.id);
 
-        // 8. Iniciar sesión automáticamente
+        // 8. Notificación admin de nuevo registro — no bloquea el flujo si falla
+        try {
+            await adminSupabase.from("admin_notifications").insert({
+                type: 'new_tenant',
+                title: '🎉 Nuevo negocio registrado',
+                message: `${businessName} (${email}) — plan ${planId || 'sin definir'}`,
+                tenant_id: tenant.id,
+            });
+        } catch (notifError) {
+            console.error("Error creando notificación:", notifError);
+        }
+
+        // 9. Iniciar sesión automáticamente
         const supabase = await createClient();
         await supabase.auth.signInWithPassword({ email, password });
 
