@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
                         updated_at: now.toISOString(),
                     }, { onConflict: "tenant_id" });
 
-                await supabaseAdmin
+                const { data: updatedTenant } = await supabaseAdmin
                     .from("tenants")
                     .update({
                         status: 'active',
@@ -145,9 +145,27 @@ export async function POST(request: NextRequest) {
                             last_sync_at: now.toISOString()
                         }
                     })
-                    .eq("id", tenantId);
+                    .eq("id", tenantId)
+                    .select("name")
+                    .single();
 
                 console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()}, preapproval_id=${externalSubscriptionId}`);
+
+                // Notificación admin — no bloquea el flujo si falla
+                try {
+                    const tenantName = updatedTenant?.name || tenantId;
+                    const montoStr = transactionAmount > 0
+                        ? ` — $${transactionAmount.toLocaleString('es-AR')}`
+                        : '';
+                    await supabaseAdmin.from("admin_notifications").insert({
+                        type: 'payment_received',
+                        title: '💰 Pago recibido',
+                        message: `${tenantName} — plan ${internalPlanId}${montoStr}`,
+                        tenant_id: tenantId,
+                    });
+                } catch (notifError) {
+                    console.error("Error creando notificación:", notifError);
+                }
             }
         }
 
