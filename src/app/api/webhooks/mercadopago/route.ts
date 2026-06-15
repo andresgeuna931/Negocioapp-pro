@@ -114,6 +114,27 @@ export async function POST(request: NextRequest) {
             }
 
             if (tenantId && status === "active") {
+                // --- ESCENARIO 10: guard de idempotencia ---
+                // Si el tenant ya está activo Y tuvo un pago hace menos de 5 minutos,
+                // es muy probablemente un pago duplicado (doble click en "Renovar").
+                // Los cobros recurrentes normales están separados por ~30 días,
+                // así que esta ventana corta no los afecta.
+                const { data: currentSub } = await supabaseAdmin
+                    .from("subscriptions")
+                    .select("status, last_payment_at")
+                    .eq("tenant_id", tenantId)
+                    .single();
+
+                if (currentSub?.status === "active" && currentSub.last_payment_at) {
+                    const msSinceLastPayment = Date.now() - new Date(currentSub.last_payment_at).getTime();
+                    const FIVE_MINUTES = 5 * 60 * 1000;
+                    if (msSinceLastPayment < FIVE_MINUTES) {
+                        console.log(`⚠️ Webhook idempotency: pago duplicado para tenant ${tenantId} (último pago hace ${Math.round(msSinceLastPayment / 1000)}s). Evento ignorado.`);
+                        return NextResponse.json({ received: true }, { status: 200 });
+                    }
+                }
+                // --- fin guard ---
+
                 const { dbSubPlan, dbTenantPlan, internalPlanId, isAnnual } = mapearPlan(planId || 'professional');
 
                 const now = new Date();
