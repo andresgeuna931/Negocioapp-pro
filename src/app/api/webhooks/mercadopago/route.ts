@@ -75,6 +75,10 @@ export async function POST(request: NextRequest) {
             let status: string = 'pending';
             let transactionAmount: number = 0;
             let externalSubscriptionId: string | undefined;
+            // Fecha real del próximo cobro según MercadoPago (preapproval.next_payment_date).
+            // Si está disponible, la usamos en vez de calcular el día 10 nosotros,
+            // para que la base siempre coincida con lo que MP va a cobrar.
+            let mpNextPaymentDate: string | undefined;
 
             if (topic === "payment") {
                 const payment = new Payment(mpClient);
@@ -110,6 +114,10 @@ export async function POST(request: NextRequest) {
                     }
                     status = "active";
                     externalSubscriptionId = details.id || resourceId;
+                    // MP ya calculó la fecha del próximo cobro — la guardamos para usarla tal cual
+                    if (details.next_payment_date) {
+                        mpNextPaymentDate = details.next_payment_date;
+                    }
                 }
             }
 
@@ -139,7 +147,18 @@ export async function POST(request: NextRequest) {
 
                 const now = new Date();
                 const periodStart = now;
-                const periodEnd = isAnnual ? calcularProximoDiezAnual() : calcularProximoDiez();
+                // Preferimos la fecha real de MP. Si por algún motivo no vino
+                // (ej. evento de tipo 'payment' que no la incluye), caemos al
+                // cálculo histórico del día 10 como red de seguridad.
+                let periodEnd: Date;
+                if (mpNextPaymentDate) {
+                    const parsed = new Date(mpNextPaymentDate);
+                    periodEnd = isNaN(parsed.getTime())
+                        ? (isAnnual ? calcularProximoDiezAnual() : calcularProximoDiez())
+                        : parsed;
+                } else {
+                    periodEnd = isAnnual ? calcularProximoDiezAnual() : calcularProximoDiez();
+                }
 
                 await supabaseAdmin
                     .from("subscriptions")
@@ -170,7 +189,7 @@ export async function POST(request: NextRequest) {
                     .select("name")
                     .single();
 
-                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()}, preapproval_id=${externalSubscriptionId}`);
+                console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()} (fuente: ${mpNextPaymentDate ? 'MP' : 'fallback-dia10'}), preapproval_id=${externalSubscriptionId}`);
 
                 // Notificación admin — no bloquea el flujo si falla
                 try {
