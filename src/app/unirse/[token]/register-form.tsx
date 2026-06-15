@@ -15,32 +15,6 @@ interface RegisterFormProps {
     invitation: any;
 }
 
-// Calcula el proporcional hasta el día 10 más próximo
-function calcularProporcional(precio: number): { monto: number; descripcion: string } {
-    const hoy = new Date();
-    const diaHoy = hoy.getDate();
-    const mesActual = hoy.getMonth();
-    const anioActual = hoy.getFullYear();
-
-    // Si hoy es antes del día 10 → cobrar hasta el 10 de este mes
-    // Si hoy es después del día 10 → cobrar hasta el 10 del mes siguiente
-    const diaCorte = 10;
-    const proximoCobro = diaHoy < diaCorte
-        ? new Date(anioActual, mesActual, diaCorte)
-        : new Date(anioActual, mesActual + 1, diaCorte);
-
-    const diasHastaCobro = Math.ceil((proximoCobro.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-    const diasDelMes = new Date(anioActual, mesActual + 1, 0).getDate();
-    const montoProporcional = Math.ceil((precio / diasDelMes) * diasHastaCobro);
-
-    const mesCorte = diaHoy < diaCorte ? mesActual + 1 : mesActual + 2;
-
-    return {
-        monto: montoProporcional,
-        descripcion: `${diasHastaCobro} días hasta el 10/${mesCorte.toString().padStart(2, '0')}`
-    };
-}
-
 export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
     const router = useRouter();
     const [formData, setFormData] = useState({
@@ -56,7 +30,6 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
     const [success, setSuccess] = useState(false);
 
     const isAnual = plan.billing === 'annual';
-    const proporcional = !isAnual ? calcularProporcional(plan.price) : null;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -171,12 +144,12 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
                                 <div className="flex items-center gap-2 text-sm text-amber-400">
                                     <Calendar className="w-4 h-4" />
                                     <span>
-                                        Hoy pagás {formatPrice(proporcional!.monto)} ({proporcional!.descripcion})
+                                        Hoy pagás {formatPrice(plan.price)}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-slate-400">
                                     <Shield className="w-4 h-4" />
-                                    <span>Después {formatPrice(plan.price)}/mes los días 10</span>
+                                    <span>Se renueva automáticamente cada mes por {formatPrice(plan.price)}</span>
                                 </div>
                             </>
                         )}
