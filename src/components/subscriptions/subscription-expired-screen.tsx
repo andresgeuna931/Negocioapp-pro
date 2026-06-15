@@ -182,14 +182,9 @@ export function SubscriptionExpiredScreen({ tenantName }: SubscriptionExpiredScr
                     <div className="space-y-3">
                         <button
                             onClick={handleRenovar}
-                            disabled={uiState === 'loading'}
                             className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-colors"
                         >
-                            {uiState === 'loading' ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <RefreshCw className="w-5 h-5" />
-                            )}
+                            <RefreshCw className="w-5 h-5" />
                             Intentar de nuevo
                         </button>
                     </div>
