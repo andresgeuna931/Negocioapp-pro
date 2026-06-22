@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { validateInvitationToken } from '@/lib/actions/tenant-invitations';
 import { RegisterForm } from './register-form';
 import { AlertTriangle, Clock } from 'lucide-react';
@@ -21,6 +21,12 @@ export default async function JoinPage({ params }: JoinPageProps) {
     }
 
     const result = await validateInvitationToken(token);
+
+    // Si el registro ya se completó y el tenant está activo,
+    // redirigir al login directamente (evita el flash del triángulo al volver de MP)
+    if (!result.valid && result.reason === "already_registered") {
+        redirect('/login');
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
