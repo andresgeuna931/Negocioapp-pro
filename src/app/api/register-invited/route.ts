@@ -95,13 +95,13 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 6. Crear suscripción en pending
+        // 6. Crear suscripción inicial (se actualiza al webhook de MP cuando el usuario pague)
         const { error: subError } = await adminSupabase
             .from("subscriptions")
             .insert({
                 tenant_id: tenant.id,
-                status: 'pending',
-                plan: 'basic',
+                status: 'trial',
+                plan: 'starter',
                 payment_provider: 'mercadopago',
             });
 
