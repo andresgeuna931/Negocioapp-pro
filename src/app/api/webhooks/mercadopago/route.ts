@@ -174,9 +174,20 @@ export async function POST(request: NextRequest) {
                     }
                     status = "active";
                     externalSubscriptionId = details.id || resourceId;
-                    // MP ya calculó la fecha del próximo cobro — la guardamos para usarla tal cual
+                    // Guardamos next_payment_date SOLO si ya procesó un pago real.
+                    // Si next_payment_date == date_created, el PreApproval acaba de
+                    // crearse y la fecha es placeholder — la fecha real la trae
+                    // el evento subscription_authorized_payment que llega después.
                     if (details.next_payment_date) {
-                        mpNextPaymentDate = details.next_payment_date;
+                        const nextPayment = new Date(details.next_payment_date).getTime();
+                        const dateCreated = new Date(details.date_created).getTime();
+                        const diffSeconds = Math.abs(nextPayment - dateCreated) / 1000;
+                        if (diffSeconds > 60) {
+                            // Más de 1 minuto de diferencia = fecha real de próximo cobro
+                            mpNextPaymentDate = details.next_payment_date;
+                        } else {
+                            console.log(`PreApproval next_payment_date es placeholder (diff ${diffSeconds}s) — esperando subscription_authorized_payment para fecha real`);
+                        }
                     }
                 }
             }
@@ -185,15 +196,19 @@ export async function POST(request: NextRequest) {
                 // --- ESCENARIO 10: guard de idempotencia ---
                 // Si el tenant ya está activo Y tuvo un pago hace menos de 5 minutos,
                 // es muy probablemente un pago duplicado (doble click en "Renovar").
-                // Los cobros recurrentes normales están separados por ~30 días,
-                // así que esta ventana corta no los afecta.
+                // EXCEPCIÓN: subscription_authorized_payment nunca se bloquea — es el
+                // evento que trae la fecha real de MP y siempre debe procesarse.
                 const { data: currentSub } = await supabaseAdmin
                     .from("subscriptions")
                     .select("status, last_payment_at")
                     .eq("tenant_id", tenantId)
                     .single();
 
-                if (currentSub?.status === "active" && currentSub.last_payment_at) {
+                if (
+                    topic !== "subscription_authorized_payment" &&
+                    currentSub?.status === "active" &&
+                    currentSub.last_payment_at
+                ) {
                     const msSinceLastPayment = Date.now() - new Date(currentSub.last_payment_at).getTime();
                     const FIVE_MINUTES = 5 * 60 * 1000;
                     if (msSinceLastPayment < FIVE_MINUTES) {
