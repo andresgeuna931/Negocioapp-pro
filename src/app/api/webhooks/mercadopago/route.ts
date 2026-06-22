@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
             body.type === "payment" ||
             body.type === "preapproval" ||
             body.type === "subscription_preapproval" ||
+            body.type === "subscription_authorized_payment" ||
             body.action?.includes("subscription") ||
             body.action?.includes("payment")
         ) {
@@ -96,6 +97,45 @@ export async function POST(request: NextRequest) {
                     status = "active";
                     transactionAmount = details.transaction_amount || 0;
                     externalSubscriptionId = (details as any).preapproval_id || undefined;
+                }
+            } else if (topic === "subscription_authorized_payment") {
+                // Pago recurrente autorizado por MP. El resourceId es el ID del pago.
+                // Buscamos el preapproval_id desde el pago para obtener
+                // el external_reference y next_payment_date del PreApproval.
+                try {
+                    const payment = new Payment(mpClient);
+                    const paymentDetails: any = await payment.get({ id: resourceId });
+                    console.log("subscription_authorized_payment details:", JSON.stringify(paymentDetails, null, 2));
+
+                    if (paymentDetails.status === "approved") {
+                        transactionAmount = paymentDetails.transaction_amount || 0;
+                        const preapprovalId = paymentDetails.preapproval_id || paymentDetails.metadata?.preapproval_id;
+
+                        if (preapprovalId) {
+                            const preApproval = new PreApproval(mpClient);
+                            const preApprovalDetails: any = await preApproval.get({ id: preapprovalId });
+                            console.log("PreApproval from authorized_payment:", JSON.stringify(preApprovalDetails, null, 2));
+
+                            const extRef = preApprovalDetails.external_reference || "";
+                            if (extRef.includes('___')) {
+                                const parts = extRef.split('___');
+                                tenantId = parts[0];
+                                planId = parts[1];
+                            } else {
+                                tenantId = extRef || preApprovalDetails.metadata?.tenant_id;
+                                planId = preApprovalDetails.metadata?.plan_id;
+                            }
+                            status = "active";
+                            externalSubscriptionId = preapprovalId;
+                            if (preApprovalDetails.next_payment_date) {
+                                mpNextPaymentDate = preApprovalDetails.next_payment_date;
+                            }
+                        } else {
+                            console.warn("subscription_authorized_payment: no preapproval_id en el pago", paymentDetails);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error procesando subscription_authorized_payment:", err);
                 }
             } else if (topic === "preapproval" || topic === "subscription_preapproval") {
                 const preApproval = new PreApproval(mpClient);
