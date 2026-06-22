@@ -100,20 +100,32 @@ export async function POST(request: NextRequest) {
                 }
             } else if (topic === "subscription_authorized_payment") {
                 // Los pagos de suscripción viven en /v1/authorized_payments, NO en /v1/payments.
-                // El SDK de MP no tiene esta entidad, hay que usar REST directo.
+                // MP manda el webhook antes de que el recurso esté disponible en la API
+                // (condición de carrera). Reintentamos hasta 3 veces con 3s de espera.
                 try {
-                    const authPaymentRes = await fetch(
-                        `https://api.mercadopago.com/v1/authorized_payments/${resourceId}`,
-                        {
-                            headers: {
-                                Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-                            },
-                        }
-                    );
-                    const paymentDetails: any = await authPaymentRes.json();
-                    console.log("authorized_payment details:", JSON.stringify(paymentDetails, null, 2));
+                    const fetchAuthorizedPayment = async (id: string) => {
+                        const res = await fetch(
+                            `https://api.mercadopago.com/v1/authorized_payments/${id}`,
+                            { headers: { Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}` } }
+                        );
+                        return res.json();
+                    };
 
-                    if (paymentDetails.status === "approved") {
+                    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+                    let paymentDetails: any = null;
+                    for (let attempt = 1; attempt <= 3; attempt++) {
+                        const result = await fetchAuthorizedPayment(resourceId);
+                        if (result.status === "approved") {
+                            paymentDetails = result;
+                            console.log(`authorized_payment OK (intento ${attempt}):`, JSON.stringify(result, null, 2));
+                            break;
+                        }
+                        console.log(`authorized_payment intento ${attempt} — esperando 3s...`, result.error || result.status);
+                        if (attempt < 3) await sleep(3000);
+                    }
+
+                    if (paymentDetails?.status === "approved") {
                         transactionAmount = paymentDetails.transaction_amount || 0;
                         const preapprovalId = paymentDetails.preapproval_id;
 
@@ -139,6 +151,8 @@ export async function POST(request: NextRequest) {
                         } else {
                             console.warn("subscription_authorized_payment: no preapproval_id en el pago", paymentDetails);
                         }
+                    } else {
+                        console.warn("subscription_authorized_payment: recurso no disponible tras 3 intentos, usando fallback de preapproval");
                     }
                 } catch (err) {
                     console.error("Error procesando subscription_authorized_payment:", err);
