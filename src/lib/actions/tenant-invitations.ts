@@ -66,6 +66,19 @@ export async function validateInvitationToken(token: string) {
     }
 
     if (data.used_at) {
+        // Si la invitación ya fue usada pero tiene un tenant asociado y activo,
+        // significa que el usuario completó el registro y está siendo redirigido a MP.
+        // En ese caso no mostramos error — redirigimos al login.
+        if (data.used_by_tenant_id) {
+            const { data: tenant } = await adminSupabase
+                .from("tenants")
+                .select("status")
+                .eq("id", data.used_by_tenant_id)
+                .single();
+            if (tenant && (tenant.status === "active" || tenant.status === "trial")) {
+                return { valid: false, reason: "already_registered" };
+            }
+        }
         return { valid: false, reason: "Esta invitación ya fue utilizada." };
     }
 
