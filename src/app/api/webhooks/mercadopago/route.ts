@@ -99,17 +99,23 @@ export async function POST(request: NextRequest) {
                     externalSubscriptionId = (details as any).preapproval_id || undefined;
                 }
             } else if (topic === "subscription_authorized_payment") {
-                // Pago recurrente autorizado por MP. El resourceId es el ID del pago.
-                // Buscamos el preapproval_id desde el pago para obtener
-                // el external_reference y next_payment_date del PreApproval.
+                // Los pagos de suscripción viven en /v1/authorized_payments, NO en /v1/payments.
+                // El SDK de MP no tiene esta entidad, hay que usar REST directo.
                 try {
-                    const payment = new Payment(mpClient);
-                    const paymentDetails: any = await payment.get({ id: resourceId });
-                    console.log("subscription_authorized_payment details:", JSON.stringify(paymentDetails, null, 2));
+                    const authPaymentRes = await fetch(
+                        `https://api.mercadopago.com/v1/authorized_payments/${resourceId}`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+                            },
+                        }
+                    );
+                    const paymentDetails: any = await authPaymentRes.json();
+                    console.log("authorized_payment details:", JSON.stringify(paymentDetails, null, 2));
 
                     if (paymentDetails.status === "approved") {
                         transactionAmount = paymentDetails.transaction_amount || 0;
-                        const preapprovalId = paymentDetails.preapproval_id || paymentDetails.metadata?.preapproval_id;
+                        const preapprovalId = paymentDetails.preapproval_id;
 
                         if (preapprovalId) {
                             const preApproval = new PreApproval(mpClient);
