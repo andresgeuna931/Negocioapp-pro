@@ -47,6 +47,8 @@ const TelegramIcon = () => (
 export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
     const pathname = usePathname();
     const isBusiness = planName?.toLowerCase().includes('business');
+    const isProfessional = planName?.toLowerCase().includes('professional');
+    const hasVipSupport = isBusiness || isProfessional;
     const isOwner = userRole === 'owner' || userRole === 'admin';
 
     return (
@@ -109,7 +111,7 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                         </Link>
                     )}
 
-                    {isBusiness && (
+                    {hasVipSupport && (
                         <button
                             onClick={() => { window.open('https://t.me/negocioapp_soporte_bot', '_blank'); onClose(); }}
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border border-[#229ED9]/30 text-[#229ED9] hover:text-white mt-2"
