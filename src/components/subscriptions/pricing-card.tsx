@@ -2,6 +2,15 @@ import { Check, X, Info } from 'lucide-react';
 import { PLANS, formatPrice, getPlanDetails } from '@/lib/config/plans';
 import { cn } from '@/lib/utils';
 
+// Orden para determinar si un plan es superior al actual
+const PLAN_ORDER: Record<string, number> = {
+    starter: 1,
+    professional: 2,
+    professional_annual: 2,
+    business: 3,
+    business_annual: 3,
+};
+
 interface PricingCardProps {
     planId: string;
     currentPlanId?: string;
@@ -17,8 +26,39 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
     const isCurrent = currentPlanId === plan.id;
     const isPro = plan.id === 'professional';
     const isAnnual = plan.id.endsWith('_annual');
-    const isDisabled = hasPaidSubscription && isCurrent;
     const isBusinessPlan = plan.id === 'business' || plan.id === 'business_annual';
+
+    // Determinar si es upgrade (plan superior al actual)
+    const currentOrder = PLAN_ORDER[currentPlanId || ''] ?? 0;
+    const thisOrder = PLAN_ORDER[plan.id] ?? 0;
+    const isUpgrade = hasPaidSubscription && !isCurrent && thisOrder > currentOrder;
+    const isDowngrade = hasPaidSubscription && !isCurrent && thisOrder < currentOrder;
+
+    // Lógica del botón
+    const getButtonState = () => {
+        if (loading) {
+            return { disabled: true, label: 'Procesando...', style: 'bg-slate-700 text-slate-400 cursor-not-allowed' };
+        }
+        if (isSuspended) {
+            return { disabled: false, label: 'Reactivar con este plan', style: 'bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer' };
+        }
+        if (isInTrial) {
+            return { disabled: false, label: 'Suscribirte', style: 'bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer' };
+        }
+        if (isCurrent) {
+            return { disabled: true, label: 'Plan Actual', style: 'bg-slate-700 text-slate-500 cursor-not-allowed' };
+        }
+        if (isUpgrade) {
+            return { disabled: false, label: `Subir a ${plan.name}`, style: 'bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer' };
+        }
+        if (isDowngrade) {
+            return { disabled: true, label: 'Plan inferior', style: 'bg-slate-700 text-slate-600 cursor-not-allowed opacity-50' };
+        }
+        // Sin suscripción activa (primer pago)
+        return { disabled: false, label: 'Suscribirte', style: 'bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer' };
+    };
+
+    const buttonState = getButtonState();
 
     const supportText = () => {
         if (plan.id === 'starter') {
@@ -60,6 +100,11 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                         {isCurrent && (
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-semibold shrink-0 ml-2">
                                 Actual
+                            </span>
+                        )}
+                        {isUpgrade && (
+                            <span className="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2 py-0.5 rounded-full font-semibold shrink-0 ml-2">
+                                Upgrade
                             </span>
                         )}
                     </div>
@@ -137,18 +182,22 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
                 </div>
 
                 <button
-                    onClick={() => isSuspended && onSelect?.(plan.id)}
+                    onClick={() => !buttonState.disabled && onSelect?.(plan.id)}
                     className={cn(
                         "w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 mt-2",
-                        isSuspended
-                            ? "bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer"
-                            : isDisabled
-                                ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                                : "bg-slate-700 text-slate-400 cursor-not-allowed opacity-60"
+                        buttonState.style
                     )}
-                    disabled={!isSuspended}
+                    disabled={buttonState.disabled}
                 >
-                    {isSuspended ? 'Reactivar con este plan' : isDisabled ? 'Plan Actual' : 'Contactanos para suscribirte'}
+                    {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                            </svg>
+                            Procesando...
+                        </span>
+                    ) : buttonState.label}
                 </button>
             </div>
         </div>
