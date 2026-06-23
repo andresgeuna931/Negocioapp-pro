@@ -21,7 +21,13 @@ export function PricingSection({ currentPlanId, tenantId, isInTrial, hasPaidSubs
         setError(null);
 
         try {
-            const response = await fetch('/api/checkout', {
+            // Si el cliente ya tiene una suscripción activa y elige un plan distinto,
+            // usamos /api/checkout-upgrade que cancela el PreApproval viejo antes de crear el nuevo.
+            // En cualquier otro caso (trial, suspendido, primer pago) usamos /api/checkout normal.
+            const isUpgrade = hasPaidSubscription && planId !== currentPlanId;
+            const endpoint = isUpgrade ? '/api/checkout-upgrade' : '/api/checkout';
+
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
