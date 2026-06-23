@@ -206,6 +206,7 @@ export async function POST(request: NextRequest) {
 
                 if (
                     topic !== "subscription_authorized_payment" &&
+                    !(topic === "subscription_preapproval" && body.action === "updated") &&
                     currentSub?.status === "active" &&
                     currentSub.last_payment_at
                 ) {
