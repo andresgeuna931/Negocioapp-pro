@@ -88,7 +88,9 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
                 </main>
             </div>
 
-            <TawkToWidget />
+            {(!subscription?.plan || subscription.plan === 'starter' || !hasPaidSubscription) && (
+                <TawkToWidget />
+            )}
         </div>
     );
 }
