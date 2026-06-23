@@ -151,8 +151,13 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo registro un pago de un cliente?',
-                answer: 'Andá a Clientes, tocá el cliente que pagó, y usá el botón "Registrar Pago". Ingresá el monto y se descuenta de su deuda.',
+                answer: 'Andá a Clientes, tocá el cliente que pagó, y usá el botón "Registrar Pago" (ícono de billete). Seleccioná el medio de pago (Efectivo, Transferencia o QR), ingresá el monto y confirmá. El pago se descuenta de la deuda del cliente y se registra automáticamente en la caja del día.',
                 keywords: ['pago', 'abono', 'registrar', 'cobrar']
+            },
+            {
+                question: '¿Cómo registro una venta donde el cliente paga parte ahora y el resto queda fiado?',
+                answer: '1. Al cobrar, seleccioná "Cuenta Corriente" por el total de la venta (el stock se descuenta en ese momento)\n2. Andá a Clientes, buscá al cliente y tocá el ícono de billete\n3. Seleccioná el medio de pago (Efectivo, Transferencia o QR) e ingresá el monto que pagó ahora\n4. El cliente queda con solo la diferencia como deuda en su cuenta corriente\nEste pago parcial también queda registrado en la caja del día.',
+                keywords: ['mixto', 'parcial', 'parte efectivo', 'parte fiado', 'pago mixto', 'cuenta corriente efectivo']
             }
         ]
     },
@@ -253,7 +258,7 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cuándo se cobra la suscripción?',
-                answer: 'Los cobros se realizan el día 10 de cada mes a través de MercadoPago. El primer cobro es proporcional a los días que quedan hasta el día 10 más próximo. Desde el segundo cobro en adelante, se cobra el monto completo cada día 10.',
+                answer: 'Los cobros se realizan automáticamente a través de MercadoPago el mismo día del mes en que te suscribiste, y se renuevan cada mes (o cada año si elegiste el plan anual). Se acepta tarjeta de crédito y débito.',
                 keywords: ['cobro', 'fecha', 'cuando', 'dia 10', 'suscripcion']
             },
             {
