@@ -268,17 +268,33 @@ export async function POST(request: NextRequest) {
                 console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()} (fuente: ${mpNextPaymentDate ? 'MP' : 'fallback-dia10'}), preapproval_id=${externalSubscriptionId}`);
 
                 // Notificación admin — no bloquea el flujo si falla
+                // Verificamos que no exista ya una notificación de pago para este tenant
+                // en los últimos 10 minutos (evita duplicados por múltiples webhooks del mismo pago)
                 try {
                     const tenantName = updatedTenant?.name || tenantId;
                     const montoStr = transactionAmount > 0
                         ? ` — $${transactionAmount.toLocaleString('es-AR')}`
                         : '';
-                    await supabaseAdmin.from("admin_notifications").insert({
-                        type: 'payment_received',
-                        title: '💰 Pago recibido',
-                        message: `${tenantName} — plan ${internalPlanId}${montoStr}`,
-                        tenant_id: tenantId,
-                    });
+
+                    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+                    const { data: existingNotif } = await supabaseAdmin
+                        .from("admin_notifications")
+                        .select("id")
+                        .eq("tenant_id", tenantId)
+                        .eq("type", "payment_received")
+                        .gte("created_at", tenMinutesAgo)
+                        .single();
+
+                    if (!existingNotif) {
+                        await supabaseAdmin.from("admin_notifications").insert({
+                            type: 'payment_received',
+                            title: '💰 Pago recibido',
+                            message: `${tenantName} — plan ${internalPlanId}${montoStr}`,
+                            tenant_id: tenantId,
+                        });
+                    } else {
+                        console.log(`Notificación de pago ya existe para tenant ${tenantId} — omitida`);
+                    }
                 } catch (notifError) {
                     console.error("Error creando notificación:", notifError);
                 }
