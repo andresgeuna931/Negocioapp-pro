@@ -176,7 +176,7 @@ export async function deleteCustomer(id: string): Promise<ApiResponse<void>> {
     }
 }
 
-export async function registerPayment(customerId: string, amount: number, notes?: string): Promise<ApiResponse<void>> {
+export async function registerPayment(customerId: string, amount: number, notes?: string, paymentMethod: 'cash' | 'transfer' | 'qr' = 'cash'): Promise<ApiResponse<void>> {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { success: false, error: 'No autorizado' };
     const { supabase, user, tenantId } = ctx;
@@ -193,7 +193,17 @@ export async function registerPayment(customerId: string, amount: number, notes?
         return { success: false, error: 'Cuenta de cliente no encontrada' };
     }
 
-    // Insert payment movement
+    // Get customer name for cash movement description
+    const { data: customer } = await supabase
+        .from('customers')
+        .select('full_name')
+        .eq('id', customerId)
+        .single();
+
+    const methodLabel = paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'transfer' ? 'Transferencia' : 'QR';
+    const description = notes || `Abono ${methodLabel} - ${customer?.full_name || 'Cliente'}`;
+
+    // Insert payment movement (reduces customer debt)
     const { error } = await supabase
         .from('account_movements')
         .insert({
@@ -201,13 +211,23 @@ export async function registerPayment(customerId: string, amount: number, notes?
             account_id: account.id,
             type: 'payment',
             amount: amount,
-            description: notes || 'Pago a cuenta',
+            description: description,
             created_by: user.id
         } as any);
 
     if (error) {
         console.error('Error registering payment:', error);
         return { success: false, error: 'Error al registrar pago' };
+    }
+
+    // Impactar la caja del día con el ingreso del abono
+    // Efectivo → total_sales_cash | Transferencia/QR → total_sales_other
+    try {
+        const { addCashMovement } = await import('./cash');
+        await addCashMovement('deposit', amount, description);
+    } catch (cashError) {
+        // No bloquear el flujo si la caja falla — el abono ya quedó registrado
+        console.error('Error impactando caja en abono:', cashError);
     }
 
     revalidatePath('/clientes');
