@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatPrice } from '@/lib/config/plans';
+import { BUSINESS_TYPES } from '@/lib/constants/business-types';
 
 interface RegisterFormProps {
     token: string;
@@ -23,6 +24,7 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
         email: '',
         password: '',
         confirmPassword: '',
+        businessType: 'kiosco',
     });
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -67,6 +69,7 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
                     fullName: formData.fullName,
                     businessName: formData.businessName,
                     planId: plan.id,
+                    businessType: formData.businessType,
                 }),
             });
 
@@ -193,6 +196,24 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
                             required
                             className="bg-slate-800/50 border-slate-700 text-white"
                         />
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-sm font-medium text-slate-300">
+                                Tipo de negocio
+                            </label>
+                            <select
+                                name="businessType"
+                                value={formData.businessType}
+                                onChange={handleChange}
+                                className="w-full h-11 bg-slate-800/50 border border-slate-700 text-white rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                                {BUSINESS_TYPES.map((type) => (
+                                    <option key={type.value} value={type.value} className="bg-slate-800">
+                                        {type.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
                         <Input
                             type="email"
