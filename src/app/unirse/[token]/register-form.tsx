@@ -204,7 +204,7 @@ export function RegisterForm({ token, plan, invitation }: RegisterFormProps) {
                             <select
                                 name="businessType"
                                 value={formData.businessType}
-                                onChange={handleChange}
+                                onChange={(e) => setFormData(prev => ({ ...prev, businessType: e.target.value }))}
                                 className="w-full h-11 bg-slate-800/50 border border-slate-700 text-white rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             >
                                 {BUSINESS_TYPES.map((type) => (
