@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { validateInvitationToken, markInvitationAsUsed } from "@/lib/actions/tenant-invitations";
+import { CATEGORIES_BY_BUSINESS_TYPE } from "@/lib/constants/business-types";
 
 // Genera un slug único a partir del nombre del negocio
 function generateSlug(name: string): string {
@@ -18,7 +19,7 @@ function generateSlug(name: string): string {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { token, email, password, fullName, businessName, planId } = body;
+        const { token, email, password, fullName, businessName, planId, businessType } = body;
 
         // 1. Validar token
         const validation = await validateInvitationToken(token);
@@ -109,10 +110,31 @@ export async function POST(request: NextRequest) {
             console.error("Subscription error:", subError);
         }
 
-        // 7. Marcar invitación como usada
+        // 7. Insertar categorías base según el tipo de negocio
+        // Si no viene businessType o no hay match, usamos kiosco como fallback
+        const categoryNames = CATEGORIES_BY_BUSINESS_TYPE[businessType || 'kiosco']
+            ?? CATEGORIES_BY_BUSINESS_TYPE['kiosco'];
+
+        const categoryRows = categoryNames.map((name: string) => ({
+            tenant_id: tenant.id,
+            name,
+        }));
+
+        const { error: catError } = await adminSupabase
+            .from("categories")
+            .insert(categoryRows);
+
+        if (catError) {
+            // No bloquear el registro si falla — el usuario puede agregar categorías manualmente
+            console.error("Error insertando categorías base:", catError);
+        } else {
+            console.log(`✅ ${categoryRows.length} categorías insertadas para tenant ${tenant.id} (${businessType || 'kiosco'})`);
+        }
+
+        // 8. Marcar invitación como usada
         await markInvitationAsUsed(token, tenant.id);
 
-        // 8. Notificación admin de nuevo registro — no bloquea el flujo si falla
+        // 9. Notificación admin de nuevo registro — no bloquea el flujo si falla
         try {
             await adminSupabase.from("admin_notifications").insert({
                 type: 'new_tenant',
@@ -124,7 +146,7 @@ export async function POST(request: NextRequest) {
             console.error("Error creando notificación:", notifError);
         }
 
-        // 9. Iniciar sesión automáticamente
+        // 10. Iniciar sesión automáticamente
         const supabase = await createClient();
         await supabase.auth.signInWithPassword({ email, password });
 
