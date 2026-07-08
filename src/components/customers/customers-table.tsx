@@ -158,10 +158,10 @@ export function CustomersTable({ initialCustomers }: CustomersTableProps) {
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                <DropdownMenuContent align="end" className="bg-slate-800 border border-slate-600 shadow-xl">
+                                                    <DropdownMenuLabel className="text-slate-300">Acciones</DropdownMenuLabel>
                                                     <DropdownMenuItem onClick={() => setPaymentCustomer(customer)}>
-                                                        <Banknote className="mr-2 h-4 w-4 text-emerald-600" /> Registrar Pago
+                                                        <Banknote className="mr-2 h-4 w-4 text-emerald-500" /> Registrar Pago
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => setHistoryCustomer(customer)}>
                                                         <FileText className="mr-2 h-4 w-4" /> Ver Historial
@@ -169,11 +169,8 @@ export function CustomersTable({ initialCustomers }: CustomersTableProps) {
                                                     <DropdownMenuItem onClick={() => setEditingCustomer(customer)}>
                                                         <Pencil className="mr-2 h-4 w-4" /> Editar
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem>
-                                                        <FileText className="mr-2 h-4 w-4" /> Ver Cuenta
-                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem
-                                                        className="text-red-600"
+                                                        className="text-red-400"
                                                         onClick={() => handleDelete(customer.id)}
                                                     >
                                                         <Trash className="mr-2 h-4 w-4" /> Eliminar
