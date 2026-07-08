@@ -15,6 +15,7 @@ interface HeaderProps {
 
 export function Header({ onMenuClick, session }: HeaderProps) {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     // Cerrar el menú al hacer click fuera
@@ -122,30 +123,34 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                                         </p>
                                     </div>
                                     {/* Cerrar sesión */}
-                                    <form action={signOut}>
-                                        <button
-                                            type="submit"
-                                            className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors text-left"
-                                        >
-                                            <LogOut className="w-4 h-4" />
-                                            Cerrar sesión
-                                        </button>
-                                    </form>
+                                    <button
+                                        onClick={async () => {
+                                            setSigningOut(true);
+                                            await signOut();
+                                        }}
+                                        disabled={signingOut}
+                                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 active:bg-red-500/20 active:scale-[0.98] transition-all text-left disabled:opacity-60"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        {signingOut ? 'Cerrando...' : 'Cerrar sesión'}
+                                    </button>
                                 </div>
                             )}
                         </div>
 
                         {/* Botón Salir — solo visible en desktop sm+ */}
-                        <form action={signOut}>
-                            <button
-                                type="submit"
-                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 dark:text-slate-400 dark:hover:text-red-400 transition-all text-sm font-medium"
-                                title="Cerrar sesión"
-                            >
-                                <LogOut className="w-4 h-4" />
-                                <span>Salir</span>
-                            </button>
-                        </form>
+                        <button
+                            onClick={async () => {
+                                setSigningOut(true);
+                                await signOut();
+                            }}
+                            disabled={signingOut}
+                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 active:scale-[0.98] active:opacity-70 transition-all text-sm font-medium disabled:opacity-50"
+                            title="Cerrar sesión"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            <span>{signingOut ? 'Cerrando...' : 'Salir'}</span>
+                        </button>
                     </div>
                 </div>
             </div>
