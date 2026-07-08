@@ -15,7 +15,8 @@ export async function signIn(email: string, password: string) {
     });
 
     if (error) {
-        return { error: error.message };
+        // Mensaje genérico en español — no revela si el email existe o no
+        return { error: 'Email o contraseña incorrectos. Revisá tus datos e intentá de nuevo.' };
     }
 
     // Update last login
