@@ -34,13 +34,14 @@ function LoginForm() {
 
             if (result.error) {
                 setError(result.error);
+                setLoading(false); // solo liberar el botón si hay error
             } else {
+                // Éxito — mantenemos loading=true hasta que la navegación termine
                 router.push(redirect);
                 router.refresh();
             }
         } catch {
             setError('Error al iniciar sesión');
-        } finally {
             setLoading(false);
         }
     };
