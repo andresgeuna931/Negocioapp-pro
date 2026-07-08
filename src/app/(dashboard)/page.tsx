@@ -127,6 +127,26 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         )}
       </div>
 
+      {/* Botones de acción rápida — claramente diferenciados de las tarjetas */}
+      <div className="grid grid-cols-2 gap-4">
+        <Link href="/ventas">
+          <button className="w-full flex flex-col items-center gap-2 p-5 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-[0.97] active:opacity-90 transition-all shadow-lg shadow-emerald-500/20 cursor-pointer">
+            <div className="p-3 rounded-full bg-white/20">
+              <ShoppingCart className="w-6 h-6 text-white" />
+            </div>
+            <span className="font-semibold text-white text-sm">Nueva Venta</span>
+          </button>
+        </Link>
+        <Link href="/productos">
+          <button className="w-full flex flex-col items-center gap-2 p-5 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 active:scale-[0.97] active:opacity-90 transition-all shadow-lg shadow-blue-500/20 cursor-pointer">
+            <div className="p-3 rounded-full bg-white/20">
+              <Package className="w-6 h-6 text-white" />
+            </div>
+            <span className="font-semibold text-white text-sm">Productos</span>
+          </button>
+        </Link>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -228,29 +248,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </Card>
         </div>
       )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <Link href="/ventas">
-          <Card className="hover:border-emerald-500 transition-colors cursor-pointer">
-            <CardContent className="p-6 flex flex-col items-center gap-2">
-              <div className="p-3 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500">
-                <ShoppingCart className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-medium text-slate-900 dark:text-white">Nueva Venta</span>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/productos">
-          <Card className="hover:border-blue-500 transition-colors cursor-pointer">
-            <CardContent className="p-6 flex flex-col items-center gap-2">
-              <div className="p-3 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-medium text-slate-900 dark:text-white">Productos</span>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
 
       <Card>
         <CardHeader>
