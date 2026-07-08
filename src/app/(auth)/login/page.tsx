@@ -18,9 +18,14 @@ function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    // Guard anti-autosubmit: el usuario debe haber interactuado manualmente
+    // con al menos un campo antes de que el botón pueda enviar el formulario.
+    // Esto evita que el autocompletado del browser dispare el login solo.
+    const [userInteracted, setUserInteracted] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!userInteracted) return; // ignorar si no hubo interacción manual
         setError('');
         setLoading(true);
 
@@ -74,6 +79,7 @@ function LoginForm() {
                         name="auth_mail_unique"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        onFocus={() => setUserInteracted(true)}
                         icon={<Mail className="w-5 h-5" />}
                         required
                         className="bg-slate-800/50 border-slate-700 text-white"
@@ -87,6 +93,7 @@ function LoginForm() {
                             name="auth_pass_unique"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onFocus={() => setUserInteracted(true)}
                             icon={<Lock className="w-5 h-5" />}
                             required
                             className="bg-slate-800/50 border-slate-700 text-white pr-12"
@@ -147,4 +154,3 @@ export default function LoginPage() {
         </div>
     );
 }
-
