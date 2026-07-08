@@ -18,10 +18,19 @@ function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    // Guard anti-autosubmit: el usuario debe haber interactuado manualmente
-    // con al menos un campo antes de que el botón pueda enviar el formulario.
-    // Esto evita que el autocompletado del browser dispare el login solo.
+    // Guard anti-autosubmit: registramos el momento en que el usuario
+    // interactuó manualmente. Solo permitimos submit si pasaron al menos
+    // 500ms desde que la página cargó — tiempo suficiente para distinguir
+    // autocompletado inmediato de interacción real del usuario.
+    const [mountTime] = useState(() => Date.now());
     const [userInteracted, setUserInteracted] = useState(false);
+
+    const markInteracted = () => {
+        // Solo marcar como interacción real si pasaron más de 500ms desde el mount
+        if (Date.now() - mountTime > 500) {
+            setUserInteracted(true);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,8 +88,8 @@ function LoginForm() {
                         placeholder="tu@email.com"
                         name="auth_mail_unique"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        onFocus={() => setUserInteracted(true)}
+                        onChange={(e) => { setEmail(e.target.value); markInteracted(); }}
+                        onFocus={markInteracted}
                         icon={<Mail className="w-5 h-5" />}
                         required
                         className="bg-slate-800/50 border-slate-700 text-white"
@@ -93,8 +102,8 @@ function LoginForm() {
                             placeholder="••••••••"
                             name="auth_pass_unique"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onFocus={() => setUserInteracted(true)}
+                            onChange={(e) => { setPassword(e.target.value); markInteracted(); }}
+                            onFocus={markInteracted}
                             icon={<Lock className="w-5 h-5" />}
                             required
                             className="bg-slate-800/50 border-slate-700 text-white pr-12"
