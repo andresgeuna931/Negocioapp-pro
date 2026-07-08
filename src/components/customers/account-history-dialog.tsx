@@ -108,8 +108,8 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
                                                 <TableCell className="max-w-[200px] truncate" title={move.description}>
                                                     {move.description || '-'}
                                                 </TableCell>
-                                                <TableCell className={`text-right font-medium ${isDebit ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                    {isDebit ? '+' : '-'}{formatCurrency(move.amount)}
+                                                <TableCell className={`text-right font-medium ${isDebit ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                    {isDebit ? `+${formatCurrency(move.amount)}` : formatCurrency(move.amount)}
                                                 </TableCell>
                                             </TableRow>
                                         );
