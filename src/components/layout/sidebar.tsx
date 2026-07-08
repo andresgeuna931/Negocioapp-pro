@@ -86,7 +86,7 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                                     'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
                                     isActive
                                         ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
                                 )}
                             >
                                 <item.icon className="w-5 h-5" />
@@ -103,7 +103,7 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                                 'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
                                 pathname.startsWith('/gastos')
                                     ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
                             )}
                         >
                             <Receipt className="w-5 h-5" />
