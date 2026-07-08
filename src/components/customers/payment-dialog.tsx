@@ -31,7 +31,8 @@ import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
 const paymentSchema = z.object({
-    amount: z.coerce.number().min(0.01, 'El monto debe ser mayor a 0'),
+    amount: z.coerce.number()
+        .refine(val => !isNaN(val) && val > 0, 'Ingresá un monto válido mayor a cero'),
     notes: z.string().optional(),
 });
 
@@ -150,7 +151,7 @@ export function PaymentDialog({ customer, open, onOpenChange, onSuccess }: Payme
                                                 <Banknote className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                                                 <Input
                                                     type="number"
-                                                    placeholder="0.00"
+                                                    placeholder="Ingresá el monto a registrar"
                                                     className="pl-9 text-lg font-medium"
                                                     step="0.01"
                                                     {...field}
