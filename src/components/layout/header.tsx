@@ -145,7 +145,7 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                                 await signOut();
                             }}
                             disabled={signingOut}
-                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 active:scale-[0.98] active:opacity-70 transition-all text-sm font-medium disabled:opacity-50"
+                            className="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 active:scale-[0.98] active:opacity-70 transition-all text-sm font-medium disabled:opacity-50"
                             title="Cerrar sesión"
                         >
                             <LogOut className="w-4 h-4" />
