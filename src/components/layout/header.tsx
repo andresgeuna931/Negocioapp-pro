@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, Bell, User, LogOut, ShieldCheck } from 'lucide-react';
 import { signOut } from '@/lib/actions/auth';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { TenantNotificationBell } from '@/components/notifications/tenant-notification-bell';
 import { Badge } from '@/components/ui/badge';
 import type { UserSession } from '@/lib/types';
 
@@ -83,6 +84,8 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                     {/* Notifications */}
                     {session?.profile?.role === 'admin' ? (
                         <NotificationBell />
+                    ) : session?.profile?.role === 'owner' && session?.tenant?.id ? (
+                        <TenantNotificationBell tenantId={session.tenant.id} />
                     ) : (
                         <button className="relative p-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
                             <Bell className="w-5 h-5" />
