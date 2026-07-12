@@ -230,6 +230,20 @@ export async function registerPayment(customerId: string, amount: number, notes?
         console.error('Error impactando caja en abono:', cashError);
     }
 
+    // Notificar al dueño del tenant que se registró un abono
+    try {
+        const { createTenantNotification } = await import('./tenant-notifications');
+        const montoStr = `$${amount.toLocaleString('es-AR')}`;
+        await createTenantNotification(
+            tenantId,
+            'payment_received',
+            '💰 Abono registrado',
+            `${customer?.full_name || 'Cliente'} abonó ${montoStr} (${methodLabel})`
+        );
+    } catch (notifError) {
+        console.error('Error creando notificación de abono:', notifError);
+    }
+
     revalidatePath('/clientes');
     return { success: true };
 }
