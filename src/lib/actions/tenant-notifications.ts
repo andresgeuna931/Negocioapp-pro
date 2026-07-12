@@ -1,60 +1,109 @@
-import { NextRequest, NextResponse } from "next/server";
-import { checkExpiringSubscriptions } from "@/lib/actions/admin-notifications";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { createTenantNotification, tenantNotificationExists } from "@/lib/actions/tenant-notifications";
+'use server';
 
-// Endpoint llamado diariamente por Vercel Cron (configurado en vercel.json)
-// Detecta suscripciones próximas a vencer y vencidas, y crea notificaciones admin y tenant
-export async function GET(request: NextRequest) {
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret) {
-        const authHeader = request.headers.get("authorization");
-        if (authHeader !== `Bearer ${cronSecret}`) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+
+export type TenantNotificationType = 'stock_low' | 'payment_received' | 'subscription_expiring';
+
+export interface TenantNotification {
+    id: string;
+    tenant_id: string;
+    type: TenantNotificationType;
+    title: string;
+    message: string;
+    read: boolean;
+    created_at: string;
+}
+
+// Leer notificaciones del tenant autenticado (máx 20 más recientes)
+export async function getTenantNotifications() {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('tenant_notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    if (error) {
+        console.error('Error fetching tenant notifications:', error);
+        return { data: [], unreadCount: 0 };
     }
 
-    try {
-        // Notificaciones para el admin
-        await checkExpiringSubscriptions();
+    const unreadCount = data.filter(n => !n.read).length;
+    return { data: data as TenantNotification[], unreadCount };
+}
 
-        // Notificaciones para los tenants: suscripción próxima a vencer en 3 días
-        const adminSupabase = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
+// Marcar una notificación como leída
+export async function markTenantNotificationRead(id: string) {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('tenant_notifications')
+        .update({ read: true })
+        .eq('id', id);
 
-        const now = new Date();
-        const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+    if (error) console.error('Error marking tenant notification read:', error);
+    return { success: !error };
+}
 
-        const { data: expiring } = await adminSupabase
-            .from('subscriptions')
-            .select('tenant_id, current_period_end')
-            .eq('status', 'active')
-            .gte('current_period_end', now.toISOString())
-            .lte('current_period_end', in3Days.toISOString());
+// Marcar todas como leídas
+export async function markAllTenantNotificationsRead(tenantId: string) {
+    const supabase = await createClient();
+    const { error } = await supabase
+        .from('tenant_notifications')
+        .update({ read: true })
+        .eq('tenant_id', tenantId)
+        .eq('read', false);
 
-        for (const sub of (expiring || [])) {
-            const fechaVto = new Date(sub.current_period_end).toLocaleDateString('es-AR');
-            const alreadyNotified = await tenantNotificationExists(
-                sub.tenant_id,
-                'subscription_expiring'
-            );
+    if (error) console.error('Error marking all tenant notifications read:', error);
+    return { success: !error };
+}
 
-            if (!alreadyNotified) {
-                await createTenantNotification(
-                    sub.tenant_id,
-                    'subscription_expiring',
-                    '⚠️ Próximo cobro',
-                    `Tu suscripción se renueva el ${fechaVto}. Asegurate de tener fondos disponibles.`
-                );
-            }
-        }
+// Crear notificación para un tenant — usa admin client para bypassear RLS
+export async function createTenantNotification(
+    tenantId: string,
+    type: TenantNotificationType,
+    title: string,
+    message: string
+) {
+    const adminSupabase = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 
-        console.log("✅ Cron check-subscriptions ejecutado correctamente");
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Cron check-subscriptions error:", error);
-        return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    const { error } = await adminSupabase
+        .from('tenant_notifications')
+        .insert({ tenant_id: tenantId, type, title, message });
+
+    if (error) console.error('Error creating tenant notification:', error);
+    return { success: !error };
+}
+
+// Verificar si ya existe una notificación reciente del mismo tipo para el mismo tenant
+// Evita spam de notificaciones duplicadas (ventana de 24 horas)
+export async function tenantNotificationExists(
+    tenantId: string,
+    type: TenantNotificationType,
+    messageContains?: string
+): Promise<boolean> {
+    const adminSupabase = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    let query = adminSupabase
+        .from('tenant_notifications')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('type', type)
+        .gte('created_at', yesterday);
+
+    if (messageContains) {
+        query = query.ilike('message', `%${messageContains}%`);
     }
+
+    const { data } = await query.limit(1);
+    return (data?.length ?? 0) > 0;
 }
