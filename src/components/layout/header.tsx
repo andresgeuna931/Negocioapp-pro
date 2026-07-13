@@ -83,7 +83,12 @@ export function Header({ onMenuClick, session }: HeaderProps) {
 
                     {/* Notifications */}
                     {session?.profile?.role === 'admin' ? (
-                        <NotificationBell />
+                        <>
+                            <NotificationBell />
+                            {session?.tenant?.id && (
+                                <TenantNotificationBell tenantId={session.tenant.id} />
+                            )}
+                        </>
                     ) : session?.profile?.role === 'owner' && session?.tenant?.id ? (
                         <TenantNotificationBell tenantId={session.tenant.id} />
                     ) : (
