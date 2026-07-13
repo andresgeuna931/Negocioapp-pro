@@ -31,17 +31,23 @@ function timeAgo(dateStr: string): string {
 
 interface TenantNotificationBellProps {
     tenantId: string;
+    role?: string;
 }
 
-export function TenantNotificationBell({ tenantId }: TenantNotificationBellProps) {
+export function TenantNotificationBell({ tenantId, role }: TenantNotificationBellProps) {
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState<TenantNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
+    // Empleados solo ven stock bajo — no abonos ni suscripción
+    const allowedTypes = role === 'staff'
+        ? (['stock_low'] as TenantNotificationType[])
+        : undefined;
+
     const loadNotifications = async () => {
-        const result = await getTenantNotifications();
+        const result = await getTenantNotifications(allowedTypes);
         setNotifications(result.data);
         setUnreadCount(result.unreadCount);
         setLoading(false);
