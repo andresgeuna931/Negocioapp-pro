@@ -16,14 +16,21 @@ export interface TenantNotification {
 }
 
 // Leer notificaciones del tenant autenticado (máx 20 más recientes)
-export async function getTenantNotifications() {
+// allowedTypes: si se pasa, filtra solo esos tipos (útil para empleados)
+export async function getTenantNotifications(allowedTypes?: TenantNotificationType[]) {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('tenant_notifications')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
+
+    if (allowedTypes && allowedTypes.length > 0) {
+        query = query.in('type', allowedTypes);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching tenant notifications:', error);
