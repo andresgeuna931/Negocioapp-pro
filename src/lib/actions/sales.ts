@@ -162,56 +162,41 @@ export async function createSale(saleData: CreateSaleData) {
     revalidatePath('/caja');
     revalidatePath('/clientes');
 
-    // Verificar stock bajo después de la venta
-    // Solo notifica si algún producto cruzó su umbral en esta venta
+    // Verificar stock bajo después de la venta usando el mismo RPC que el dashboard
+    // Así usamos exactamente la misma lógica de threshold que ya funciona
     try {
         const tenantId = currentProfile.tenant_id;
         const productIds = saleData.items.map(i => i.product_id);
 
-        // Leer el threshold del tenant y el stock actual de los productos vendidos
-        const { data: tenantData } = await supabase
-            .from('tenants')
-            .select('low_stock_threshold_default')
-            .eq('id', tenantId)
-            .single();
+        const { data: lowStockProducts } = await supabase.rpc('get_low_stock_products');
 
-        const defaultThreshold = tenantData?.low_stock_threshold_default ?? 5;
-
-        const { data: products } = await supabase
-            .from('products')
-            .select('id, name, stock, low_stock_threshold')
-            .in('id', productIds)
-            .eq('tenant_id', tenantId);
-
-        if (products) {
+        if (lowStockProducts && lowStockProducts.length > 0) {
             const { createTenantNotification, tenantNotificationExists } = await import('./tenant-notifications');
 
-            for (const product of products) {
-                const threshold = product.low_stock_threshold ?? defaultThreshold;
-                const stock = product.stock ?? 0;
+            // Solo notificar productos que fueron parte de esta venta
+            const relevantProducts = lowStockProducts.filter((p: any) =>
+                productIds.includes(p.id)
+            );
 
-                // Solo notificar si el stock está EN o POR DEBAJO del umbral
-                if (stock <= threshold && stock >= 0) {
-                    // Verificar que no se haya notificado ya este producto en las últimas 24hs
-                    const alreadyNotified = await tenantNotificationExists(
+            for (const product of relevantProducts) {
+                const alreadyNotified = await tenantNotificationExists(
+                    tenantId,
+                    'stock_low',
+                    product.name
+                );
+
+                if (!alreadyNotified) {
+                    await createTenantNotification(
                         tenantId,
                         'stock_low',
-                        product.name
+                        '📦 Stock bajo',
+                        `${product.name} — quedan ${product.stock} unidades`
                     );
-
-                    if (!alreadyNotified) {
-                        await createTenantNotification(
-                            tenantId,
-                            'stock_low',
-                            '📦 Stock bajo',
-                            `${product.name} — quedan ${stock} unidades (umbral: ${threshold})`
-                        );
-                    }
+                    console.log(`✅ Notificación stock bajo: ${product.name} (${product.stock} unidades)`);
                 }
             }
         }
     } catch (stockNotifError) {
-        // No bloquear la venta si la notificación falla
         console.error('Error en notificación de stock bajo:', stockNotifError);
     }
 
