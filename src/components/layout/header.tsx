@@ -86,11 +86,14 @@ export function Header({ onMenuClick, session }: HeaderProps) {
                         <>
                             <NotificationBell />
                             {session?.tenant?.id && (
-                                <TenantNotificationBell tenantId={session.tenant.id} />
+                                <TenantNotificationBell tenantId={session.tenant.id} role="admin" />
                             )}
                         </>
-                    ) : session?.profile?.role === 'owner' && session?.tenant?.id ? (
-                        <TenantNotificationBell tenantId={session.tenant.id} />
+                    ) : session?.tenant?.id ? (
+                        <TenantNotificationBell
+                            tenantId={session.tenant.id}
+                            role={session.profile?.role}
+                        />
                     ) : (
                         <button className="relative p-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
                             <Bell className="w-5 h-5" />
