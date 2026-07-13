@@ -80,7 +80,7 @@ export async function createTenantNotification(
 }
 
 // Verificar si ya existe una notificación reciente del mismo tipo para el mismo tenant
-// Evita spam de notificaciones duplicadas (ventana de 24 horas)
+// Evita spam de notificaciones duplicadas (ventana de 2 horas)
 export async function tenantNotificationExists(
     tenantId: string,
     type: TenantNotificationType,
@@ -91,7 +91,7 @@ export async function tenantNotificationExists(
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const yesterday = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(); // 2 horas — tiempo mínimo entre notificaciones del mismo producto
 
     let query = adminSupabase
         .from('tenant_notifications')
