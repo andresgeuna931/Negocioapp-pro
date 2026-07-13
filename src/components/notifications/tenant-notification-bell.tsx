@@ -6,8 +6,9 @@ import {
     getTenantNotifications,
     markTenantNotificationRead,
     markAllTenantNotificationsRead,
+    type TenantNotification,
+    type TenantNotificationType,
 } from '@/lib/actions/tenant-notifications';
-import type { TenantNotification } from '@/lib/actions/tenant-notifications';
 
 function NotificationIcon({ type }: { type: string }) {
     switch (type) {
