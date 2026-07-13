@@ -190,7 +190,7 @@ export async function createSale(saleData: CreateSaleData) {
                         tenantId,
                         'stock_low',
                         '📦 Stock bajo',
-                        `${product.name} — quedan ${product.stock} unidades`
+                        `${product.name} — quedan ${product.stock_on_hand} unidades`
                     );
                     console.log(`✅ Notificación stock bajo: ${product.name} (${product.stock} unidades)`);
                 }
