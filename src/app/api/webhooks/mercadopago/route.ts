@@ -1,6 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
 import { createClient } from "@supabase/supabase-js";
+import { createHmac } from "crypto";
+
+function verifyMPSignature(request: NextRequest, rawBody: string): boolean {
+    const secret = process.env.MP_WEBHOOK_SECRET;
+    if (!secret) {
+        console.error("MP_WEBHOOK_SECRET no configurado");
+        return false;
+    }
+
+    const xSignature = request.headers.get("x-signature");
+    const xRequestId = request.headers.get("x-request-id");
+
+    if (!xSignature || !xRequestId) return false;
+
+    const parts = xSignature.split(",");
+    let ts = "";
+    let v1 = "";
+    for (const part of parts) {
+        const [key, value] = part.trim().split("=");
+        if (key === "ts") ts = value;
+        if (key === "v1") v1 = value;
+    }
+
+    if (!ts || !v1) return false;
+
+    let dataId = "";
+    try {
+        const parsed = JSON.parse(rawBody);
+        dataId = parsed?.data?.id || "";
+    } catch {
+        return false;
+    }
+
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    const hmac = createHmac("sha256", secret).update(manifest).digest("hex");
+
+    return hmac === v1;
+}
 
 function calcularProximoDiez(): Date {
     const now = new Date();
@@ -46,6 +84,17 @@ function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; 
 
 export async function POST(request: NextRequest) {
     try {
+        // Leer body como texto para verificar firma antes de parsear
+        const rawBody = await request.text();
+
+        // Verificar firma de MercadoPago
+        if (!verifyMPSignature(request, rawBody)) {
+            console.warn("Webhook rechazado: firma inválida");
+            return NextResponse.json({ error: "Firma inválida" }, { status: 401 });
+        }
+
+        const body = JSON.parse(rawBody);
+
         const mpClient = new MercadoPagoConfig({
             accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
         });
@@ -55,7 +104,6 @@ export async function POST(request: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        const body = await request.json();
         console.log("Webhook received:", JSON.stringify(body, null, 2));
 
         if (
@@ -76,9 +124,6 @@ export async function POST(request: NextRequest) {
             let status: string = 'pending';
             let transactionAmount: number = 0;
             let externalSubscriptionId: string | undefined;
-            // Fecha real del próximo cobro según MercadoPago (preapproval.next_payment_date).
-            // Si está disponible, la usamos en vez de calcular el día 10 nosotros,
-            // para que la base siempre coincida con lo que MP va a cobrar.
             let mpNextPaymentDate: string | undefined;
 
             if (topic === "payment") {
@@ -99,9 +144,6 @@ export async function POST(request: NextRequest) {
                     externalSubscriptionId = (details as any).preapproval_id || undefined;
                 }
             } else if (topic === "subscription_authorized_payment") {
-                // Los pagos de suscripción viven en /v1/authorized_payments, NO en /v1/payments.
-                // MP manda el webhook antes de que el recurso esté disponible en la API
-                // (condición de carrera). Reintentamos hasta 3 veces con 3s de espera.
                 try {
                     const fetchAuthorizedPayment = async (id: string) => {
                         const res = await fetch(
@@ -174,16 +216,11 @@ export async function POST(request: NextRequest) {
                     }
                     status = "active";
                     externalSubscriptionId = details.id || resourceId;
-                    // Guardamos next_payment_date SOLO si ya procesó un pago real.
-                    // Si next_payment_date == date_created, el PreApproval acaba de
-                    // crearse y la fecha es placeholder — la fecha real la trae
-                    // el evento subscription_authorized_payment que llega después.
                     if (details.next_payment_date) {
                         const nextPayment = new Date(details.next_payment_date).getTime();
                         const dateCreated = new Date(details.date_created).getTime();
                         const diffSeconds = Math.abs(nextPayment - dateCreated) / 1000;
                         if (diffSeconds > 60) {
-                            // Más de 1 minuto de diferencia = fecha real de próximo cobro
                             mpNextPaymentDate = details.next_payment_date;
                         } else {
                             console.log(`PreApproval next_payment_date es placeholder (diff ${diffSeconds}s) — esperando subscription_authorized_payment para fecha real`);
@@ -193,11 +230,6 @@ export async function POST(request: NextRequest) {
             }
 
             if (tenantId && status === "active") {
-                // --- ESCENARIO 10: guard de idempotencia ---
-                // Si el tenant ya está activo Y tuvo un pago hace menos de 5 minutos,
-                // es muy probablemente un pago duplicado (doble click en "Renovar").
-                // EXCEPCIÓN: subscription_authorized_payment nunca se bloquea — es el
-                // evento que trae la fecha real de MP y siempre debe procesarse.
                 const { data: currentSub } = await supabaseAdmin
                     .from("subscriptions")
                     .select("status, last_payment_at")
@@ -217,15 +249,11 @@ export async function POST(request: NextRequest) {
                         return NextResponse.json({ received: true }, { status: 200 });
                     }
                 }
-                // --- fin guard ---
 
                 const { dbSubPlan, dbTenantPlan, internalPlanId, isAnnual } = mapearPlan(planId || 'professional');
 
                 const now = new Date();
                 const periodStart = now;
-                // Preferimos la fecha real de MP. Si por algún motivo no vino
-                // (ej. evento de tipo 'payment' que no la incluye), caemos al
-                // cálculo histórico del día 10 como red de seguridad.
                 let periodEnd: Date;
                 if (mpNextPaymentDate) {
                     const parsed = new Date(mpNextPaymentDate);
@@ -267,9 +295,6 @@ export async function POST(request: NextRequest) {
 
                 console.log(`✅ Webhook processed: tenant ${tenantId}, status=active, plan=${internalPlanId}, next_billing=${periodEnd.toISOString()} (fuente: ${mpNextPaymentDate ? 'MP' : 'fallback-dia10'}), preapproval_id=${externalSubscriptionId}`);
 
-                // Notificación admin — no bloquea el flujo si falla
-                // Verificamos que no exista ya una notificación de pago para este tenant
-                // en los últimos 10 minutos (evita duplicados por múltiples webhooks del mismo pago)
                 try {
                     const tenantName = updatedTenant?.name || tenantId;
                     const montoStr = transactionAmount > 0
