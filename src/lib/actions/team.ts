@@ -5,6 +5,10 @@ import { revalidatePath } from 'next/cache';
 import { getCurrentSession } from './auth';
 import { UserRole } from '@/lib/types';
 
+// Roles que un owner puede asignar dentro de su tenant
+// 'admin' es un rol de sistema global — nunca puede ser asignado por un tenant
+const TENANT_ASSIGNABLE_ROLES: UserRole[] = ['staff', 'owner'];
+
 // Generate an invite link for a new team member
 export async function generateInviteLink(role: UserRole = 'staff') {
     const supabase = await createClient();
@@ -13,6 +17,11 @@ export async function generateInviteLink(role: UserRole = 'staff') {
     const session = await getCurrentSession();
     if (!session || session.profile.role !== 'owner') {
         return { error: 'Solo el dueño puede invitar usuarios' };
+    }
+
+    // BL-01: Validar que el rol solicitado es asignable por un tenant
+    if (!TENANT_ASSIGNABLE_ROLES.includes(role)) {
+        return { error: 'Rol no permitido' };
     }
 
     const tenantId = session.profile.tenant_id;
@@ -208,6 +217,11 @@ export async function changeUserRole(userId: string, newRole: UserRole) {
     const session = await getCurrentSession();
     if (!session || session.profile.role !== 'owner') {
         return { error: 'Solo el dueño puede cambiar roles' };
+    }
+
+    // BL-01: Validar que el rol solicitado es asignable por un tenant
+    if (!TENANT_ASSIGNABLE_ROLES.includes(newRole)) {
+        return { error: 'Rol no permitido' };
     }
 
     // Can't change your own role
