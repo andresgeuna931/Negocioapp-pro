@@ -3,12 +3,23 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Payment } from "mercadopago";
+import { getCurrentSession } from '@/lib/actions/auth';
 
 /**
  * Verifies a one-off payment or instant payment verification from MercadoPago.
  */
 export async function verifyMercadoPagoPayment(paymentId: string) {
     if (!paymentId) return { success: false, error: 'No payment ID' };
+
+    // BL-04: Verificar sesión activa antes de consultar MP
+    const session = await getCurrentSession();
+    if (!session) {
+        return { success: false, error: 'No autorizado' };
+    }
+    const sessionTenantId = session.profile.tenant_id;
+    if (!sessionTenantId) {
+        return { success: false, error: 'Tenant no encontrado en sesión' };
+    }
 
     try {
         const mpClient = new MercadoPagoConfig({
@@ -27,6 +38,17 @@ export async function verifyMercadoPagoPayment(paymentId: string) {
 
         if (!tenantId) {
             return { success: false, error: 'Payment is missing tenant reference' };
+        }
+
+        // BL-04: Verificar que el pago pertenece al tenant del usuario logueado
+        if (tenantId !== sessionTenantId) {
+            console.warn(`BL-04: intento de activación cruzada. session_tenant=${sessionTenantId} payment_tenant=${tenantId}`);
+            return { success: false, error: 'El pago no corresponde a tu cuenta' };
+        }
+
+        // BL-04: Rechazar importes inválidos
+        if (!paymentDetails.transaction_amount || paymentDetails.transaction_amount <= 0) {
+            return { success: false, error: 'Importe de pago inválido' };
         }
 
         const supabaseAdmin = await createClient();
