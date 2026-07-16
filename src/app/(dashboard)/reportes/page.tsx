@@ -3,8 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getInventoryValue } from '@/lib/actions/reports';
 import { formatCurrency } from '@/lib/utils';
 import { ReportsClient } from '@/components/reports/reports-client';
+import { getCurrentSession } from '@/lib/actions/auth';
+import { redirect } from 'next/navigation';
 
 export default async function ReportsPage() {
+    // SEC-09: solo owner y admin pueden ver reportes
+    const session = await getCurrentSession();
+    if (session?.profile.role === 'staff') {
+        redirect('/');
+    }
+
     const inventory = await getInventoryValue();
 
     return (
