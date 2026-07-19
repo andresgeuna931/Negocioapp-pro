@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { Customer, ApiResponse } from '@/lib/types';
+import { hasPermission } from '@/lib/permissions';
 
 export interface CreateCustomerData {
     full_name: string;
@@ -16,7 +17,7 @@ export interface CreateCustomerData {
 
 export type UpdateCustomerData = Partial<CreateCustomerData> & { is_active?: boolean };
 
-// Helper to get current user's tenant_id and user id
+// Helper to get current user's tenant_id, user id y role
 async function getCurrentUserContext() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -24,12 +25,12 @@ async function getCurrentUserContext() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
 
     if (!profile?.tenant_id) return null;
-    return { supabase, user, tenantId: profile.tenant_id };
+    return { supabase, user, tenantId: profile.tenant_id, role: profile.role };
 }
 
 export async function getCustomers(query?: string): Promise<ApiResponse<Customer[]>> {
@@ -44,7 +45,7 @@ export async function getCustomers(query?: string): Promise<ApiResponse<Customer
                 *,
                 account:customer_accounts(*)
             `)
-            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+            .eq('tenant_id', tenantId)
             .order('full_name');
 
         if (query) {
@@ -78,7 +79,7 @@ export async function getCustomerById(id: string): Promise<ApiResponse<Customer>
                 account:customer_accounts(*)
             `)
             .eq('id', id)
-            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+            .eq('tenant_id', tenantId)
             .single();
 
         if (error) {
@@ -129,14 +130,19 @@ export async function createCustomer(data: CreateCustomerData): Promise<ApiRespo
 export async function updateCustomer(id: string, data: UpdateCustomerData): Promise<ApiResponse<Customer>> {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { success: false, error: 'No autorizado' };
-    const { supabase, tenantId } = ctx;
+    const { supabase, tenantId, role } = ctx;
+
+    // SEC-09: solo owner/admin puede editar clientes
+    if (!hasPermission(role, 'customers:edit')) {
+        return { success: false, error: 'No tenés permiso para editar clientes' };
+    }
 
     try {
         const { data: updatedCustomer, error } = await supabase
             .from('customers')
             .update(data)
             .eq('id', id)
-            .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+            .eq('tenant_id', tenantId)
             .select()
             .single();
 
@@ -155,14 +161,19 @@ export async function updateCustomer(id: string, data: UpdateCustomerData): Prom
 export async function deleteCustomer(id: string): Promise<ApiResponse<void>> {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { success: false, error: 'No autorizado' };
-    const { supabase, tenantId } = ctx;
+    const { supabase, tenantId, role } = ctx;
+
+    // SEC-09: solo owner/admin puede eliminar clientes
+    if (!hasPermission(role, 'customers:edit')) {
+        return { success: false, error: 'No tenés permiso para eliminar clientes' };
+    }
 
     try {
         const { error } = await supabase
             .from('customers')
             .delete()
             .eq('id', id)
-            .eq('tenant_id', tenantId);  // CRITICAL: Filter by tenant
+            .eq('tenant_id', tenantId);
 
         if (error) {
             console.error('Error deleting customer:', error);
@@ -186,7 +197,7 @@ export async function registerPayment(customerId: string, amount: number, notes?
         .from('customer_accounts')
         .select('id, tenant_id')
         .eq('customer_id', customerId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .single();
 
     if (!account) {
@@ -203,7 +214,6 @@ export async function registerPayment(customerId: string, amount: number, notes?
     const methodLabel = paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'transfer' ? 'Transferencia' : 'QR';
     const description = notes || `Abono ${methodLabel} - ${customer?.full_name || 'Cliente'}`;
 
-    // Insert payment movement (reduces customer debt)
     const { error } = await supabase
         .from('account_movements')
         .insert({
@@ -220,17 +230,13 @@ export async function registerPayment(customerId: string, amount: number, notes?
         return { success: false, error: 'Error al registrar pago' };
     }
 
-    // Impactar la caja del día con el ingreso del abono
-    // Efectivo → total_sales_cash | Transferencia/QR → total_sales_other
     try {
         const { addCashMovement } = await import('./cash');
         await addCashMovement('deposit', amount, description);
     } catch (cashError) {
-        // No bloquear el flujo si la caja falla — el abono ya quedó registrado
         console.error('Error impactando caja en abono:', cashError);
     }
 
-    // Notificar al dueño del tenant que se registró un abono
     try {
         const { createTenantNotification } = await import('./tenant-notifications');
         const montoStr = `$${amount.toLocaleString('es-AR')}`;
@@ -253,12 +259,11 @@ export async function getCustomerMovements(customerId: string) {
     if (!ctx) return { success: false, error: 'No autorizado' };
     const { supabase, tenantId } = ctx;
 
-    // Get account first, ensuring it belongs to this tenant
     const { data: account } = await supabase
         .from('customer_accounts')
         .select('id')
         .eq('customer_id', customerId)
-        .eq('tenant_id', tenantId)  // CRITICAL: Filter by tenant
+        .eq('tenant_id', tenantId)
         .single();
 
     if (!account) return { success: false, error: 'Cuenta no encontrada' };
@@ -270,7 +275,7 @@ export async function getCustomerMovements(customerId: string) {
             creator:profiles(full_name)
         `)
         .eq('account_id', account.id)
-        .eq('tenant_id', tenantId)  // CRITICAL: Double-check tenant on movements too
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
     if (error) {
@@ -292,9 +297,15 @@ export async function importCustomers(
         initial_balance?: number;
     }[]
 ) {
-    const supabase = await createClient();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { success: false, error: 'No autorizado' };
+    const { supabase, role } = ctx;
 
-    // Call RPC (RPC uses auth.uid() internally to scope to tenant)
+    // SEC-09: solo owner/admin puede importar clientes
+    if (!hasPermission(role, 'customers:edit')) {
+        return { success: false, error: 'No tenés permiso para importar clientes' };
+    }
+
     const { data: result, error } = await supabase.rpc('import_customers_with_balance', {
         p_customers: customers
     });
@@ -304,7 +315,6 @@ export async function importCustomers(
         return { success: false, error: 'Error al procesar importación: ' + error.message };
     }
 
-    // result type is JSONB, cast it
     const summary = result as { success: boolean; created_count: number; errors: string[] };
 
     revalidatePath('/clientes');
