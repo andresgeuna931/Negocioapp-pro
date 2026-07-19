@@ -1,36 +1,37 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { hasPermission } from '@/lib/permissions';
 import type { SalesSummary, TopProduct, LowStockProduct, UnitType } from '@/lib/types';
 
 const TZ = 'America/Argentina/Buenos_Aires';
 
 // Convierte una fecha UTC a fecha string YYYY-MM-DD en timezone Argentina
 function toArgDate(utcString: string): string {
-    return new Date(utcString).toLocaleDateString('en-CA', { timeZone: TZ }); // en-CA usa formato YYYY-MM-DD
+    return new Date(utcString).toLocaleDateString('en-CA', { timeZone: TZ });
 }
 
 // Ajusta el toISO para incluir hasta el final del día en Argentina
 function endOfDayAR(isoString: string): string {
-    // Suma 3 horas para compensar UTC-3 y cubrir hasta medianoche Argentina
     const d = new Date(isoString);
     d.setHours(d.getHours() + 3);
     return d.toISOString();
 }
 
-// Helper to get current user's tenant_id
-async function getCurrentTenantId() {
+// Helper to get current user's tenant_id y role
+async function getCurrentUserContext() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
 
-    return profile?.tenant_id || null;
+    if (!profile?.tenant_id) return null;
+    return { supabase, tenantId: profile.tenant_id, role: profile.role };
 }
 
 // Get sales summary for a period
@@ -58,13 +59,15 @@ export async function getSalesSummary(period: 'today' | 'week' | 'month' | 'year
     };
 }
 
-// Get sales summary for a custom date range
+// Get sales summary for a custom date range — solo owner/admin
 export async function getSalesSummaryByRange(from: string, to: string) {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
 
-    if (!tenantId) {
-        return { data: null, error: 'No autenticado' };
+    // SEC-09: solo owner/admin puede ver reportes históricos
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
 
     const { data, error } = await supabase
@@ -108,16 +111,17 @@ export async function getTopProducts(
     return { data: data as TopProduct[], error: null };
 }
 
-// Get top selling products for a custom date range
+// Get top selling products for a custom date range — solo owner/admin
 export async function getTopProductsByRange(limit: number = 10, from: string, to: string) {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
 
-    if (!tenantId) {
-        return { data: null, error: 'No autenticado' };
+    // SEC-09: solo owner/admin puede ver reportes históricos
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
 
-    // Obtener sale_ids del rango (con ajuste de timezone)
     const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select('id')
@@ -135,7 +139,6 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
 
     const saleIds = sales.map(s => s.id);
 
-    // Obtener items de esas ventas
     const { data: items, error: itemsError } = await supabase
         .from('sale_items')
         .select('product_id, product_name, qty, line_total')
@@ -145,7 +148,6 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
         return { data: null, error: itemsError.message };
     }
 
-    // Agrupar por producto
     const productMap: Record<string, TopProduct> = {};
 
     for (const item of (items || []) as any[]) {
@@ -201,13 +203,15 @@ export async function getDashboardData() {
     };
 }
 
-// Get sales by date range for charts — agrupa por fecha en timezone Argentina
+// Get sales by date range for charts — solo owner/admin
 export async function getSalesByDateRange(from: string, to: string) {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
 
-    if (!tenantId) {
-        return { data: null, error: 'No autenticado' };
+    // SEC-09: solo owner/admin puede ver reportes históricos
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
 
     const { data, error } = await supabase
@@ -222,11 +226,10 @@ export async function getSalesByDateRange(from: string, to: string) {
         return { data: null, error: error.message };
     }
 
-    // Agrupar por fecha en timezone Argentina
     const salesByDate: Record<string, { count: number; total: number }> = {};
 
     data.forEach((sale) => {
-        const date = toArgDate(sale.created_at); // YYYY-MM-DD en AR
+        const date = toArgDate(sale.created_at);
         if (!salesByDate[date]) {
             salesByDate[date] = { count: 0, total: 0 };
         }
@@ -243,13 +246,15 @@ export async function getSalesByDateRange(from: string, to: string) {
     };
 }
 
-// Get inventory value
+// Get inventory value — solo owner/admin
 export async function getInventoryValue() {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
 
-    if (!tenantId) {
-        return { data: null, error: 'No autenticado' };
+    // SEC-09: solo owner/admin puede ver valor de inventario
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver el inventario' };
     }
 
     const { data, error } = await supabase
