@@ -47,7 +47,6 @@ export function CustomerSelector({ open, onOpenChange, onSelect }: CustomerSelec
 
     const handleSearch = (val: string) => {
         setSearch(val);
-        // Debounce simple
         const timeoutId = setTimeout(() => loadCustomers(val), 300);
         return () => clearTimeout(timeoutId);
     };
@@ -82,14 +81,20 @@ export function CustomerSelector({ open, onOpenChange, onSelect }: CustomerSelec
 
                         {customers.map((customer) => {
                             const balance = customer.account?.balance || 0;
-                            const limit = customer.credit_limit;
+                            const limit = customer.credit_limit ?? 0;
                             const available = limit > 0 ? limit - balance : null;
+                            const sinCredito = limit === 0;
 
                             return (
                                 <button
                                     key={customer.id}
-                                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 transition-colors text-left"
-                                    onClick={() => onSelect(customer)}
+                                    disabled={sinCredito}
+                                    className={`w-full flex items-center justify-between p-3 rounded-lg border border-transparent text-left transition-colors
+                                        ${sinCredito
+                                            ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/50'
+                                            : 'hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-200 cursor-pointer'
+                                        }`}
+                                    onClick={() => !sinCredito && onSelect(customer)}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
@@ -100,14 +105,16 @@ export function CustomerSelector({ open, onOpenChange, onSelect }: CustomerSelec
                                             <p className="text-xs text-slate-500">{customer.dni || 'Sin DNI'}</p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-right space-y-1">
                                         {balance > 0 && (
                                             <p className="text-xs text-red-600 font-medium">Debe: {formatCurrency(balance)}</p>
                                         )}
-                                        {limit > 0 ? (
-                                            <p className="text-xs text-emerald-600">Disp: {formatCurrency(available || 0)}</p>
+                                        {sinCredito ? (
+                                            <Badge variant="default" className="text-[10px] h-5 bg-red-100 text-red-600 border border-red-200">
+                                                Sin crédito
+                                            </Badge>
                                         ) : (
-                                            limit === 0 && <Badge variant="default" className="text-[10px] h-5 border border-slate-200 bg-transparent text-slate-500">Sin Límite</Badge>
+                                            <p className="text-xs text-emerald-600">Disp: {formatCurrency(available || 0)}</p>
                                         )}
                                     </div>
                                 </button>
