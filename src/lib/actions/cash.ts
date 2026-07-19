@@ -128,11 +128,11 @@ export async function addCashMovement(
 ) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, user, tenantId, role } = ctx;
+    const { supabase, user, tenantId } = ctx;
 
-    // SEC-09: solo owner/admin puede hacer retiros o registrar gastos
-    if ((type === 'withdrawal' || type === 'expense') && !hasPermission(role, 'cash:withdraw')) {
-        return { data: null, error: 'No tenés permiso para realizar retiros o gastos de caja' };
+    // Retiros y gastos requieren descripción obligatoria (aplica a todos los roles)
+    if ((type === 'withdrawal' || type === 'expense') && !description?.trim()) {
+        return { data: null, error: 'La descripción es obligatoria para retiros y gastos' };
     }
 
     const { data: session, error: sessionError } = await supabase
