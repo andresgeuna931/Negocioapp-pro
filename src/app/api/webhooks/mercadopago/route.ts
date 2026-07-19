@@ -98,7 +98,7 @@ function parseExtRef(extRef: string): { tenantId?: string; planId?: string } {
 export async function POST(request: NextRequest) {
     // supabaseAdmin y eventKey a nivel función para poder liberar el claim en el catch
     let eventKey: string | undefined;
-    let supabaseAdmin: ReturnType<typeof createClient> | undefined;
+    let supabaseAdmin: any;
     let eventClaimed = false;
 
     const releaseClaim = async () => {
