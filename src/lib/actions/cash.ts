@@ -2,24 +2,26 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { hasPermission } from '@/lib/permissions';
 import type { CashSession, CashMovement } from '@/lib/types';
 
-async function getTenantId(): Promise<string | null> {
+async function getCurrentUserContext() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
-    return profile?.tenant_id || null;
+    if (!profile?.tenant_id) return null;
+    return { supabase, user, tenantId: profile.tenant_id, role: profile.role };
 }
 
 export async function getCurrentCashSession() {
-    const supabase = await createClient();
-    const tenantId = await getTenantId();
-    if (!tenantId) return { data: null, error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     const { data, error } = await supabase
         .from('cash_sessions')
@@ -36,23 +38,15 @@ export async function getCurrentCashSession() {
 }
 
 export async function openCashSession(openingAmount: number) {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: 'No autenticado' };
-
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single();
-
-    if (!profile?.tenant_id) return { data: null, error: 'Perfil no encontrado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, user, tenantId } = ctx;
 
     const { data: existingSession } = await supabase
         .from('cash_sessions')
         .select('id')
         .eq('status', 'open')
-        .eq('tenant_id', profile.tenant_id)
+        .eq('tenant_id', tenantId)
         .single();
 
     if (existingSession) {
@@ -62,7 +56,7 @@ export async function openCashSession(openingAmount: number) {
     const { data, error } = await supabase
         .from('cash_sessions')
         .insert({
-            tenant_id: profile.tenant_id,
+            tenant_id: tenantId,
             opened_by: user.id,
             opened_at: new Date().toISOString(),
             opening_amount: openingAmount,
@@ -83,12 +77,9 @@ export async function openCashSession(openingAmount: number) {
 }
 
 export async function closeCashSession(actualCash: number, notes?: string) {
-    const supabase = await createClient();
-    const tenantId = await getTenantId();
-    if (!tenantId) return { data: null, error: 'No autenticado' };
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, user, tenantId } = ctx;
 
     const { data: session, error: sessionError } = await supabase
         .from('cash_sessions')
@@ -135,12 +126,14 @@ export async function addCashMovement(
     amount: number,
     description?: string
 ) {
-    const supabase = await createClient();
-    const tenantId = await getTenantId();
-    if (!tenantId) return { data: null, error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, user, tenantId, role } = ctx;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: 'No autenticado' };
+    // SEC-09: solo owner/admin puede hacer retiros o registrar gastos
+    if ((type === 'withdrawal' || type === 'expense') && !hasPermission(role, 'cash:withdraw')) {
+        return { data: null, error: 'No tenés permiso para realizar retiros o gastos de caja' };
+    }
 
     const { data: session, error: sessionError } = await supabase
         .from('cash_sessions')
@@ -186,9 +179,9 @@ export async function addCashMovement(
 }
 
 export async function getCashMovements(sessionId?: string) {
-    const supabase = await createClient();
-    const tenantId = await getTenantId();
-    if (!tenantId) return { data: null, error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
 
     let query = supabase
         .from('cash_movements')
@@ -204,9 +197,14 @@ export async function getCashMovements(sessionId?: string) {
 }
 
 export async function getCashSessionHistory(limit: number = 10) {
-    const supabase = await createClient();
-    const tenantId = await getTenantId();
-    if (!tenantId) return { data: null, error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
+
+    // SEC-09: solo owner/admin puede ver el historial de cajas anteriores
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver el historial de cajas' };
+    }
 
     const { data, error } = await supabase
         .from('cash_sessions')
@@ -225,9 +223,9 @@ export async function getCashSessionHistory(limit: number = 10) {
 }
 
 export async function updateCashSessionFromSale(totalAmount: number, paymentMethod: string) {
-    const supabase = await createClient();
-    const tenantId = await getTenantId();
-    if (!tenantId) return { error: null };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { error: null };
+    const { supabase, tenantId } = ctx;
 
     const { data: session } = await supabase
         .from('cash_sessions')
