@@ -304,13 +304,20 @@ export function CashSessionCard({ session, expectedCash }: CashSessionCardProps)
                                     onChange={(e) => setMovementAmount(e.target.value)}
                                     icon={<Wallet className="w-5 h-5" />}
                                 />
-                                <Input
-                                    type="text"
-                                    label="Descripción"
-                                    placeholder={showMovementModal === 'withdrawal' ? 'ej: Pago a proveedor' : 'ej: Cambio adicional'}
-                                    value={movementDescription}
-                                    onChange={(e) => setMovementDescription(e.target.value)}
-                                />
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        Descripción
+                                        {showMovementModal === 'withdrawal' && (
+                                            <span className="text-red-500 ml-1">*</span>
+                                        )}
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        placeholder={showMovementModal === 'withdrawal' ? 'ej: Pago a proveedor' : 'ej: Cambio adicional'}
+                                        value={movementDescription}
+                                        onChange={(e) => setMovementDescription(e.target.value)}
+                                    />
+                                </div>
                             </div>
                             <div className="flex gap-3 mt-6">
                                 <Button
