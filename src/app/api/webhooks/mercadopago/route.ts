@@ -66,19 +66,22 @@ function calcularProximoDiezAnual(): Date {
     }
 }
 
-function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; internalPlanId: string; isAnnual: boolean } {
+// MP-10: sin fallback automático a Profesional
+// Si el plan no se reconoce → retorna null → el webhook manda a manual_review
+function mapearPlan(planId: string): { dbSubPlan: string; dbTenantPlan: string; internalPlanId: string; isAnnual: boolean } | null {
     switch (planId) {
         case 'starter':
             return { dbSubPlan: 'starter', dbTenantPlan: 'starter', internalPlanId: 'starter', isAnnual: false };
+        case 'professional':
+            return { dbSubPlan: 'professional', dbTenantPlan: 'professional', internalPlanId: 'professional', isAnnual: false };
+        case 'professional_annual':
+            return { dbSubPlan: 'professional_annual', dbTenantPlan: 'professional', internalPlanId: 'professional_annual', isAnnual: true };
         case 'business':
             return { dbSubPlan: 'business', dbTenantPlan: 'business', internalPlanId: 'business', isAnnual: false };
         case 'business_annual':
             return { dbSubPlan: 'business_annual', dbTenantPlan: 'business', internalPlanId: 'business_annual', isAnnual: true };
-        case 'professional_annual':
-            return { dbSubPlan: 'professional_annual', dbTenantPlan: 'professional', internalPlanId: 'professional_annual', isAnnual: true };
-        case 'professional':
         default:
-            return { dbSubPlan: 'professional', dbTenantPlan: 'professional', internalPlanId: 'professional', isAnnual: false };
+            return null;
     }
 }
 
@@ -250,7 +253,32 @@ export async function POST(request: NextRequest) {
                     }
                 }
 
-                const { dbSubPlan, dbTenantPlan, internalPlanId, isAnnual } = mapearPlan(planId || 'professional');
+                // MP-10: sin fallback automático — si el plan no se reconoce, va a revisión manual
+                if (!planId) {
+                    console.error(`MP-10: planId vacío para tenant ${tenantId} — evento enviado a revisión manual`);
+                    await supabaseAdmin.from("admin_notifications").insert({
+                        type: 'manual_review',
+                        title: '⚠️ Plan no identificado',
+                        message: `Pago recibido de tenant ${tenantId} pero sin plan_id. Revisar manualmente.`,
+                        tenant_id: tenantId,
+                    });
+                    return NextResponse.json({ received: true }, { status: 200 });
+                }
+
+                const planMapeado = mapearPlan(planId);
+
+                if (!planMapeado) {
+                    console.error(`MP-10: plan desconocido "${planId}" para tenant ${tenantId} — enviado a revisión manual`);
+                    await supabaseAdmin.from("admin_notifications").insert({
+                        type: 'manual_review',
+                        title: '⚠️ Plan desconocido',
+                        message: `Pago recibido de tenant ${tenantId} con plan_id desconocido: "${planId}". Revisar manualmente.`,
+                        tenant_id: tenantId,
+                    });
+                    return NextResponse.json({ received: true }, { status: 200 });
+                }
+
+                const { dbSubPlan, dbTenantPlan, internalPlanId, isAnnual } = planMapeado;
 
                 const now = new Date();
                 const periodStart = now;
