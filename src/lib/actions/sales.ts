@@ -83,12 +83,20 @@ export async function createSale(saleData: CreateSaleData) {
         }
 
         const customerData = Array.isArray(customerAccount.customer) ? customerAccount.customer[0] : customerAccount.customer;
-        const limit = customerData?.credit_limit || 0;
+        const limit = customerData?.credit_limit ?? 0;
 
-        if (limit > 0 && (Number(customerAccount.balance) + estimatedTotal > limit)) {
+        // BUG FIX: límite 0 = sin crédito permitido
+        if (limit === 0) {
             return {
                 data: null,
-                error: `Límite excedido. Saldo: $${customerAccount.balance} + Actual: $${estimatedTotal} > Límite: $${limit}`
+                error: `${customerData?.full_name || 'El cliente'} no tiene límite de crédito habilitado. El dueño debe asignarle un límite antes de fiar.`
+            };
+        }
+
+        if (Number(customerAccount.balance) + estimatedTotal > limit) {
+            return {
+                data: null,
+                error: `Límite de crédito excedido. Debe: $${Number(customerAccount.balance).toLocaleString('es-AR')} + Venta: $${estimatedTotal.toLocaleString('es-AR')} > Límite: $${limit.toLocaleString('es-AR')}`
             };
         }
     }
@@ -162,8 +170,6 @@ export async function createSale(saleData: CreateSaleData) {
     revalidatePath('/caja');
     revalidatePath('/clientes');
 
-    // Verificar stock bajo después de la venta usando el mismo RPC que el dashboard
-    // Así usamos exactamente la misma lógica de threshold que ya funciona
     try {
         const tenantId = currentProfile.tenant_id;
         const productIds = saleData.items.map(i => i.product_id);
@@ -173,7 +179,6 @@ export async function createSale(saleData: CreateSaleData) {
         if (lowStockProducts && lowStockProducts.length > 0) {
             const { createTenantNotification, tenantNotificationExists } = await import('./tenant-notifications');
 
-            // Solo notificar productos que fueron parte de esta venta
             const relevantProducts = lowStockProducts.filter((p: any) =>
                 productIds.includes(p.id)
             );
@@ -192,7 +197,6 @@ export async function createSale(saleData: CreateSaleData) {
                         '📦 Stock bajo',
                         `${product.name} — quedan ${product.stock_on_hand} unidades`
                     );
-                    console.log(`✅ Notificación stock bajo: ${product.name} (${product.stock} unidades)`);
                 }
             }
         }
