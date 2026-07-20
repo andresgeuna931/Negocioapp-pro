@@ -12,10 +12,11 @@ const PLAN_ORDER: Record<string, number> = {
 };
 
 // POST /api/checkout-upgrade
-// Cancela el PreApproval actual y crea uno nuevo con el plan solicitado.
+// Crea un nuevo PreApproval con el plan solicitado.
 // SEGURIDAD: tenant_id se obtiene de la sesión del servidor, nunca del body.
-// ORDEN: primero crea el nuevo PreApproval, después cancela el viejo.
-//        Si algo falla, el cliente nunca queda sin suscripción.
+// MP-07: el PreApproval viejo NO se cancela acá. Se cancela en el webhook,
+//        recién cuando el nuevo esté AUTORIZADO y PAGADO. Si el cliente
+//        abandona el checkout, su plan actual sigue intacto.
 
 export async function POST(request: NextRequest) {
     try {
@@ -42,10 +43,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "planId requerido." }, { status: 400 });
         }
 
-        // 3. Obtener tenant_id desde el perfil (servidor, no del body)
+        // 3. Obtener tenant_id y rol desde el perfil (servidor, no del body)
         const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("tenant_id")
+            .select("tenant_id, role")
             .eq("id", user.id)
             .single();
 
@@ -53,9 +54,17 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Tu perfil no tiene un negocio asociado." }, { status: 400 });
         }
 
+        // Facturación restringida al dueño (auditoría Bloque 5, ítem 10)
+        if (profile.role !== 'owner' && profile.role !== 'admin') {
+            return NextResponse.json(
+                { error: "Solo el dueño del negocio puede cambiar el plan." },
+                { status: 403 }
+            );
+        }
+
         const tenantId = profile.tenant_id;
 
-        // 4. Leer suscripción actual para obtener el plan y el PreApproval viejo
+        // 4. Leer suscripción actual para obtener el plan vigente
         const { data: currentSub } = await supabase
             .from("subscriptions")
             .select("plan, external_subscription_id, status")
@@ -70,7 +79,6 @@ export async function POST(request: NextRequest) {
         }
 
         const currentPlanId = currentSub.plan || "starter";
-        const oldPreapprovalId = currentSub.external_subscription_id;
 
         // 5. Validar que es un upgrade (no downgrade)
         const currentOrder = PLAN_ORDER[currentPlanId] ?? 0;
@@ -92,7 +100,8 @@ export async function POST(request: NextRequest) {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://negocioapp-pro.vercel.app";
         const annual = isAnnualPlan(planId);
 
-        // 7. PRIMERO crear el nuevo PreApproval (si esto falla, el viejo sigue activo — seguro)
+        // 7. Crear el nuevo PreApproval. El viejo sigue activo hasta que el
+        //    webhook confirme la autorización del nuevo y lo cancele (MP-07/MP-08).
         const mpBody = {
             auto_recurring: {
                 frequency: 1,
@@ -124,34 +133,7 @@ export async function POST(request: NextRequest) {
             throw new Error(JSON.stringify(mpData));
         }
 
-        console.log(`✅ Upgrade nuevo PreApproval creado: ${mpData.id} | tenant: ${tenantId} | plan: ${planId}`);
-
-        // 8. DESPUÉS cancelar el PreApproval viejo (si esto falla, no es crítico — el webhook
-        //    del nuevo pago va a actualizar la suscripción de todas formas)
-        if (oldPreapprovalId) {
-            try {
-                const cancelResponse = await fetch(
-                    `https://api.mercadopago.com/preapproval/${oldPreapprovalId}`,
-                    {
-                        method: "PUT",
-                        headers: {
-                            Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ status: "cancelled" }),
-                    }
-                );
-                const cancelData = await cancelResponse.json();
-                if (cancelResponse.ok) {
-                    console.log(`✅ PreApproval viejo cancelado: ${oldPreapprovalId}`);
-                } else {
-                    console.warn(`⚠️ No se pudo cancelar PreApproval viejo ${oldPreapprovalId}:`, cancelData);
-                }
-            } catch (cancelErr) {
-                // No bloquear el flujo si la cancelación falla
-                console.error("Error cancelando PreApproval viejo:", cancelErr);
-            }
-        }
+        console.log(`✅ Upgrade nuevo PreApproval creado: ${mpData.id} | tenant: ${tenantId} | plan: ${planId} — el viejo se cancelará vía webhook al autorizarse`);
 
         return NextResponse.json({ init_point: mpData.init_point });
 
