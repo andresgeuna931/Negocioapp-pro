@@ -339,10 +339,15 @@ export async function POST(request: NextRequest) {
 
                         // NO tocar tenant.status — el cliente conserva acceso hasta
                         // que venza su período (el cron diario lo suspende).
+                        const { data: cancelTenantData } = await supabaseAdmin
+                            .from("tenants")
+                            .select("name")
+                            .eq("id", cancelTenantId)
+                            .single();
                         await supabaseAdmin.from("admin_notifications").insert({
                             type: 'subscription_cancelled',
                             title: details.status === "paused" ? '⏸️ Suscripción pausada' : '🚫 Suscripción cancelada',
-                            message: `Tenant ${cancelTenantId} — el débito automático fue ${details.status === "paused" ? 'pausado' : 'cancelado'} en MercadoPago. Acceso vigente hasta fin del período.`,
+                            message: `${cancelTenantData?.name || cancelTenantId} — el débito automático fue ${details.status === "paused" ? 'pausado' : 'cancelado'} en MercadoPago. Acceso vigente hasta fin del período.`,
                             tenant_id: cancelTenantId,
                         });
                         console.log(`✅ MP-09: suscripción de ${cancelTenantId} marcada como ${nuevoEstado}`);
