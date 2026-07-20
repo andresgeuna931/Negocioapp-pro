@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Email de usuario no encontrado" }, { status: 400 });
         }
 
-        // 2. Get tenant_id from profile
+        // 2. Get tenant_id y rol from profile
         const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("tenant_id")
+            .select("tenant_id, role")
             .eq("id", user.id)
             .single();
 
@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Tu perfil no tiene un negocio asociado." },
                 { status: 400 }
+            );
+        }
+
+        // Facturación restringida al dueño (auditoría Bloque 5, ítem 10).
+        // El flujo de invitación no se afecta: register-invited crea al cliente con rol 'owner'.
+        if (profile.role !== 'owner' && profile.role !== 'admin') {
+            return NextResponse.json(
+                { error: "Solo el dueño del negocio puede gestionar la suscripción." },
+                { status: 403 }
             );
         }
 
