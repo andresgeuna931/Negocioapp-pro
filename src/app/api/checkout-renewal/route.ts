@@ -5,6 +5,7 @@ import { PLANS, isAnnualPlan, getPlanDetails } from "@/lib/config/plans";
 // POST /api/checkout-renewal
 // Genera un nuevo PreApproval de MercadoPago para un tenant con suscripción vencida.
 // SEGURIDAD: el tenant_id se obtiene SIEMPRE de la sesión del servidor, nunca del body.
+// MP-10: sin fallback a Profesional — si no hay plan registrado, error explícito.
 
 export async function POST(_request: NextRequest) {
     try {
@@ -24,10 +25,10 @@ export async function POST(_request: NextRequest) {
             return NextResponse.json({ error: "Email de usuario no encontrado." }, { status: 400 });
         }
 
-        // 2. Obtener tenant_id desde el perfil (servidor, no del body)
+        // 2. Obtener tenant_id y rol desde el perfil (servidor, no del body)
         const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("tenant_id")
+            .select("tenant_id, role")
             .eq("id", user.id)
             .single();
 
@@ -39,17 +40,33 @@ export async function POST(_request: NextRequest) {
             );
         }
 
+        // Facturación restringida al dueño (auditoría Bloque 5, ítem 10)
+        if (profile.role !== 'owner' && profile.role !== 'admin') {
+            return NextResponse.json(
+                { error: "Solo el dueño del negocio puede renovar la suscripción." },
+                { status: 403 }
+            );
+        }
+
         const tenantId = profile.tenant_id;
 
         // 3. Leer el plan actual del tenant desde subscriptions
-        //    Si no hay suscripción previa, usar 'professional' como fallback.
+        //    MP-10: sin fallback — si no hay plan registrado, error explícito.
         const { data: subscription } = await supabase
             .from("subscriptions")
             .select("plan")
             .eq("tenant_id", tenantId)
             .single();
 
-        const currentPlanId: string = subscription?.plan || "professional";
+        const currentPlanId: string | undefined = subscription?.plan;
+
+        if (!currentPlanId || ['free', 'trial'].includes(currentPlanId)) {
+            console.error(`Renewal — tenant ${tenantId} sin plan válido registrado (plan: ${currentPlanId})`);
+            return NextResponse.json(
+                { error: "No se encontró un plan anterior para renovar. Contactá a soporte para reactivar tu cuenta." },
+                { status: 400 }
+            );
+        }
 
         // 4. Resolver la config del plan
         const planKey = currentPlanId.toUpperCase() as keyof typeof PLANS;
