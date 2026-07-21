@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { verifyMercadoPagoPayment } from '@/lib/actions/checkout';
+import { getAnnouncement } from '@/lib/actions/system-settings';
 
 interface PageProps {
   searchParams?: { [key: string]: string | string[] | undefined };
@@ -39,7 +40,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const isOwnerOrAdmin = session.profile.role === 'owner' || session.profile.role === 'admin';
   const isAdmin = session.profile.role === 'admin';
 
-  const [todaySummary, monthSummary, topProducts, lowStock, tenant, subscriptionResult, expensesSummary] = await Promise.all([
+  const [todaySummary, monthSummary, topProducts, lowStock, tenant, subscriptionResult, expensesSummary, announcement] = await Promise.all([
     getSalesSummary('today'),
     getSalesSummary('month'),
     getTopProducts(5, 'month'),
@@ -47,6 +48,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     getTenantSettings(),
     getSubscriptionStatus(),
     isOwnerOrAdmin ? getExpensesSummary('month') : Promise.resolve({ total: 0, byCategory: {} }),
+    getAnnouncement(),
   ]);
 
   const subscription = subscriptionResult?.subscription;
@@ -85,6 +87,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6">
+      {announcement && (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+          <span className="text-lg">📢</span>
+          <p className="text-sm text-purple-900 dark:text-purple-200">{announcement}</p>
+        </div>
+      )}
+
       {isInTrial && trialDaysLeft > 0 && (
         <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
           <CardContent className="p-4">
