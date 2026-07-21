@@ -36,3 +36,30 @@ export async function setMaintenanceMode(enabled: boolean): Promise<{ success: b
     revalidatePath('/(dashboard)', 'layout');
     return { success: true };
 }
+
+export async function getAnnouncement(): Promise<string> {
+    const supabase = getAdmin();
+    const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'announcement')
+        .single();
+    return data?.value || '';
+}
+
+export async function setAnnouncement(text: string): Promise<{ success: boolean; error?: string }> {
+    const supabase = getAdmin();
+    const { error } = await supabase
+        .from('system_settings')
+        .update({ value: text.trim(), updated_at: new Date().toISOString() })
+        .eq('key', 'announcement');
+
+    if (error) {
+        console.error('Error setting announcement:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/settings');
+    revalidatePath('/');
+    return { success: true };
+}
