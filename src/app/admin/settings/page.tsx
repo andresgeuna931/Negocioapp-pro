@@ -1,7 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, ShieldAlert, BellRing } from 'lucide-react';
+import { ShieldAlert, BellRing } from 'lucide-react';
+import { getMaintenanceMode, setMaintenanceMode } from '@/lib/actions/system-settings';
+import { revalidatePath } from 'next/cache';
 
-export default function AdminSettingsPage() {
+export default async function AdminSettingsPage() {
+    const isMaintenanceOn = await getMaintenanceMode();
+
+    async function toggleMaintenance() {
+        'use server';
+        await setMaintenanceMode(!isMaintenanceOn);
+        revalidatePath('/admin/settings');
+    }
+
     return (
         <div className="space-y-8">
             <div>
@@ -27,7 +37,7 @@ export default function AdminSettingsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-red-500/20">
+                <Card className={isMaintenanceOn ? 'border-red-500' : 'border-red-500/20'}>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-red-600">
                             <ShieldAlert className="w-5 h-5" />
@@ -36,11 +46,29 @@ export default function AdminSettingsPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-slate-500 mb-4">
-                            Si activás esto, nadie podrá usar la app temporalmente.
+                            {isMaintenanceOn
+                                ? '⚠️ La app está en mantenimiento. Los clientes no pueden acceder.'
+                                : 'Si activás esto, nadie podrá usar la app temporalmente.'}
                         </p>
-                        <button disabled className="px-4 py-2 bg-red-600 text-white rounded-lg opacity-50 cursor-not-allowed">
-                            Activar Mantenimiento
-                        </button>
+                        {isMaintenanceOn && (
+                            <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                                    🔴 Modo mantenimiento ACTIVO
+                                </p>
+                            </div>
+                        )}
+                        <form action={toggleMaintenance}>
+                            <button
+                                type="submit"
+                                className={`px-4 py-2 text-white rounded-lg font-medium transition-colors ${
+                                    isMaintenanceOn
+                                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                                        : 'bg-red-600 hover:bg-red-700'
+                                }`}
+                            >
+                                {isMaintenanceOn ? '✅ Desactivar Mantenimiento' : '🔴 Activar Mantenimiento'}
+                            </button>
+                        </form>
                     </CardContent>
                 </Card>
             </div>
