@@ -65,11 +65,13 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                 <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />
             )}
 
+            {/* UX-03: overflow-hidden para contener el layout interno */}
             <aside className={cn(
-                'fixed top-0 left-0 z-50 h-full w-72 bg-slate-900 transform transition-transform duration-300 ease-in-out lg:translate-x-0',
+                'fixed top-0 left-0 z-50 h-full w-72 bg-slate-900 transform transition-transform duration-300 ease-in-out lg:translate-x-0 flex flex-col overflow-hidden',
                 isOpen ? 'translate-x-0' : '-translate-x-full'
             )}>
-                <div className="flex items-center justify-between h-16 px-6 border-b border-slate-800">
+                {/* Header fijo */}
+                <div className="flex-shrink-0 flex items-center justify-between h-16 px-6 border-b border-slate-800">
                     <Link href="/" className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
                             <ShoppingCart className="w-5 h-5 text-white" />
@@ -81,7 +83,8 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                     </button>
                 </div>
 
-                <nav className="p-4 space-y-1">
+                {/* UX-03: nav scrolleable ocupa el espacio disponible */}
+                <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href ||
                             (item.href !== '/' && pathname.startsWith(item.href));
@@ -131,7 +134,8 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                     )}
                 </nav>
 
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800">
+                {/* Footer fijo */}
+                <div className="flex-shrink-0 p-4 border-t border-slate-800">
                     <div className="text-xs text-slate-500 text-center">
                         NegocioApp Pro v1.0
                     </div>
