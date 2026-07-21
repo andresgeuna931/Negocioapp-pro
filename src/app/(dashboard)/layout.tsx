@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layout';
 import { getCurrentSession } from '@/lib/actions/auth';
 import { createClient } from '@/lib/supabase/server';
 import { verifySubscriptionWithMP } from '@/lib/actions/verify-subscription';
+import { getMaintenanceMode } from '@/lib/actions/system-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,29 @@ export default async function DashboardRootLayout({
 }: {
     children: React.ReactNode;
 }) {
+    // Verificar modo mantenimiento antes que todo
+    const isMaintenanceOn = await getMaintenanceMode();
+    if (isMaintenanceOn) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+                <div className="text-center max-w-md">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-red-500/20 flex items-center justify-center">
+                        <span className="text-4xl">🔧</span>
+                    </div>
+                    <h1 className="text-2xl font-bold text-white mb-3">
+                        App en mantenimiento
+                    </h1>
+                    <p className="text-slate-400 mb-6">
+                        Estamos realizando mejoras. Volvé en unos minutos.
+                    </p>
+                    <p className="text-xs text-slate-600">
+                        NegocioApp Pro
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     let session = await getCurrentSession();
 
     if (!session) {
@@ -85,7 +109,6 @@ export default async function DashboardRootLayout({
         daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    // Expirado si: suspendido, o trial vencido sin suscripción activa
     isExpired = isSuspended || (!isActive && !isInTrial && !(
         session.subscription &&
         session.subscription.status === 'active' &&
