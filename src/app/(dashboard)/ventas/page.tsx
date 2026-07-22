@@ -236,7 +236,15 @@ function CheckoutModal({ total, cart, paymentSettings, onConfirm, onCancel, proc
 }
 
 export default function SalesPage() {
-    const [cart, setCart] = useState<CartItemWithPrice[]>([]);
+    const [cart, setCart] = useState<CartItemWithPrice[]>(() => {
+        // Cargar carrito desde localStorage al iniciar
+        try {
+            const saved = typeof window !== 'undefined' ? localStorage.getItem('pos_cart') : null;
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
@@ -253,6 +261,13 @@ export default function SalesPage() {
     const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
     const [highlightedId, setHighlightedId] = useState<string | null>(null);
     const cartItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // Guardar carrito en localStorage cuando cambia
+    useEffect(() => {
+        try {
+            localStorage.setItem('pos_cart', JSON.stringify(cart));
+        } catch { /* ignore */ }
+    }, [cart]);
 
     useEffect(() => {
         getPriceLists().then(result => {
@@ -384,7 +399,22 @@ export default function SalesPage() {
         }
     };
 
-    const handleNewSale = () => { setSaleComplete(null); setCart([]); setError(''); };
+    const handleNewSale = () => {
+        setSaleComplete(null);
+        setCart([]);
+        setError('');
+        try { localStorage.removeItem('pos_cart'); } catch { /* ignore */ }
+    };
+
+    const handleCancelSale = () => {
+        if (cart.length === 0) return;
+        if (window.confirm('¿Cancelar la venta y vaciar el carrito?')) {
+            setCart([]);
+            setError('');
+            setShowCheckout(false);
+            try { localStorage.removeItem('pos_cart'); } catch { /* ignore */ }
+        }
+    };
 
     if (saleComplete) {
         return (
@@ -588,9 +618,16 @@ export default function SalesPage() {
                                     <p className="text-4xl font-bold text-slate-900 dark:text-white">{formatCurrency(total)}</p>
                                 </div>
                                 {!showCheckout ? (
-                                    <Button size="lg" className="w-full" disabled={cart.length === 0 || cashSessionOpen === false} onClick={() => setShowCheckout(true)}>
-                                        Cobrar <ArrowRight className="w-5 h-5 ml-2" />
-                                    </Button>
+                                    <div className="space-y-2">
+                                        <Button size="lg" className="w-full" disabled={cart.length === 0 || cashSessionOpen === false} onClick={() => setShowCheckout(true)}>
+                                            Cobrar <ArrowRight className="w-5 h-5 ml-2" />
+                                        </Button>
+                                        {cart.length > 0 && (
+                                            <Button size="sm" variant="ghost" className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleCancelSale}>
+                                                <X className="w-4 h-4 mr-1" /> Cancelar venta
+                                            </Button>
+                                        )}
+                                    </div>
                                 ) : (
                                     <CheckoutModal
                                         total={total}
