@@ -4,10 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getLowStockProducts } from '@/lib/actions/products';
 import { StockProductRow } from '@/components/stock/stock-product-row';
+import { getCurrentSession } from '@/lib/actions/auth';
 import type { LowStockProduct } from '@/lib/types';
 
 export default async function StockPage() {
     const { data: lowStockProducts, error } = await getLowStockProducts();
+    const session = await getCurrentSession();
+    const userRole = session?.profile?.role || 'staff';
 
     return (
         <div className="space-y-6">
@@ -65,7 +68,7 @@ export default async function StockPage() {
                     ) : lowStockProducts && lowStockProducts.length > 0 ? (
                         <div className="divide-y divide-slate-100 dark:divide-slate-800">
                             {lowStockProducts.map((product: LowStockProduct) => (
-                                <StockProductRow key={product.id} product={product} />
+                                <StockProductRow key={product.id} product={product} userRole={userRole} />
                             ))}
                         </div>
                     ) : (
