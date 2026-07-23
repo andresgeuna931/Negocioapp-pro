@@ -11,12 +11,14 @@ import { EditProductModal } from '@/components/stock/edit-product-modal';
 
 interface StockProductRowProps {
     product: LowStockProduct;
+    userRole?: string;
 }
 
-export function StockProductRow({ product }: StockProductRowProps) {
+export function StockProductRow({ product, userRole }: StockProductRowProps) {
     const [fullProduct, setFullProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(false);
     const status = getStockStatus(product.stock_on_hand, product.threshold);
+    const canEdit = userRole !== 'staff';
 
     const handleEdit = async () => {
         setLoading(true);
@@ -46,10 +48,12 @@ export function StockProductRow({ product }: StockProductRowProps) {
                     </Badge>
                 </div>
 
-                <Button variant="ghost" size="sm" onClick={handleEdit} loading={loading}>
-                    Editar
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
+                {canEdit && (
+                    <Button variant="ghost" size="sm" onClick={handleEdit} loading={loading}>
+                        Editar
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                )}
             </div>
 
             {fullProduct && (
