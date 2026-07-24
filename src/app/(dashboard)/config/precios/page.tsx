@@ -29,6 +29,8 @@ import {
 import Link from 'next/link';
 
 export default function PriceListsPage() {
+    const router = useRouter();
+
     // F-02: verificar rol al montar — redirigir si es staff
     useEffect(() => {
         getCurrentSession().then(session => {
@@ -37,8 +39,6 @@ export default function PriceListsPage() {
             }
         });
     }, [router]);
-
-    const router = useRouter();
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
