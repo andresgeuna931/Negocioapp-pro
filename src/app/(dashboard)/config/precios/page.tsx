@@ -1,4 +1,5 @@
 'use client';
+import { getCurrentSession } from '@/lib/actions/auth';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -28,6 +29,15 @@ import {
 import Link from 'next/link';
 
 export default function PriceListsPage() {
+    // F-02: verificar rol al montar — redirigir si es staff
+    useEffect(() => {
+        getCurrentSession().then(session => {
+            if (session?.profile?.role === 'staff') {
+                router.replace('/');
+            }
+        });
+    }, [router]);
+
     const router = useRouter();
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [loading, setLoading] = useState(true);
