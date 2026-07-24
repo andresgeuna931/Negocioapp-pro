@@ -1,6 +1,8 @@
 'use client';
+import { getCurrentSession } from '@/lib/actions/auth';
 
 import { useState, useEffect, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { getExpenses, createExpense, deleteExpense, getExpensesSummary } from '@/lib/actions/expenses';
@@ -11,6 +13,16 @@ import { Plus, Trash2, TrendingDown, Tag, DollarSign } from 'lucide-react';
 type ExpenseWithCash = Expense & { from_cash?: boolean };
 
 export default function GastosPage() {
+    const router = useRouter();
+    // F-02: verificar rol al montar — redirigir si es staff
+    useEffect(() => {
+        getCurrentSession().then(session => {
+            if (session?.profile?.role === 'staff') {
+                router.replace('/');
+            }
+        });
+    }, [router]);
+
     const [expenses, setExpenses] = useState<ExpenseWithCash[]>([]);
     const [summary, setSummary] = useState<{ total: number; byCategory: Record<string, number> }>({ total: 0, byCategory: {} });
     const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
