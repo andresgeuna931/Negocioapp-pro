@@ -1,4 +1,5 @@
 import { Store, Bell, CreditCard, Tag, ChevronRight, LayoutGrid } from 'lucide-react';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,11 @@ export default async function ConfigPage() {
         getTeamMembers(),
         getCurrentSession(),
     ]);
+
+    // F-02: staff no puede acceder a configuración
+    if (session?.profile.role === 'staff') {
+        redirect('/');
+    }
 
     const team = teamResult.data || [];
     const isOwner = session?.profile.role === 'owner';
