@@ -27,6 +27,8 @@ const UNIT_LABELS: Record<UnitType, string> = {
 };
 
 export default function NewProductPage() {
+    const router = useRouter();
+
     // F-02: verificar rol al montar — redirigir si es staff
     useEffect(() => {
         getCurrentSession().then(session => {
@@ -35,8 +37,6 @@ export default function NewProductPage() {
             }
         });
     }, [router]);
-
-    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [showScanner, setShowScanner] = useState(false);
