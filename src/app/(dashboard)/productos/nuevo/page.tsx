@@ -1,4 +1,5 @@
 'use client';
+import { getCurrentSession } from '@/lib/actions/auth';
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -26,6 +27,15 @@ const UNIT_LABELS: Record<UnitType, string> = {
 };
 
 export default function NewProductPage() {
+    // F-02: verificar rol al montar — redirigir si es staff
+    useEffect(() => {
+        getCurrentSession().then(session => {
+            if (session?.profile?.role === 'staff') {
+                router.replace('/');
+            }
+        });
+    }, [router]);
+
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
