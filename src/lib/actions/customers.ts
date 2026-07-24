@@ -230,11 +230,47 @@ export async function registerPayment(customerId: string, amount: number, notes?
         return { success: false, error: 'Error al registrar pago' };
     }
 
-    try {
-        const { addCashMovement } = await import('./cash');
-        await addCashMovement('deposit', amount, description);
-    } catch (cashError) {
-        console.error('Error impactando caja en abono:', cashError);
+    // F-04: manejo de caja según método de pago
+    if (paymentMethod === 'cash') {
+        // Efectivo: requiere caja abierta obligatoriamente
+        const { data: openSession } = await supabase
+            .from('cash_sessions')
+            .select('id')
+            .eq('status', 'open')
+            .eq('tenant_id', tenantId)
+            .single();
+
+        if (!openSession) {
+            return { success: false, error: 'No hay caja abierta. Abrí la caja antes de registrar cobros en efectivo.' };
+        }
+
+        try {
+            const { addCashMovement } = await import('./cash');
+            await addCashMovement('deposit', amount, description);
+        } catch (cashError) {
+            console.error('Error impactando caja en abono efectivo:', cashError);
+        }
+    } else {
+        // Transferencia / QR: registrar en total_sales_other si hay caja abierta
+        // Si no hay caja, se permite igual (el dinero fue al banco, no a la caja física)
+        try {
+            const { data: openSession } = await supabase
+                .from('cash_sessions')
+                .select('id, total_sales_other')
+                .eq('status', 'open')
+                .eq('tenant_id', tenantId)
+                .single();
+
+            if (openSession) {
+                await supabase
+                    .from('cash_sessions')
+                    .update({ total_sales_other: openSession.total_sales_other + amount })
+                    .eq('id', openSession.id)
+                    .eq('tenant_id', tenantId);
+            }
+        } catch (cashError) {
+            console.error('Error impactando caja en abono no-efectivo:', cashError);
+        }
     }
 
     try {
