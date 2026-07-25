@@ -8,6 +8,22 @@ interface CashHistoryTableProps {
     sessions: CashSession[];
 }
 
+function formatDateShort(dateStr: string) {
+    return new Date(dateStr).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: '2-digit' });
+}
+
+function formatTime(dateStr: string) {
+    return new Date(dateStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function isSameDay(a: string, b: string) {
+    const da = new Date(a);
+    const db = new Date(b);
+    return da.getFullYear() === db.getFullYear() &&
+        da.getMonth() === db.getMonth() &&
+        da.getDate() === db.getDate();
+}
+
 export function CashHistoryTable({ sessions }: CashHistoryTableProps) {
     if (!sessions || sessions.length === 0) {
         return (
@@ -34,20 +50,36 @@ export function CashHistoryTable({ sessions }: CashHistoryTableProps) {
                 <tbody>
                     {sessions.map((session) => {
                         const diff = session.difference || 0;
+                        const crossesMidnight = session.opened_at && session.closed_at &&
+                            !isSameDay(session.opened_at, session.closed_at);
+
                         return (
                             <tr
                                 key={session.id}
                                 className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                             >
                                 <td className="py-3 px-4">
-                                    <div className="font-medium text-slate-900 dark:text-white">
-                                        {session.closed_at && new Date(session.closed_at).toLocaleDateString('es-AR')}
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                        {session.opened_at && new Date(session.opened_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                        {' → '}
-                                        {session.closed_at && new Date(session.closed_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
+                                    {crossesMidnight ? (
+                                        <>
+                                            <div className="font-medium text-slate-900 dark:text-white">
+                                                {formatDateShort(session.opened_at!)} → {formatDateShort(session.closed_at!)}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {formatTime(session.opened_at!)} → {formatTime(session.closed_at!)}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="font-medium text-slate-900 dark:text-white">
+                                                {session.closed_at && new Date(session.closed_at).toLocaleDateString('es-AR')}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                                {session.opened_at && formatTime(session.opened_at)}
+                                                {' → '}
+                                                {session.closed_at && formatTime(session.closed_at)}
+                                            </div>
+                                        </>
+                                    )}
                                 </td>
                                 <td className="py-3 px-4">
                                     <p className="text-sm text-slate-700 dark:text-slate-300">
