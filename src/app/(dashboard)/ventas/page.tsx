@@ -344,10 +344,10 @@ export default function SalesPage() {
     };
 
     useEffect(() => {
-        if (selectedPriceList && cart.length > 0) {
+        if (cart.length > 0) {
             setCart(prev => prev.map(item => ({
                 ...item,
-                adjustedPrice: calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value)
+                adjustedPrice: selectedPriceList ? calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value) : item.product.price
             })));
         }
     }, [selectedPriceList]);
@@ -457,7 +457,7 @@ export default function SalesPage() {
                             onChange={(e) => { if (!e.target.value) { setSelectedPriceList(null); } else { const list = priceLists.find(l => l.id === e.target.value); if (list) setSelectedPriceList(list); } }}
                             className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
                         >
-                            <option value="">— Precio normal —</option>
+                            <option value="">— Precio de lista —</option>
                             {priceLists.map(list => (
                                 <option key={list.id} value={list.id}>
                                     {list.name}{list.adjustment_value !== 0 && (list.adjustment_type === 'percentage' ? ` (${list.adjustment_value > 0 ? '+' : ''}${list.adjustment_value}%)` : ` (${list.adjustment_value > 0 ? '+' : ''}$${list.adjustment_value})`)}
