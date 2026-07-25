@@ -19,7 +19,7 @@ interface DateRange {
 }
 
 function computeDateRange(mode: PeriodMode, customYear: number, customMonth: number): DateRange {
-
+    const now = new Date();
 
     if (mode === 'last30') {
         const from = new Date();
@@ -99,7 +99,6 @@ interface ReportsClientProps {
 }
 
 export function ReportsClient({ inventoryData }: ReportsClientProps) {
-
     const [mode, setMode] = useState<PeriodMode>('last30');
     const [customYear, setCustomYear] = useState(() => new Date().getFullYear());
     const [customMonth, setCustomMonth] = useState(() => new Date().getMonth());
@@ -159,7 +158,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
     };
 
     const handleNextMonth = () => {
-        const n = new Date(); // solo cliente
+        const n = new Date();
         if (customYear === n.getFullYear() && customMonth === n.getMonth()) return;
         setMode('custom');
         if (customMonth === 11) { setCustomMonth(0); setCustomYear(y => y + 1); }
