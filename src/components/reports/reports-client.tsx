@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Calendar, ChevronLeft, ChevronRight, FileSpreadsheet, Printer, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange } from '@/lib/actions/reports';
+import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange, getSalesByPaymentMethod } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { SalesChart } from '@/components/reports/sales-chart';
 import { exportSummaryToExcel } from '@/lib/utils/export-excel';
@@ -109,6 +109,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
     const [prevSummary, setPrevSummary] = useState({ total_amount: 0 });
     const [topProducts, setTopProducts] = useState<any[]>([]);
     const [chartData, setChartData] = useState<{ date: string; total: number; count: number }[]>([]);
+    const [paymentData, setPaymentData] = useState<{ key: string; label: string; total: number; count: number; pct: number }[]>([]);
 
     // Calcular fechas solo cuando cambia mode/customYear/customMonth
     const { fromISO, toISO, label, chartType } = useMemo(
@@ -123,11 +124,12 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             const prevTo = new Date(new Date(fromISO).getTime() - 1);
             const prevFrom = new Date(prevTo.getTime() - diffMs);
 
-            const [summaryRes, prevRes, topRes, histRes] = await Promise.all([
+            const [summaryRes, prevRes, topRes, histRes, payRes] = await Promise.all([
                 getSalesSummaryByRange(fromISO, toISO),
                 getSalesSummaryByRange(prevFrom.toISOString(), prevTo.toISOString()),
                 getTopProductsByRange(10, fromISO, toISO),
                 getSalesByDateRange(fromISO, toISO),
+                getSalesByPaymentMethod(fromISO, toISO),
             ]);
 
             setSummary({
@@ -138,6 +140,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             setPrevSummary({ total_amount: prevRes.data?.total_amount ?? 0 });
             setTopProducts(topRes.data ?? []);
             setChartData(fillDays(histRes.data ?? [], fromISO, toISO));
+            setPaymentData(payRes.data ?? []);
         } catch (e) {
             console.error('Error cargando datos:', e);
         } finally {
@@ -311,12 +314,15 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                     {loading
                                         ? '...'
                                         : variacion === null
-                                            ? 'N/A'
+                                            ? 'Sin datos anteriores'
                                             : `${variacion >= 0 ? '↑' : '↓'} ${Math.abs(variacion).toFixed(0)}%`
                                     }
                                 </p>
                                 <p className="text-xs text-slate-400">
-                                    {loading ? '' : `${formatCurrency(prevSummary.total_amount)} anterior`}
+                                    {loading ? '' : variacion === null
+                                        ? 'No hay información suficiente para comparar'
+                                        : `Vendiste un ${Math.abs(variacion ?? 0).toFixed(0)}% ${(variacion ?? 0) >= 0 ? 'más' : 'menos'} que en el período anterior (${formatCurrency(prevSummary.total_amount)})`
+                                    }
                                 </p>
                             </div>
                         </div>
@@ -340,6 +346,36 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                     </CardContent>
                 </Card>
             </div>
+
+
+            {/* Ventas por medio de pago */}
+            {!loading && paymentData.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <DollarSign className="w-5 h-5" />
+                            Ventas por medio de pago — {label}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            {paymentData.map((method) => (
+                                <div key={method.key} className="flex items-center gap-3">
+                                    <span className="text-sm text-slate-600 dark:text-slate-400 w-36 shrink-0">{method.label}</span>
+                                    <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full"
+                                            style={{ width: `${method.pct}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-900 dark:text-white w-24 text-right">{formatCurrency(method.total)}</span>
+                                    <span className="text-xs text-slate-400 w-10 text-right">{method.pct}%</span>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Chart */}
             {!loading && (
