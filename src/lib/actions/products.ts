@@ -185,7 +185,7 @@ export async function getLowStockProducts() {
     return { data, error: null };
 }
 
-// Get categories from products table (returns unique strings)
+// Get categories from categories table (returns id + name)
 export async function getCategories() {
     const supabase = await createClient();
     const tenantId = await getTenantId();
@@ -201,7 +201,7 @@ export async function getCategories() {
     return { data: data as { id: string; name: string }[], error: null };
 }
 
-// Get categories from categories table (returns full objects with id)
+// Get categories as string array (para selects que usan nombre)
 export async function getCategoriesFromTable() {
     const supabase = await createClient();
     const tenantId = await getTenantId();
@@ -237,22 +237,43 @@ export async function createCategory(name: string) {
     return { error: null };
 }
 
-// Update category
+// Update category — F-03: propaga el renombre a todos los productos del tenant
 export async function updateCategory(id: string, name: string) {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { error: 'No autenticado' };
 
-    const { error } = await supabase
+    // 1. Leer el nombre actual antes de renombrar
+    const { data: existing, error: fetchError } = await supabase
         .from('categories')
-        .update({ name: name.trim() })
+        .select('name')
+        .eq('id', id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+    if (fetchError || !existing) return { error: 'Categoría no encontrada' };
+
+    const oldName = existing.name;
+    const newName = name.trim();
+
+    // 2. Renombrar en la tabla categories
+    const { error: updateError } = await supabase
+        .from('categories')
+        .update({ name: newName })
         .eq('id', id)
         .eq('tenant_id', tenantId);
 
-    if (error) {
-        if (error.code === '23505') return { error: 'Ya existe una categoría con ese nombre' };
-        return { error: error.message };
+    if (updateError) {
+        if (updateError.code === '23505') return { error: 'Ya existe una categoría con ese nombre' };
+        return { error: updateError.message };
     }
+
+    // 3. Propagar el nuevo nombre a todos los productos que tenían el nombre viejo
+    await supabase
+        .from('products')
+        .update({ category: newName })
+        .eq('category', oldName)
+        .eq('tenant_id', tenantId);
 
     revalidatePath('/config');
     revalidatePath('/productos');
