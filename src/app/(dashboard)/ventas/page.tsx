@@ -449,7 +449,7 @@ export default function SalesPage() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Venta Rápida</h1>
                     <p className="text-slate-500">Escaneá o buscá productos para agregar al carrito</p>
                 </div>
-                {priceLists.length > 0 && (
+                {priceLists.filter(l => !l.is_default).length > 0 && (
                     <div className="flex items-center gap-2">
                         <Tag className="w-5 h-5 text-slate-400" />
                         <select
@@ -458,7 +458,7 @@ export default function SalesPage() {
                             className="px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium"
                         >
                             <option value="">— Precio de lista —</option>
-                            {priceLists.map(list => (
+                            {priceLists.filter(l => !l.is_default).map(list => (
                                 <option key={list.id} value={list.id}>
                                     {list.name}{list.adjustment_value !== 0 && (list.adjustment_type === 'percentage' ? ` (${list.adjustment_value > 0 ? '+' : ''}${list.adjustment_value}%)` : ` (${list.adjustment_value > 0 ? '+' : ''}$${list.adjustment_value})`)}
                                 </option>
