@@ -303,3 +303,57 @@ export async function getSalesHistory(days: number = 30) {
 
     return filledData;
 }
+
+// Get sales breakdown by payment method — solo owner/admin
+export async function getSalesByPaymentMethod(from: string, to: string) {
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
+
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver reportes históricos' };
+    }
+
+    const { data, error } = await supabase
+        .from('sales')
+        .select('payment_method, total_amount')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', from)
+        .lte('created_at', endOfDayAR(to));
+
+    if (error) return { data: null, error: error.message };
+
+    const methodMap: Record<string, { label: string; total: number; count: number }> = {
+        cash:     { label: 'Efectivo',          total: 0, count: 0 },
+        transfer: { label: 'Transferencia',     total: 0, count: 0 },
+        qr:       { label: 'Código QR',         total: 0, count: 0 },
+        debit:    { label: 'Tarjeta débito',    total: 0, count: 0 },
+        credit:   { label: 'Tarjeta crédito',   total: 0, count: 0 },
+        account:  { label: 'Cuenta corriente',  total: 0, count: 0 },
+        mixed:    { label: 'Mixto',             total: 0, count: 0 },
+    };
+
+    for (const sale of data) {
+        const key = sale.payment_method as string;
+        if (!methodMap[key]) {
+            methodMap[key] = { label: key, total: 0, count: 0 };
+        }
+        methodMap[key].total += Number(sale.total_amount);
+        methodMap[key].count += 1;
+    }
+
+    const grandTotal = Object.values(methodMap).reduce((s, m) => s + m.total, 0);
+
+    const result = Object.entries(methodMap)
+        .filter(([, m]) => m.total > 0)
+        .map(([key, m]) => ({
+            key,
+            label: m.label,
+            total: m.total,
+            count: m.count,
+            pct: grandTotal > 0 ? Math.round((m.total / grandTotal) * 100) : 0,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+    return { data: result, error: null };
+}
