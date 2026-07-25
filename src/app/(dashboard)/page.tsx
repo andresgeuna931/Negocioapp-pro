@@ -177,7 +177,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 <ShoppingCart className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Ventas Hoy</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Cantidad de ventas</p>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">{todaySummary.data?.total_sales || 0}</p>
               </div>
             </div>
