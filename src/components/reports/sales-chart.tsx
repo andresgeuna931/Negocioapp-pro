@@ -49,8 +49,17 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                     </div>
                 </div>
                 {payload[0].payload.count > 0 && (
-                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-slate-500 text-xs text-center">
-                        {payload[0].payload.count} {payload[0].payload.count === 1 ? 'venta' : 'ventas'}
+                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                        <div className="flex justify-between text-xs text-slate-500">
+                            <span>Ventas</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{payload[0].payload.count}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-500">
+                            <span>Ticket promedio</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                                {formatCurrency(Math.round(payload[0].value as number / payload[0].payload.count))}
+                            </span>
+                        </div>
                     </div>
                 )}
             </div>
