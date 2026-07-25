@@ -132,7 +132,6 @@ export async function updateCustomer(id: string, data: UpdateCustomerData): Prom
     if (!ctx) return { success: false, error: 'No autorizado' };
     const { supabase, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede editar clientes
     if (!hasPermission(role, 'customers:edit')) {
         return { success: false, error: 'No tenés permiso para editar clientes' };
     }
@@ -163,7 +162,6 @@ export async function deleteCustomer(id: string): Promise<ApiResponse<void>> {
     if (!ctx) return { success: false, error: 'No autorizado' };
     const { supabase, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede eliminar clientes
     if (!hasPermission(role, 'customers:edit')) {
         return { success: false, error: 'No tenés permiso para eliminar clientes' };
     }
@@ -192,7 +190,20 @@ export async function registerPayment(customerId: string, amount: number, notes?
     if (!ctx) return { success: false, error: 'No autorizado' };
     const { supabase, user, tenantId } = ctx;
 
-    // Get customer account - ensure it belongs to this tenant via customer
+    // F-04: verificar caja abierta ANTES de cualquier operación
+    // Efectivo, transferencia y QR requieren caja abierta
+    const { data: openSession } = await supabase
+        .from('cash_sessions')
+        .select('id, total_sales_other')
+        .eq('status', 'open')
+        .eq('tenant_id', tenantId)
+        .single();
+
+    if (!openSession) {
+        return { success: false, error: 'No hay caja abierta. Abrí la caja antes de registrar cobros.' };
+    }
+
+    // Get customer account
     const { data: account } = await supabase
         .from('customer_accounts')
         .select('id, tenant_id')
@@ -204,7 +215,7 @@ export async function registerPayment(customerId: string, amount: number, notes?
         return { success: false, error: 'Cuenta de cliente no encontrada' };
     }
 
-    // Get customer name for cash movement description
+    // Get customer name
     const { data: customer } = await supabase
         .from('customers')
         .select('full_name')
@@ -214,6 +225,7 @@ export async function registerPayment(customerId: string, amount: number, notes?
     const methodLabel = paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'transfer' ? 'Transferencia' : 'QR';
     const description = notes || `Abono ${methodLabel} - ${customer?.full_name || 'Cliente'}`;
 
+    // Registrar movimiento en cuenta corriente
     const { error } = await supabase
         .from('account_movements')
         .insert({
@@ -230,20 +242,8 @@ export async function registerPayment(customerId: string, amount: number, notes?
         return { success: false, error: 'Error al registrar pago' };
     }
 
-    // F-04: manejo de caja según método de pago
+    // Impactar caja según método de pago
     if (paymentMethod === 'cash') {
-        // Efectivo: requiere caja abierta obligatoriamente
-        const { data: openSession } = await supabase
-            .from('cash_sessions')
-            .select('id')
-            .eq('status', 'open')
-            .eq('tenant_id', tenantId)
-            .single();
-
-        if (!openSession) {
-            return { success: false, error: 'No hay caja abierta. Abrí la caja antes de registrar cobros en efectivo.' };
-        }
-
         try {
             const { addCashMovement } = await import('./cash');
             await addCashMovement('deposit', amount, description);
@@ -251,26 +251,12 @@ export async function registerPayment(customerId: string, amount: number, notes?
             console.error('Error impactando caja en abono efectivo:', cashError);
         }
     } else {
-        // Transferencia / QR: registrar en total_sales_other si hay caja abierta
-        // Si no hay caja, se permite igual (el dinero fue al banco, no a la caja física)
-        try {
-            const { data: openSession } = await supabase
-                .from('cash_sessions')
-                .select('id, total_sales_other')
-                .eq('status', 'open')
-                .eq('tenant_id', tenantId)
-                .single();
-
-            if (openSession) {
-                await supabase
-                    .from('cash_sessions')
-                    .update({ total_sales_other: openSession.total_sales_other + amount })
-                    .eq('id', openSession.id)
-                    .eq('tenant_id', tenantId);
-            }
-        } catch (cashError) {
-            console.error('Error impactando caja en abono no-efectivo:', cashError);
-        }
+        // Transferencia y QR: registrar en total_sales_other de la caja abierta
+        await supabase
+            .from('cash_sessions')
+            .update({ total_sales_other: openSession.total_sales_other + amount })
+            .eq('id', openSession.id)
+            .eq('tenant_id', tenantId);
     }
 
     try {
@@ -337,7 +323,6 @@ export async function importCustomers(
     if (!ctx) return { success: false, error: 'No autorizado' };
     const { supabase, role } = ctx;
 
-    // SEC-09: solo owner/admin puede importar clientes
     if (!hasPermission(role, 'customers:edit')) {
         return { success: false, error: 'No tenés permiso para importar clientes' };
     }
