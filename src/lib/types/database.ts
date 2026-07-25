@@ -201,6 +201,7 @@ export interface CreateSaleData {
   items: {
     product_id: string;
     qty: number;
+    unit_price?: number; // F-01: precio con descuento de lista aplicado
   }[];
   payment_method: PaymentMethod;
   customer_id?: string;
