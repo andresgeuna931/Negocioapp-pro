@@ -3,6 +3,15 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios'];
 
+// F-02: rutas restringidas para staff — el servidor redirige antes de enviar contenido
+const STAFF_RESTRICTED_ROUTES = [
+    '/config/precios',
+    '/config',
+    '/gastos',
+    '/productos/nuevo',
+    '/productos/precios',
+];
+
 export async function middleware(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
@@ -52,6 +61,27 @@ export async function middleware(request: NextRequest) {
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
+    }
+
+    // F-02: verificar rol para rutas restringidas
+    if (user) {
+        const isRestrictedRoute = STAFF_RESTRICTED_ROUTES.some((route) =>
+            pathname.startsWith(route)
+        );
+
+        if (isRestrictedRoute) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (profile?.role === 'staff') {
+                const url = request.nextUrl.clone();
+                url.pathname = '/';
+                return NextResponse.redirect(url);
+            }
+        }
     }
 
     return supabaseResponse;
