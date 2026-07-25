@@ -379,7 +379,7 @@ export default function SalesPage() {
         try {
             const finalTotal = total * (1 + surcharge / 100);
             const result = await createSale({
-                items: cart.map(item => ({ product_id: item.product.id, qty: item.qty })),
+                items: cart.map(item => ({ product_id: item.product.id, qty: item.qty, unit_price: item.adjustedPrice })),
                 payment_method: paymentMethod,
                 customer_id: customerId,
                 notes: installments ? `Crédito ${installments} cuota${installments > 1 ? 's' : ''} (+${surcharge}%)` : surcharge > 0 ? `Recargo ${surcharge}%` : undefined,
