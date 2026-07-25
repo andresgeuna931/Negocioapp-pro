@@ -28,6 +28,8 @@ export default function GastosPage() {
     const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
     const [showForm, setShowForm] = useState(false);
     const [isPending, startTransition] = useTransition();
+    // F-07: flag de carga para evitar estado vacío falso
+    const [loading, setLoading] = useState(true);
     const [form, setForm] = useState<{
         amount: string;
         category: string;
@@ -45,12 +47,14 @@ export default function GastosPage() {
     }, [period]);
 
     async function loadData() {
+        setLoading(true);
         const [expensesRes, summaryRes] = await Promise.all([
             getExpenses(period),
             getExpensesSummary(period),
         ]);
         if (expensesRes.data) setExpenses(expensesRes.data as ExpenseWithCash[]);
         setSummary(summaryRes);
+        setLoading(false);
     }
 
     async function handleSubmit() {
@@ -198,7 +202,11 @@ export default function GastosPage() {
                             </div>
                             <div>
                                 <p className="text-xs text-slate-400">Total gastos</p>
-                                <p className="text-lg font-bold text-red-400">{formatCurrency(summary.total)}</p>
+                                {loading ? (
+                                    <div className="h-6 w-24 bg-slate-700 rounded animate-pulse mt-1" />
+                                ) : (
+                                    <p className="text-lg font-bold text-red-400">{formatCurrency(summary.total)}</p>
+                                )}
                             </div>
                         </div>
                     </CardContent>
@@ -211,14 +219,18 @@ export default function GastosPage() {
                             </div>
                             <div>
                                 <p className="text-xs text-slate-400">Categorías</p>
-                                <p className="text-lg font-bold text-white">{Object.keys(summary.byCategory).length}</p>
+                                {loading ? (
+                                    <div className="h-6 w-8 bg-slate-700 rounded animate-pulse mt-1" />
+                                ) : (
+                                    <p className="text-lg font-bold text-white">{Object.keys(summary.byCategory).length}</p>
+                                )}
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {Object.keys(summary.byCategory).length > 0 && (
+            {!loading && Object.keys(summary.byCategory).length > 0 && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-white text-base flex items-center gap-2">
@@ -246,7 +258,19 @@ export default function GastosPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {expenses.length === 0 ? (
+                    {loading ? (
+                        <div className="space-y-3 py-2">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-800">
+                                    <div className="space-y-1.5">
+                                        <div className="h-4 w-32 bg-slate-700 rounded animate-pulse" />
+                                        <div className="h-3 w-20 bg-slate-800 rounded animate-pulse" />
+                                    </div>
+                                    <div className="h-4 w-16 bg-slate-700 rounded animate-pulse" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : expenses.length === 0 ? (
                         <p className="text-center text-slate-500 py-8">No hay gastos registrados</p>
                     ) : (
                         <div className="space-y-3">
