@@ -130,7 +130,6 @@ export async function addCashMovement(
     if (!ctx) return { data: null, error: 'No autenticado' };
     const { supabase, user, tenantId } = ctx;
 
-    // Retiros y gastos requieren descripción obligatoria (aplica a todos los roles)
     if ((type === 'withdrawal' || type === 'expense') && !description?.trim()) {
         return { data: null, error: 'La descripción es obligatoria para retiros y gastos' };
     }
@@ -199,14 +198,11 @@ export async function getCashMovements(sessionId?: string) {
 export async function getCashSessionHistory(limit: number = 10) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
-    const { supabase, tenantId, role } = ctx;
+    const { supabase, user, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede ver el historial de cajas anteriores
-    if (!hasPermission(role, 'reports:view_all')) {
-        return { data: null, error: 'No tenés permiso para ver el historial de cajas' };
-    }
+    const canViewAll = hasPermission(role, 'reports:view_all');
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('cash_sessions')
         .select(`
             *,
@@ -218,6 +214,12 @@ export async function getCashSessionHistory(limit: number = 10) {
         .order('closed_at', { ascending: false })
         .limit(limit);
 
+    // Staff solo ve los cierres que él mismo realizó
+    if (!canViewAll) {
+        query = query.eq('closed_by', user.id);
+    }
+
+    const { data, error } = await query;
     if (error) return { data: null, error: error.message };
     return { data: data as CashSession[], error: null };
 }
