@@ -400,30 +400,41 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                     </CardHeader>
                     <CardContent>
                         {!economicData.tieneHistorico && (
-                            <p className="text-xs text-amber-500 mb-3">
+                            <p className="text-xs text-amber-500 mb-4">
                                 ⚠ Las ventas de este período no tienen costo histórico registrado. Activá el seguimiento de costos para ver datos precisos en el futuro.
                             </p>
                         )}
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                <span className="text-sm text-slate-600 dark:text-slate-400">Ventas totales</span>
-                                <span className="text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(economicData.totalVentas)}</span>
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Columna izquierda: detalle */}
+                            <div className="border-r border-slate-100 dark:border-slate-800 pr-4 space-y-0">
+                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Ventas</span>
+                                    <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(economicData.totalVentas)}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Costo mercadería</span>
+                                    <span className="text-xs font-medium text-red-500">− {formatCurrency(economicData.costoMercaderia)}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Ganancia bruta</span>
+                                    <span className={`text-xs font-medium ${economicData.gananciaBruta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaBruta)}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">Gastos</span>
+                                    <span className="text-xs font-medium text-red-500">− {formatCurrency(economicData.gastos)}</span>
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                <span className="text-sm text-slate-600 dark:text-slate-400">Costo mercadería vendida</span>
-                                <span className="text-sm font-medium text-red-500">− {formatCurrency(economicData.costoMercaderia)}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Ganancia bruta</span>
-                                <span className={`text-sm font-medium ${economicData.gananciaBruta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaBruta)}</span>
-                            </div>
-                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                <span className="text-sm text-slate-600 dark:text-slate-400">Gastos del período</span>
-                                <span className="text-sm font-medium text-red-500">− {formatCurrency(economicData.gastos)}</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-3">
-                                <span className="text-base font-medium text-slate-900 dark:text-white">Ganancia neta</span>
-                                <span className={`text-lg font-bold ${economicData.gananciaNeta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaNeta)}</span>
+                            {/* Columna derecha: ganancia neta destacada */}
+                            <div className="flex flex-col items-center justify-center gap-2">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">Ganancia neta</span>
+                                <span className={`text-3xl font-bold ${economicData.gananciaNeta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {formatCurrency(economicData.gananciaNeta)}
+                                </span>
+                                {economicData.totalVentas > 0 && (
+                                    <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+                                        {Math.round((economicData.gananciaNeta / economicData.totalVentas) * 100)}% de margen neto
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </CardContent>
