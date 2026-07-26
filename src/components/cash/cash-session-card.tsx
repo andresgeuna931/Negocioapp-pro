@@ -20,6 +20,7 @@ export function CashSessionCard({ session, expectedCash }: CashSessionCardProps)
     const [showOpenModal, setShowOpenModal] = useState(false);
     const [showCloseModal, setShowCloseModal] = useState(false);
     const [showMovementModal, setShowMovementModal] = useState<'withdrawal' | 'deposit' | null>(null);
+    const [movementPaymentMethod, setMovementPaymentMethod] = useState<'cash' | 'transfer'>('cash');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -66,7 +67,8 @@ export function CashSessionCard({ session, expectedCash }: CashSessionCardProps)
         const result = await addCashMovement(
             showMovementModal === 'withdrawal' ? 'expense' : 'deposit',
             parseFloat(movementAmount) || 0,
-            movementDescription || undefined
+            movementDescription || undefined,
+            showMovementModal === 'withdrawal' ? movementPaymentMethod : 'cash'
         );
         if (result.error) {
             setError(result.error);
@@ -74,6 +76,7 @@ export function CashSessionCard({ session, expectedCash }: CashSessionCardProps)
             setShowMovementModal(null);
             setMovementAmount('');
             setMovementDescription('');
+            setMovementPaymentMethod('cash');
             router.refresh();
         }
         setLoading(false);
@@ -318,6 +321,40 @@ export function CashSessionCard({ session, expectedCash }: CashSessionCardProps)
                                         onChange={(e) => setMovementDescription(e.target.value)}
                                     />
                                 </div>
+                                {showMovementModal === 'withdrawal' && (
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                            Método de pago
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setMovementPaymentMethod('cash')}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                                                    movementPaymentMethod === 'cash'
+                                                        ? 'bg-emerald-500 text-white border-emerald-500'
+                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                                }`}
+                                            >
+                                                Efectivo
+                                            </button>
+                                            <button
+                                                onClick={() => setMovementPaymentMethod('transfer')}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                                                    movementPaymentMethod === 'transfer'
+                                                        ? 'bg-blue-500 text-white border-blue-500'
+                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                                }`}
+                                            >
+                                                Transferencia
+                                            </button>
+                                        </div>
+                                        {movementPaymentMethod === 'transfer' && (
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                La transferencia no afecta el efectivo esperado en caja.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex gap-3 mt-6">
                                 <Button
