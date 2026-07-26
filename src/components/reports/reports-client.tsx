@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { BarChart3, TrendingUp, DollarSign, Package, Calendar, ChevronLeft, ChevronRight, FileSpreadsheet, Printer, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange, getSalesByPaymentMethod } from '@/lib/actions/reports';
+import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange, getSalesByPaymentMethod, getEconomicResult } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { SalesChart } from '@/components/reports/sales-chart';
 import { exportSummaryToExcel } from '@/lib/utils/export-excel';
@@ -110,6 +110,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
     const [topProducts, setTopProducts] = useState<any[]>([]);
     const [chartData, setChartData] = useState<{ date: string; total: number; count: number }[]>([]);
     const [paymentData, setPaymentData] = useState<{ key: string; label: string; total: number; count: number; pct: number }[]>([]);
+    const [economicData, setEconomicData] = useState<{ totalVentas: number; costoMercaderia: number; gananciaBruta: number; gastos: number; gananciaNeta: number; tieneHistorico: boolean } | null>(null);
 
     // Calcular fechas solo cuando cambia mode/customYear/customMonth
     const { fromISO, toISO, label, chartType } = useMemo(
@@ -124,12 +125,13 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             const prevTo = new Date(new Date(fromISO).getTime() - 1);
             const prevFrom = new Date(prevTo.getTime() - diffMs);
 
-            const [summaryRes, prevRes, topRes, histRes, payRes] = await Promise.all([
+            const [summaryRes, prevRes, topRes, histRes, payRes, ecoRes] = await Promise.all([
                 getSalesSummaryByRange(fromISO, toISO),
                 getSalesSummaryByRange(prevFrom.toISOString(), prevTo.toISOString()),
                 getTopProductsByRange(10, fromISO, toISO),
                 getSalesByDateRange(fromISO, toISO),
                 getSalesByPaymentMethod(fromISO, toISO),
+                getEconomicResult(fromISO, toISO),
             ]);
 
             setSummary({
@@ -141,6 +143,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             setTopProducts(topRes.data ?? []);
             setChartData(fillDays(histRes.data ?? [], fromISO, toISO));
             setPaymentData(payRes.data ?? []);
+            setEconomicData(ecoRes.data ?? null);
         } catch (e) {
             console.error('Error cargando datos:', e);
         } finally {
@@ -372,6 +375,48 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                     <span className="text-xs text-slate-400 w-10 text-right">{method.pct}%</span>
                                 </div>
                             ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+
+            {/* Resultado económico */}
+            {!loading && economicData && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5" />
+                            Resultado económico — {label}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {!economicData.tieneHistorico && (
+                            <p className="text-xs text-amber-500 mb-3">
+                                ⚠ Las ventas de este período no tienen costo histórico registrado. Activá el seguimiento de costos para ver datos precisos en el futuro.
+                            </p>
+                        )}
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Ventas totales</span>
+                                <span className="text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(economicData.totalVentas)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Costo mercadería vendida</span>
+                                <span className="text-sm font-medium text-red-500">− {formatCurrency(economicData.costoMercaderia)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Ganancia bruta</span>
+                                <span className={`text-sm font-medium ${economicData.gananciaBruta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaBruta)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
+                                <span className="text-sm text-slate-600 dark:text-slate-400">Gastos del período</span>
+                                <span className="text-sm font-medium text-red-500">− {formatCurrency(economicData.gastos)}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-3">
+                                <span className="text-base font-medium text-slate-900 dark:text-white">Ganancia neta</span>
+                                <span className={`text-lg font-bold ${economicData.gananciaNeta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaNeta)}</span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
