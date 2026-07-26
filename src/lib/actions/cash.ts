@@ -124,7 +124,8 @@ export async function closeCashSession(actualCash: number, notes?: string) {
 export async function addCashMovement(
     type: 'withdrawal' | 'deposit' | 'expense',
     amount: number,
-    description?: string
+    description?: string,
+    paymentMethod: 'cash' | 'transfer' = 'cash'
 ) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
@@ -162,7 +163,10 @@ export async function addCashMovement(
 
     const updateData: Record<string, number> = {};
     if (type === 'withdrawal' || type === 'expense') {
-        updateData.total_withdrawals = session.total_withdrawals + amount;
+        // Solo impacta el efectivo físico si el método es efectivo
+        if (paymentMethod === 'cash') {
+            updateData.total_withdrawals = session.total_withdrawals + amount;
+        }
     } else if (type === 'deposit') {
         updateData.total_deposits = session.total_deposits + amount;
     }
