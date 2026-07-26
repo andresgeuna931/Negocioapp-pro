@@ -16,7 +16,9 @@ import {
     CreditCard,
     MessageCircle,
     LayoutGrid,
-    Receipt
+    Receipt,
+    Wallet,
+    Shield
 } from 'lucide-react';
 
 interface FAQItem {
@@ -42,13 +44,13 @@ const faqData: FAQCategory[] = [
         items: [
             {
                 question: '¿Cómo hago una venta?',
-                answer: '1. Andá a "Venta Rápida" en el menú\n2. Escaneá el código de barras o buscá el producto por nombre\n3. Ajustá la cantidad con los botones + y -\n4. Tocá "Cobrar" y seleccioná el método de pago (Efectivo, Transferencia o Fiado)',
+                answer: '1. Andá a "Venta Rápida" en el menú\n2. Escaneá el código de barras o buscá el producto por nombre\n3. Ajustá la cantidad con los botones + y -\n4. Tocá "Cobrar" y seleccioná el método de pago (Efectivo, Débito, QR, Transferencia o Cuenta Corriente)',
                 keywords: ['vender', 'cobrar', 'carrito', 'agregar']
             },
             {
-                question: '¿Por qué no puedo agregar más cantidad de un producto?',
-                answer: 'El sistema no permite vender más cantidad que el stock disponible. Debajo del campo de cantidad verás "máx: X" indicando cuántas unidades tenés. Si necesitás vender más, primero cargá stock en la sección de Inventario.',
-                keywords: ['stock', 'cantidad', 'máximo', 'limite', 'no puedo']
+                question: '¿Cómo aplico un descuento con listas de precios?',
+                answer: 'Si el dueño configuró listas de precios (ej: "Mayorista -10%"), aparece un selector arriba a la derecha en Venta Rápida.\n\n1. Seleccioná la lista que corresponde al cliente\n2. Los precios del carrito se actualizan automáticamente\n3. Para volver al precio normal, seleccioná "— Precio de lista —"\n\nEl selector solo aparece cuando hay al menos una lista de precios creada en Configuración.',
+                keywords: ['descuento', 'precio', 'mayorista', 'lista', 'selector']
             },
             {
                 question: '¿Cómo uso el escáner de códigos de barras?',
@@ -61,9 +63,62 @@ const faqData: FAQCategory[] = [
                 keywords: ['usb', 'lector', 'pistola', 'computadora']
             },
             {
-                question: '¿Cómo aplico un descuento?',
-                answer: 'Podés crear listas de precios con descuentos en la sección Configuración > Listas de Precios. Al vender, seleccioná la lista correspondiente (ej: "Mayorista -10%") y los precios se ajustan automáticamente.',
-                keywords: ['descuento', 'precio', 'mayorista', 'lista']
+                question: '¿Por qué no puedo agregar más cantidad de un producto?',
+                answer: 'El sistema no permite vender más cantidad que el stock disponible. Debajo del campo de cantidad verás "máx: X" indicando cuántas unidades tenés. Si necesitás vender más, primero cargá stock en la sección de Inventario.',
+                keywords: ['stock', 'cantidad', 'máximo', 'limite', 'no puedo']
+            },
+            {
+                question: '¿Cómo anulo una venta?',
+                answer: 'Solo el dueño puede anular ventas.\n\n1. Andá a Caja\n2. En la sección "Ventas de esta sesión", buscá la venta\n3. Tocá el ícono de anulación (prohibido)\n4. Ingresá el motivo (opcional) y confirmá\n\nLa anulación restaura automáticamente el stock de los productos, revierte la deuda si era una venta fiada, y descuenta el monto de los totales de la sesión. La venta queda registrada como "Anulada" para trazabilidad.',
+                keywords: ['anular', 'cancelar', 'venta', 'revertir', 'error']
+            },
+            {
+                question: '¿Cómo registro una venta donde el cliente paga parte ahora y el resto queda fiado?',
+                answer: '1. Al cobrar, seleccioná "Cuenta Corriente" por el total de la venta\n2. Andá a Clientes, buscá al cliente y tocá el ícono de billete\n3. Seleccioná el medio de pago (Efectivo, Transferencia o QR) e ingresá el monto que pagó\n4. El cliente queda con solo la diferencia como deuda\n\nEste pago parcial también queda registrado en la caja del día.',
+                keywords: ['mixto', 'parcial', 'parte efectivo', 'parte fiado', 'pago mixto']
+            }
+        ]
+    },
+    {
+        id: 'caja',
+        title: 'Control de Caja',
+        icon: <Wallet className="w-5 h-5" />,
+        color: 'teal',
+        items: [
+            {
+                question: '¿Cómo abro la caja?',
+                answer: 'Andá a Caja y tocá "Abrir Caja". Ingresá el monto de efectivo con el que arrancás el día (fondo de caja). A partir de ese momento todas las ventas en efectivo se registran en esa sesión.',
+                keywords: ['abrir', 'caja', 'apertura', 'fondo']
+            },
+            {
+                question: '¿Cómo cierro la caja?',
+                answer: '1. Andá a Caja y tocá "Cerrar Caja"\n2. Contá el efectivo físico que tenés en el cajón\n3. Ingresá ese monto en "Efectivo real"\n4. El sistema muestra la diferencia entre lo esperado y lo real\n5. Confirmá el cierre\n\nEl historial del cierre queda guardado con todos los detalles.',
+                keywords: ['cerrar', 'caja', 'cierre', 'contar', 'efectivo']
+            },
+            {
+                question: '¿Qué son los "Otros medios" en la caja?',
+                answer: 'Los "Otros medios" incluyen todas las ventas cobradas por métodos que no son efectivo físico: Débito, QR, Transferencia y Cuenta Corriente. Estos no impactan el cajón físico pero sí se registran en la sesión para control.',
+                keywords: ['otros medios', 'debito', 'qr', 'transferencia', 'digital']
+            },
+            {
+                question: '¿Cómo registro un retiro o gasto desde caja?',
+                answer: 'Tocá el botón "Retiro/Gasto" en la caja abierta. Ingresá:\n- Monto del retiro\n- Descripción (obligatorio, ej: "Pago proveedor Coca")\n- Método de pago: Efectivo o Transferencia\n\nSi elegís Efectivo: se descuenta del efectivo esperado en el cajón.\nSi elegís Transferencia: queda registrado como gasto pero NO toca el efectivo del cajón (el dinero salió del banco).\n\nEl gasto aparece automáticamente en el módulo de Gastos con el badge "De Caja".',
+                keywords: ['retiro', 'gasto', 'egreso', 'proveedor', 'pago', 'transferencia']
+            },
+            {
+                question: '¿Cómo veo las ventas que hice durante la sesión?',
+                answer: 'En la página de Caja, con la caja abierta, bajá hasta la sección "Ventas de esta sesión". Ahí ves todas las ventas con:\n- Hora de la venta\n- Productos vendidos\n- Empleado que vendió\n- Método de pago\n- Monto total\n\nTocá el ícono del ojo para ver el detalle completo de cada venta.',
+                keywords: ['ventas', 'sesion', 'historial', 'dia', 'detalle']
+            },
+            {
+                question: '¿Cómo veo el historial de cierres anteriores?',
+                answer: 'En la página de Caja, con la caja cerrada, bajá hasta "Historial de Cierres". Cada fila muestra: fecha, quién abrió/cerró, apertura, total vendido, efectivo esperado, real y diferencia.\n\nTocá cualquier fila para expandirla y ver:\n- Desglose de ventas por método de pago (efectivo, QR, transferencia, etc.)\n- Lista completa de ventas de esa sesión\n- Ventas anuladas identificadas',
+                keywords: ['historial', 'cierres', 'anteriores', 'expandir', 'detalle']
+            },
+            {
+                question: '¿Por qué el efectivo esperado no coincide con el total de ventas?',
+                answer: 'El efectivo esperado en caja solo incluye las ventas cobradas en efectivo más el fondo de apertura, menos los retiros. Las ventas por QR, débito, transferencia o fiado NO se suman al efectivo esperado porque ese dinero no entra al cajón físico.',
+                keywords: ['efectivo', 'esperado', 'diferencia', 'no coincide', 'total']
             }
         ]
     },
@@ -95,8 +150,8 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo importo productos desde Excel?',
-                answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.\n\nSi un producto ya existe (mismo código de barras o SKU), se actualizará automáticamente con los nuevos datos. Si no existe, se creará como producto nuevo.',
-                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla', 'actualizar', 'duplicar']
+                answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.\n\nSi un producto ya existe (mismo código de barras o SKU), se actualizará automáticamente. Si no existe, se creará como producto nuevo.',
+                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla']
             },
             {
                 question: '¿Cómo filtro productos por categoría?',
@@ -113,13 +168,13 @@ const faqData: FAQCategory[] = [
         items: [
             {
                 question: '¿Cómo gestiono las categorías de mis productos?',
-                answer: 'Andá a Configuración > "Categorías de Productos". Ahí podés ver todas tus categorías, agregar nuevas, renombrar las existentes o eliminarlas. Solo el dueño del negocio tiene acceso a esta sección.',
+                answer: 'Andá a Configuración > "Categorías de Productos". Ahí podés ver todas tus categorías, agregar nuevas, renombrar las existentes o eliminarlas. Solo el dueño tiene acceso a esta sección.',
                 keywords: ['categoria', 'gestionar', 'agregar', 'editar', 'eliminar']
             },
             {
-                question: '¿Puedo agregar categorías personalizadas?',
-                answer: 'Sí. En Configuración > Categorías de Productos, escribí el nombre de la nueva categoría en el campo de texto y tocá "Agregar". La categoría queda disponible inmediatamente para asignar a productos.',
-                keywords: ['categoria', 'nueva', 'personalizada', 'agregar']
+                question: '¿Qué pasa si renombro una categoría?',
+                answer: 'Cuando renombrás una categoría, el nuevo nombre se propaga automáticamente a todos los productos que tenían esa categoría. No perdés ningún producto ni tenés que reasignarlos manualmente.',
+                keywords: ['renombrar', 'categoria', 'productos', 'cambiar nombre']
             },
             {
                 question: '¿Qué pasa si elimino una categoría que tiene productos?',
@@ -136,28 +191,28 @@ const faqData: FAQCategory[] = [
         items: [
             {
                 question: '¿Cómo creo un cliente?',
-                answer: 'Andá a Clientes > "+ Nuevo Cliente". Completá el nombre y opcionalmente teléfono/email. Esto permite llevar cuenta corriente (fiado) con ese cliente.',
+                answer: 'Andá a Clientes > "+ Nuevo Cliente". Completá el nombre y opcionalmente teléfono/email. Para habilitar la cuenta corriente (fiado), el dueño debe asignarle un límite de crédito.',
                 keywords: ['cliente', 'nuevo', 'crear', 'agregar']
             },
             {
                 question: '¿Cómo hago una venta fiada?',
-                answer: 'Al momento de cobrar, seleccioná "Cuenta Corriente (Fiado)" como método de pago. Elegí el cliente de la lista y confirmá. La deuda queda registrada automáticamente.',
+                answer: 'Al momento de cobrar, seleccioná "Cuenta Corriente (Fiado)" como método de pago. Elegí el cliente de la lista y confirmá. La deuda queda registrada automáticamente en la cuenta del cliente.',
                 keywords: ['fiado', 'credito', 'cuenta corriente', 'deuda']
             },
             {
-                question: '¿Cómo veo cuánto debe un cliente?',
-                answer: 'Andá a Clientes. Ahí verás la lista con el saldo pendiente de cada uno. Tocá un cliente para ver el detalle de sus compras fiadas.',
-                keywords: ['deuda', 'saldo', 'debe', 'pendiente']
+                question: '¿Cómo veo cuánto debe un cliente y qué compró?',
+                answer: 'Andá a Clientes y tocá el ícono de historial del cliente. Se abre el historial de cuenta que muestra:\n- Todas las ventas fiadas con el detalle de productos comprados\n- Todos los pagos registrados\n- El saldo actual\n\nTocá cualquier fila de "Venta" para expandirla y ver el desglose de productos, cantidades y precios.',
+                keywords: ['deuda', 'saldo', 'debe', 'pendiente', 'detalle', 'productos']
             },
             {
                 question: '¿Cómo registro un pago de un cliente?',
-                answer: 'Andá a Clientes, tocá el cliente que pagó, y usá el botón "Registrar Pago" (ícono de billete). Seleccioná el medio de pago (Efectivo, Transferencia o QR), ingresá el monto y confirmá. El pago se descuenta de la deuda del cliente y se registra automáticamente en la caja del día.',
+                answer: 'Andá a Clientes, tocá el cliente que pagó, y usá el botón "Registrar Pago". Seleccioná el medio de pago (Efectivo, Transferencia o QR), ingresá el monto y confirmá. El pago se descuenta de la deuda y se registra en la caja del día.',
                 keywords: ['pago', 'abono', 'registrar', 'cobrar']
             },
             {
-                question: '¿Cómo registro una venta donde el cliente paga parte ahora y el resto queda fiado?',
-                answer: '1. Al cobrar, seleccioná "Cuenta Corriente" por el total de la venta (el stock se descuenta en ese momento)\n2. Andá a Clientes, buscá al cliente y tocá el ícono de billete\n3. Seleccioná el medio de pago (Efectivo, Transferencia o QR) e ingresá el monto que pagó ahora\n4. El cliente queda con solo la diferencia como deuda en su cuenta corriente\nEste pago parcial también queda registrado en la caja del día.',
-                keywords: ['mixto', 'parcial', 'parte efectivo', 'parte fiado', 'pago mixto', 'cuenta corriente efectivo']
+                question: '¿Qué pasa si el cliente supera su límite de crédito?',
+                answer: 'El sistema no permite registrar una venta fiada si supera el límite de crédito del cliente. El dueño puede aumentar el límite desde la ficha del cliente en Clientes > editar.',
+                keywords: ['limite', 'credito', 'supera', 'no permite']
             }
         ]
     },
@@ -179,7 +234,7 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo hago un ajuste de inventario?',
-                answer: 'Si el stock real no coincide con el sistema, editá el producto y modificá el campo "Stock actual". Esto corrige la diferencia.',
+                answer: 'Si el stock real no coincide con el sistema, editá el producto y modificá el campo "Stock actual". Esto corrige la diferencia y queda registrado como ajuste en el historial de inventario.',
                 keywords: ['ajuste', 'diferencia', 'corregir', 'inventario']
             }
         ]
@@ -192,32 +247,27 @@ const faqData: FAQCategory[] = [
         items: [
             {
                 question: '¿Qué es el módulo de Gastos?',
-                answer: 'El módulo de Gastos es visible solo para el dueño y administrador del negocio. Permite registrar todos los gastos del negocio (alquiler, luz, mercadería, sueldos, etc.) y ver la ganancia real del mes: Ingresos - Gastos = Ganancia.',
+                answer: 'El módulo de Gastos es visible solo para el dueño. Permite registrar todos los gastos del negocio (alquiler, luz, mercadería, sueldos, etc.) y ver la ganancia real del mes.',
                 keywords: ['gastos', 'modulo', 'ganancia', 'ingresos']
             },
             {
                 question: '¿Cómo registro un gasto?',
-                answer: 'Andá a Gastos y tocá "+ Nuevo gasto". Ingresá el monto, la fecha, la categoría (Mercadería, Alquiler, Electricidad, etc.) y una descripción opcional. El gasto queda registrado inmediatamente.',
+                answer: 'Andá a Gastos y tocá "+ Nuevo gasto". Ingresá el monto, la fecha, la categoría y una descripción opcional. El gasto queda registrado inmediatamente.',
                 keywords: ['registrar', 'gasto', 'nuevo', 'cargar']
             },
             {
                 question: '¿Cómo aparecen los egresos de caja en Gastos?',
-                answer: 'Cuando un empleado registra un "Retiro/Gasto" en la sección de Caja, ese egreso aparece automáticamente en el módulo de Gastos del dueño con el badge "De Caja". No hace falta cargarlo dos veces. Los egresos de caja no se pueden eliminar desde Gastos, solo desde Caja.',
+                answer: 'Cuando se registra un "Retiro/Gasto" en Caja, ese egreso aparece automáticamente en el módulo de Gastos con el badge "De Caja". No hace falta cargarlo dos veces.\n\nLos egresos de caja no se pueden eliminar desde Gastos — si necesitás corregir uno, hacelo desde Caja con un ingreso compensatorio.',
                 keywords: ['caja', 'egreso', 'retiro', 'automatico', 'badge']
             },
             {
-                question: '¿Dónde veo la ganancia del mes?',
-                answer: 'En el Dashboard principal (solo visible para dueño y administrador) hay tres cards: Ingresos del mes, Gastos del mes y Ganancia del mes. La ganancia se calcula automáticamente como Ingresos - Gastos.',
-                keywords: ['ganancia', 'dashboard', 'ingresos', 'balance']
-            },
-            {
                 question: '¿Los empleados pueden ver los gastos?',
-                answer: 'No. El módulo de Gastos y el balance financiero del Dashboard son visibles únicamente para el dueño y el administrador. Los empleados solo ven sus ventas y el control de caja.',
+                answer: 'No. El módulo de Gastos es visible únicamente para el dueño. Los empleados solo pueden ver ventas y el control de caja.',
                 keywords: ['empleado', 'ver', 'gastos', 'permiso']
             },
             {
                 question: '¿Puedo filtrar los gastos por período?',
-                answer: 'Sí. En la página de Gastos podés filtrar por: Hoy, Esta semana, Este mes o Este año. El resumen y la lista se actualizan automáticamente según el período seleccionado.',
+                answer: 'Sí. En la página de Gastos podés filtrar por: Hoy, Esta semana, Este mes o Este año. El resumen y la lista se actualizan automáticamente.',
                 keywords: ['filtrar', 'periodo', 'mes', 'año', 'semana']
             }
         ]
@@ -229,19 +279,62 @@ const faqData: FAQCategory[] = [
         color: 'purple',
         items: [
             {
-                question: '¿Cómo veo las ventas del día?',
-                answer: 'En el Dashboard principal ves el resumen del día: total vendido, cantidad de ventas y ticket promedio. Para más detalle, andá a Reportes.',
-                keywords: ['ventas', 'dia', 'total', 'resumen']
+                question: '¿Cómo veo las ventas por período?',
+                answer: 'Andá a Reportes. Podés elegir entre:\n- Últimos 30 días\n- Este mes\n- Mes anterior\n- Rango personalizado (elegís fecha desde y hasta)\n\nTambién podés navegar mes a mes con las flechas.',
+                keywords: ['ventas', 'periodo', 'mes', 'rango', 'filtro']
+            },
+            {
+                question: '¿Qué muestra el Resultado económico?',
+                answer: 'El Resultado económico es el P&L (Pérdidas y Ganancias) del período:\n\n- Ventas totales\n- Costo mercadería vendida (basado en el costo cargado en cada producto)\n- Ganancia bruta\n- Gastos del período (incluye gastos del módulo de Gastos Y egresos de caja)\n- Ganancia neta con porcentaje de margen\n\nNota: el costo histórico se registra desde la fecha de activación. Ventas anteriores muestran costo $0.',
+                keywords: ['resultado', 'economico', 'ganancia', 'perdida', 'margen', 'costo']
+            },
+            {
+                question: '¿Qué muestra Ventas por medio de pago?',
+                answer: 'Muestra el total vendido desglosado por cada método de pago del período: Efectivo, Transferencia, QR, Débito, Crédito y Cuenta corriente. Cada uno muestra el monto y el porcentaje sobre el total.',
+                keywords: ['medio', 'pago', 'efectivo', 'qr', 'debito', 'desglose']
+            },
+            {
+                question: '¿Cómo uso el gráfico de ventas?',
+                answer: 'El gráfico muestra la evolución de ventas día a día. Pasá el cursor sobre cualquier barra para ver:\n- Fecha\n- Monto vendido ese día\n- Cantidad de ventas\n- Ticket promedio del día',
+                keywords: ['grafico', 'barras', 'tooltip', 'dia', 'evolucion']
             },
             {
                 question: '¿Cómo exporto reportes a Excel?',
-                answer: 'En la sección Reportes, usá el botón "Exportar Excel" para descargar el detalle de ventas. Esta función está disponible en los planes Profesional y Business.',
+                answer: 'En la sección Reportes, usá el botón "Exportar Excel". El archivo incluye el resumen del período y el Top 10 de productos. Disponible en los planes Profesional y Business.',
                 keywords: ['excel', 'exportar', 'descargar', 'reporte']
             },
             {
                 question: '¿Cómo veo qué productos se venden más?',
-                answer: 'En el Dashboard hay una sección "Top Productos del Mes" con los más vendidos. En Reportes podés ver estadísticas más detalladas.',
+                answer: 'En Reportes hay una sección "Top 10 Productos" con los más vendidos por ingresos en el período seleccionado. También podés ver la cantidad vendida de cada uno.',
                 keywords: ['top', 'mas vendido', 'popular', 'ranking']
+            }
+        ]
+    },
+    {
+        id: 'roles',
+        title: 'Roles y Permisos',
+        icon: <Shield className="w-5 h-5" />,
+        color: 'indigo',
+        items: [
+            {
+                question: '¿Cuáles son los roles disponibles?',
+                answer: 'Hay dos roles principales:\n\n- Dueño: acceso total a todas las funciones del negocio\n- Empleado: puede vender, manejar caja y registrar egresos, pero NO puede ver Gastos, Reportes, Configuración ni crear o eliminar productos',
+                keywords: ['roles', 'permisos', 'dueño', 'empleado']
+            },
+            {
+                question: '¿Qué puede hacer un empleado?',
+                answer: 'El empleado puede:\n✓ Hacer ventas (incluyendo fiado)\n✓ Abrir y cerrar caja\n✓ Registrar retiros/gastos desde caja\n✓ Ver sus propios cierres de caja anteriores\n✓ Ver y gestionar clientes\n\nEl empleado NO puede:\n✗ Ver el módulo de Gastos\n✗ Ver Reportes completos\n✗ Acceder a Configuración\n✗ Crear, editar o eliminar productos\n✗ Anular ventas',
+                keywords: ['empleado', 'puede', 'no puede', 'restriccion', 'acceso']
+            },
+            {
+                question: '¿Cómo invito a un empleado?',
+                answer: 'Andá a Configuración > Gestión de Equipo. Ingresá el email del empleado y enviá la invitación. El empleado recibirá un correo para registrarse con su contraseña.',
+                keywords: ['empleado', 'invitar', 'equipo', 'usuario', 'email']
+            },
+            {
+                question: '¿Quién puede anular ventas?',
+                answer: 'Solo el dueño puede anular ventas. Los empleados pueden ver las ventas de la sesión pero no tienen el botón de anulación.',
+                keywords: ['anular', 'venta', 'permiso', 'empleado', 'dueño']
             }
         ]
     },
@@ -252,14 +345,9 @@ const faqData: FAQCategory[] = [
         color: 'indigo',
         items: [
             {
-                question: '¿Cómo accedo a NegocioApp Pro?',
-                answer: 'El acceso a NegocioApp Pro es solo por invitación. Para obtener acceso contactá al equipo. Una vez que te enviamos la invitación, recibís un email para crear tu cuenta.',
-                keywords: ['acceso', 'registro', 'invitacion', 'como entrar']
-            },
-            {
                 question: '¿Cuándo se cobra la suscripción?',
-                answer: 'Los cobros se realizan automáticamente a través de MercadoPago el mismo día del mes en que te suscribiste, y se renuevan cada mes (o cada año si elegiste el plan anual). Se acepta tarjeta de crédito y débito.',
-                keywords: ['cobro', 'fecha', 'cuando', 'dia 10', 'suscripcion']
+                answer: 'Los cobros se realizan automáticamente a través de MercadoPago el mismo día del mes en que te suscribiste, renovándose cada mes (o cada año si elegiste el plan anual).',
+                keywords: ['cobro', 'fecha', 'cuando', 'suscripcion']
             },
             {
                 question: '¿Qué métodos de pago aceptan?',
@@ -275,11 +363,6 @@ const faqData: FAQCategory[] = [
                 question: '¿Cómo configuro los datos de mi negocio?',
                 answer: 'Andá a Configuración. Ahí podés cambiar el nombre del negocio, dirección, teléfono y otros datos. También podés gestionar las categorías de productos y ver el estado de tu suscripción.',
                 keywords: ['configurar', 'negocio', 'datos', 'nombre']
-            },
-            {
-                question: '¿Cómo invito a un empleado?',
-                answer: 'Andá a Configuración > Gestión de Equipo. Ingresá el email del empleado y enviá la invitación. El empleado recibirá un correo para registrarse.\n\nLos empleados pueden hacer ventas, manejar caja y registrar egresos, pero NO pueden ver el módulo de Gastos, el balance financiero del Dashboard ni editar productos o categorías.',
-                keywords: ['empleado', 'invitar', 'equipo', 'usuario', 'rol']
             }
         ]
     }
@@ -339,7 +422,7 @@ export default function AyudaPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
                     type="text"
-                    placeholder="Buscar: ¿Cómo hago una venta? ¿Qué es el SKU?..."
+                    placeholder="Buscar: ¿Cómo anulo una venta? ¿Cómo cierro la caja?..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 h-12 text-base"
