@@ -14,7 +14,7 @@ export default async function CajaPage() {
 
     const [sessionResult, historyResult] = await Promise.all([
         getCurrentCashSession(),
-        getCashSessionHistory(5),
+        getCashSessionHistory(60),
     ]);
 
     const currentSession = sessionResult.data;
