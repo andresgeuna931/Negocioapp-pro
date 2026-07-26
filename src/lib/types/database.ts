@@ -92,6 +92,7 @@ export interface SaleItem {
   product_name: string;
   qty: number;
   unit_price: number;
+  unit_cost?: number; // costo histórico al momento de la venta
   line_total: number;
   created_at: string;
   product?: Product;
