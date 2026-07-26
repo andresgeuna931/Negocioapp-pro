@@ -17,11 +17,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Customer } from '@/lib/types';
 import { getCustomerMovements } from '@/lib/actions/customers';
 import { formatCurrency, formatDate } from '@/lib/utils';
-// ScrollArea removed
 
 interface AccountHistoryDialogProps {
     customer: Customer | null;
@@ -32,6 +31,7 @@ interface AccountHistoryDialogProps {
 export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHistoryDialogProps) {
     const [movements, setMovements] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
         if (open && customer) {
@@ -66,11 +66,11 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col">
+            <DialogContent className="sm:max-w-[750px] max-h-[85vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Historial de Cuenta: {customer?.full_name}</DialogTitle>
                     <DialogDescription>
-                        Movimientos recientes y saldo histórico.
+                        Movimientos recientes. Tocá una venta para ver el detalle de productos.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -88,6 +88,7 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-6"></TableHead>
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Tipo</TableHead>
                                         <TableHead>Concepto</TableHead>
@@ -97,21 +98,66 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
                                 <TableBody>
                                     {movements.map((move) => {
                                         const isDebit = ['sale', 'adjustment_debit'].includes(move.type);
+                                        const hasSaleItems = move.type === 'sale' && move.sale_items?.length > 0;
+                                        const isExpanded = expandedId === move.id;
+
                                         return (
-                                            <TableRow key={move.id}>
-                                                <TableCell className="text-xs text-slate-500">
-                                                    {formatDate(move.created_at)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {getMovementBadge(move.type)}
-                                                </TableCell>
-                                                <TableCell className="max-w-[200px] truncate" title={move.description}>
-                                                    {move.description || '-'}
-                                                </TableCell>
-                                                <TableCell className={`text-right font-medium ${isDebit ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                    {isDebit ? `+${formatCurrency(move.amount)}` : formatCurrency(move.amount)}
-                                                </TableCell>
-                                            </TableRow>
+                                            <>
+                                                <TableRow
+                                                    key={move.id}
+                                                    className={`${hasSaleItems ? 'cursor-pointer' : ''} ${isExpanded ? 'bg-slate-50 dark:bg-slate-800/50' : ''}`}
+                                                    onClick={() => hasSaleItems && setExpandedId(isExpanded ? null : move.id)}
+                                                >
+                                                    <TableCell className="px-2">
+                                                        {hasSaleItems && (
+                                                            isExpanded
+                                                                ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                                                : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs text-slate-500">
+                                                        {formatDate(move.created_at)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {getMovementBadge(move.type)}
+                                                    </TableCell>
+                                                    <TableCell className="max-w-[200px] truncate" title={move.description}>
+                                                        {hasSaleItems
+                                                            ? move.sale_items.slice(0, 2).map((i: any) => `${i.product_name} ×${i.qty}`).join(', ') + (move.sale_items.length > 2 ? ` +${move.sale_items.length - 2}` : '')
+                                                            : move.description || '-'
+                                                        }
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-medium ${isDebit ? 'text-red-500' : 'text-emerald-500'}`}>
+                                                        {isDebit ? `+${formatCurrency(move.amount)}` : formatCurrency(move.amount)}
+                                                    </TableCell>
+                                                </TableRow>
+
+                                                {isExpanded && hasSaleItems && (
+                                                    <TableRow key={`${move.id}-detail`}>
+                                                        <TableCell colSpan={5} className="bg-slate-50 dark:bg-slate-800/30 px-6 py-3">
+                                                            <div className="space-y-1">
+                                                                {move.sale_items.map((item: any, idx: number) => (
+                                                                    <div key={idx} className="flex justify-between items-center text-sm">
+                                                                        <span className="text-slate-600 dark:text-slate-400">
+                                                                            {item.product_name} × {item.qty}
+                                                                        </span>
+                                                                        <span className="text-slate-500 text-xs">
+                                                                            {formatCurrency(item.unit_price)} c/u
+                                                                        </span>
+                                                                        <span className="font-medium text-slate-900 dark:text-white w-20 text-right">
+                                                                            {formatCurrency(item.line_total)}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                                <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-700">
+                                                                    <span className="text-xs font-medium text-slate-500">Total</span>
+                                                                    <span className="font-medium text-red-500">{formatCurrency(move.amount)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </>
                                         );
                                     })}
                                 </TableBody>
