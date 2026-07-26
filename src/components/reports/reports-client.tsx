@@ -404,7 +404,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                 ⚠ Las ventas de este período no tienen costo histórico registrado. Activá el seguimiento de costos para ver datos precisos en el futuro.
                             </p>
                         )}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-4" style={{gridTemplateColumns: "3fr 2fr"}}>
                             {/* Columna izquierda: detalle */}
                             <div className="border-r border-slate-100 dark:border-slate-800 pr-4 space-y-0">
                                 <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
