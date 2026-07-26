@@ -9,7 +9,7 @@ import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { SalesChart } from '@/components/reports/sales-chart';
 import { exportSummaryToExcel } from '@/lib/utils/export-excel';
 
-type PeriodMode = 'last30' | 'thisMonth' | 'prevMonth' | 'custom';
+type PeriodMode = 'last30' | 'thisMonth' | 'prevMonth' | 'custom' | 'custom-range';
 
 interface DateRange {
     fromISO: string;
@@ -111,12 +111,21 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
     const [chartData, setChartData] = useState<{ date: string; total: number; count: number }[]>([]);
     const [paymentData, setPaymentData] = useState<{ key: string; label: string; total: number; count: number; pct: number }[]>([]);
     const [economicData, setEconomicData] = useState<{ totalVentas: number; costoMercaderia: number; gananciaBruta: number; gastos: number; gananciaNeta: number; tieneHistorico: boolean } | null>(null);
+    const [rangeFrom, setRangeFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; });
+    const [rangeTo, setRangeTo] = useState(() => new Date().toISOString().split('T')[0]);
 
-    // Calcular fechas solo cuando cambia mode/customYear/customMonth
-    const { fromISO, toISO, label, chartType } = useMemo(
-        () => computeDateRange(mode, customYear, customMonth),
-        [mode, customYear, customMonth]
-    );
+    // Calcular fechas
+    const { fromISO, toISO, label, chartType } = useMemo(() => {
+        if (mode === 'custom-range') {
+            return {
+                fromISO: new Date(rangeFrom + 'T00:00:00').toISOString(),
+                toISO: new Date(rangeTo + 'T23:59:59').toISOString(),
+                label: `${rangeFrom} al ${rangeTo}`,
+                chartType: 'bar' as const,
+            };
+        }
+        return computeDateRange(mode, customYear, customMonth);
+    }, [mode, customYear, customMonth, rangeFrom, rangeTo]);
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -232,6 +241,18 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                     );
                 })}
 
+                <button
+                    onClick={() => setMode('custom-range')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
+                        mode === 'custom-range'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Rango
+                </button>
+
                 {/* Navegador de mes */}
                 <div className="flex items-center gap-1 ml-2">
                     <button
@@ -251,6 +272,32 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                     </button>
                 </div>
             </div>
+
+            {mode === 'custom-range' && (
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Desde</span>
+                        <input
+                            type="date"
+                            value={rangeFrom}
+                            max={rangeTo}
+                            onChange={(e) => setRangeFrom(e.target.value)}
+                            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-1.5 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">Hasta</span>
+                        <input
+                            type="date"
+                            value={rangeTo}
+                            min={rangeFrom}
+                            max={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setRangeTo(e.target.value)}
+                            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-sm rounded-lg px-3 py-1.5 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-emerald-500"
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Botones exportar */}
             <div className="flex justify-end gap-2">
