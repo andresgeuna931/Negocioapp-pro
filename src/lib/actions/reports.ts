@@ -391,7 +391,7 @@ export async function getEconomicResult(from: string, to: string) {
 
     if (itemsError) return { data: null, error: itemsError.message };
 
-    // Gastos del período
+    // Gastos del período (módulo de gastos)
     const { data: expenses, error: expError } = await supabase
         .from('expenses')
         .select('amount')
@@ -399,8 +399,16 @@ export async function getEconomicResult(from: string, to: string) {
         .gte('date', from.split('T')[0])
         .lte('date', to.split('T')[0]);
 
-    // Si falla gastos, continuamos con 0 (no bloqueamos el resultado económico)
     if (expError) console.error('Error fetching expenses:', expError.message);
+
+    // Egresos de caja del período (retiros y gastos registrados desde Caja)
+    const { data: cashMovements } = await supabase
+        .from('cash_movements')
+        .select('amount')
+        .eq('tenant_id', tenantId)
+        .in('type', ['expense', 'withdrawal'])
+        .gte('created_at', from)
+        .lte('created_at', endOfDayAR(to));
 
     const totalVentas = sales.reduce((s, v) => s + Number(v.total_amount), 0);
 
@@ -416,7 +424,9 @@ export async function getEconomicResult(from: string, to: string) {
         return s + costo;
     }, 0);
 
-    const gastos = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
+    const gastosModulo = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
+    const gastosCaja = (cashMovements || []).reduce((s, m) => s + Number(m.amount), 0);
+    const gastos = gastosModulo + gastosCaja;
     const gananciaBruta = totalVentas - costoMercaderia;
     const gananciaNeta = gananciaBruta - gastos;
 
