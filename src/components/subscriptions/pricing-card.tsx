@@ -26,7 +26,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
     const isCurrent = currentPlanId === plan.id;
     const isPro = plan.id === 'professional';
     const isAnnual = plan.id.endsWith('_annual');
-    const isBusinessPlan = plan.id === 'business' || plan.id === 'business_annual';
+    const isBusinessPlan = plan.id === 'business' || plan.id === 'business_annual' || plan.id === 'professional' || plan.id === 'professional_annual';
 
     // Determinar si es upgrade (plan superior al actual)
     const currentOrder = PLAN_ORDER[currentPlanId || ''] ?? 0;
@@ -64,7 +64,10 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
         if (plan.id === 'starter') {
             return 'Chat en vivo Tawk.to (Autogestión)';
         }
-        if (plan.id === 'professional' || plan.id === 'professional_annual' || plan.id === 'business' || plan.id === 'business_annual') {
+        if (plan.id === 'professional' || plan.id === 'professional_annual') {
+            return 'Chat en vivo Tawk.to (Lun-Vie horario comercial)';
+        }
+        if (plan.id === 'business' || plan.id === 'business_annual') {
             return 'Soporte VIP Telegram 24/7';
         }
         return '';
