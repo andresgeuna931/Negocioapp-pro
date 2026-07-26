@@ -40,7 +40,7 @@ export default async function CajaPage() {
         : 0;
 
     // Desglose por método de pago
-    const salesByMethod = todaySales.reduce((acc: Record<string, number>, sale: any) => {
+    const salesByMethod = todaySales.filter((s: any) => !s.is_cancelled).reduce((acc: Record<string, number>, sale: any) => {
         const method = sale.payment_method;
         acc[method] = (acc[method] || 0) + Number(sale.total_amount);
         return acc;
