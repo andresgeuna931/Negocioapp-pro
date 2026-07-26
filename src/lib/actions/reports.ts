@@ -399,7 +399,8 @@ export async function getEconomicResult(from: string, to: string) {
         .gte('date', from.split('T')[0])
         .lte('date', to.split('T')[0]);
 
-    if (expError) return { data: null, error: expError.message };
+    // Si falla gastos, continuamos con 0 (no bloqueamos el resultado económico)
+    if (expError) console.error('Error fetching expenses:', expError.message);
 
     const totalVentas = sales.reduce((s, v) => s + Number(v.total_amount), 0);
 
