@@ -432,3 +432,60 @@ export async function getEconomicResult(from: string, to: string) {
         error: null,
     };
 }
+
+// Get sales breakdown for a specific cash session range — para historial de cierres
+export async function getSalesBySessionRange(openedAt: string, closedAt: string) {
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId } = ctx;
+
+    const { data: sales, error } = await supabase
+        .from('sales')
+        .select(`
+            id, total_amount, payment_method, created_at, is_cancelled,
+            seller:profiles(full_name),
+            items:sale_items(product_name, qty)
+        `)
+        .eq('tenant_id', tenantId)
+        .gte('created_at', openedAt)
+        .lte('created_at', closedAt)
+        .order('created_at', { ascending: true });
+
+    if (error) return { data: null, error: error.message };
+
+    const METHOD_LABELS: Record<string, string> = {
+        cash: 'Efectivo', transfer: 'Transferencia', qr: 'Código QR',
+        debit: 'Tarjeta débito', credit: 'Tarjeta crédito',
+        mixed: 'Cuenta corriente', account: 'Cuenta corriente',
+    };
+
+    const methodMap: Record<string, { label: string; total: number; count: number; cancelled: number }> = {};
+
+    for (const sale of (sales || [])) {
+        const key = sale.payment_method as string;
+        if (!methodMap[key]) {
+            methodMap[key] = { label: METHOD_LABELS[key] || key, total: 0, count: 0, cancelled: 0 };
+        }
+        if (sale.is_cancelled) {
+            methodMap[key].cancelled += 1;
+        } else {
+            methodMap[key].total += Number(sale.total_amount);
+            methodMap[key].count += 1;
+        }
+    }
+
+    const totalVendido = Object.values(methodMap).reduce((s, m) => s + m.total, 0);
+
+    const byMethod = Object.entries(methodMap)
+        .map(([key, m]) => ({ key, ...m }))
+        .sort((a, b) => b.total - a.total);
+
+    return {
+        data: {
+            sales: sales || [],
+            byMethod,
+            totalVendido,
+        },
+        error: null,
+    };
+}
