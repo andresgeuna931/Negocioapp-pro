@@ -357,3 +357,77 @@ export async function getSalesByPaymentMethod(from: string, to: string) {
 
     return { data: result, error: null };
 }
+
+// Get economic result for a period — solo owner/admin
+export async function getEconomicResult(from: string, to: string) {
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
+
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver reportes históricos' };
+    }
+
+    // Ventas del período con sus items y costos
+    const { data: sales, error: salesError } = await supabase
+        .from('sales')
+        .select('id, total_amount')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', from)
+        .lte('created_at', endOfDayAR(to));
+
+    if (salesError) return { data: null, error: salesError.message };
+    if (!sales || sales.length === 0) {
+        return { data: { totalVentas: 0, costoMercaderia: 0, gananciaBruta: 0, gastos: 0, gananciaNeta: 0, tieneHistorico: true }, error: null };
+    }
+
+    const saleIds = sales.map(s => s.id);
+
+    // Items con costo histórico
+    const { data: items, error: itemsError } = await supabase
+        .from('sale_items')
+        .select('qty, unit_price, unit_cost, line_total')
+        .in('sale_id', saleIds);
+
+    if (itemsError) return { data: null, error: itemsError.message };
+
+    // Gastos del período
+    const { data: expenses, error: expError } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('tenant_id', tenantId)
+        .gte('date', from.split('T')[0])
+        .lte('date', to.split('T')[0]);
+
+    if (expError) return { data: null, error: expError.message };
+
+    const totalVentas = sales.reduce((s, v) => s + Number(v.total_amount), 0);
+
+    // Verificar si hay costos históricos
+    const itemsConCosto = (items || []).filter(i => i.unit_cost !== null && i.unit_cost !== undefined);
+    const tieneHistorico = itemsConCosto.length > 0;
+
+    // Costo mercadería vendida
+    const costoMercaderia = (items || []).reduce((s, i) => {
+        const costo = i.unit_cost !== null && i.unit_cost !== undefined
+            ? Number(i.unit_cost) * Number(i.qty)
+            : 0;
+        return s + costo;
+    }, 0);
+
+    const gastos = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
+    const gananciaBruta = totalVentas - costoMercaderia;
+    const gananciaNeta = gananciaBruta - gastos;
+
+    return {
+        data: {
+            totalVentas,
+            costoMercaderia,
+            gananciaBruta,
+            gastos,
+            gananciaNeta,
+            tieneHistorico,
+        },
+        error: null,
+    };
+}
