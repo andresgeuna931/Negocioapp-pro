@@ -60,10 +60,13 @@ function LoginForm() {
             <CardContent className="p-8">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
-                        <ShoppingCart className="w-8 h-8 text-white" />
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
+                        <span className="text-3xl font-bold text-white" style={{fontFamily: 'sans-serif'}}>N</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-white">NegocioApp Pro</h1>
+                    <div className="mt-1">
+                        <span className="text-2xl font-bold text-white">NegocioApp</span>
+                        <span className="text-2xl font-bold text-emerald-400 ml-1">Pro</span>
+                    </div>
                     <p className="text-slate-400 mt-1">Iniciá sesión para continuar</p>
                 </div>
 
