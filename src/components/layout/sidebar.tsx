@@ -72,8 +72,14 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
             )}>
                 {/* Header fijo */}
                 <div className="flex-shrink-0 flex items-center justify-between h-16 px-6 border-b border-slate-800">
-                    <Link href="/" className="flex items-center gap-2">
-                        <img src="/logo-horizontal.png" alt="NegocioApp Pro" className="h-8 w-auto" />
+                    <Link href="/" className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xl font-bold text-white" style={{fontFamily: 'sans-serif'}}>N</span>
+                        </div>
+                        <div className="flex flex-col leading-tight">
+                            <span className="text-base font-semibold text-white">NegocioApp</span>
+                            <span className="text-xs font-semibold text-emerald-400 tracking-widest">PRO</span>
+                        </div>
                     </Link>
                     <button onClick={onClose} className="lg:hidden p-2 text-slate-400 hover:text-white transition-colors">
                         <X className="w-5 h-5" />
