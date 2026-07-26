@@ -295,17 +295,19 @@ export default function GastosPage() {
                                             })}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm font-bold text-red-400">{formatCurrency(Number(expense.amount))}</span>
-                                        {!expense.from_cash && (
-                                            <button
-                                                onClick={() => handleDelete(expense.id)}
-                                                disabled={isPending}
-                                                className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        )}
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-sm font-bold text-red-400 w-24 text-right">{formatCurrency(Number(expense.amount))}</span>
+                                        <div className="w-8 flex justify-center">
+                                            {!expense.from_cash && (
+                                                <button
+                                                    onClick={() => handleDelete(expense.id)}
+                                                    disabled={isPending}
+                                                    className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
