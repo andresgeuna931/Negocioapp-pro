@@ -5,8 +5,13 @@ import { getSales } from '@/lib/actions/sales';
 import { formatCurrency } from '@/lib/utils';
 import { CashSessionCard } from '@/components/cash/cash-session-card';
 import { CashHistoryTable } from '@/components/cash/cash-history-table';
+import { SalesSessionTable } from '@/components/cash/sales-session-table';
+import { getCurrentSession } from '@/lib/actions/auth';
 
 export default async function CajaPage() {
+    const authSession = await getCurrentSession();
+    const userRole = authSession?.profile?.role || 'staff';
+
     const [sessionResult, historyResult] = await Promise.all([
         getCurrentCashSession(),
         getCashSessionHistory(5),
@@ -199,6 +204,20 @@ export default async function CajaPage() {
             )}
 
             {/* Historial de Cierres */}
+            {currentSession && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <History className="w-5 h-5" />
+                            Ventas de esta sesión
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <SalesSessionTable sales={todaySales} userRole={userRole} />
+                    </CardContent>
+                </Card>
+            )}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
