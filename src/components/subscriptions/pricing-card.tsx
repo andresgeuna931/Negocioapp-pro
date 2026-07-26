@@ -64,10 +64,7 @@ export function PricingCard({ planId, currentPlanId, onSelect, loading, isInTria
         if (plan.id === 'starter') {
             return 'Chat en vivo Tawk.to (Autogestión)';
         }
-        if (plan.id === 'professional' || plan.id === 'professional_annual') {
-            return 'Chat en vivo Tawk.to (Lun-Vie horario comercial)';
-        }
-        if (plan.id === 'business' || plan.id === 'business_annual') {
+        if (plan.id === 'professional' || plan.id === 'professional_annual' || plan.id === 'business' || plan.id === 'business_annual') {
             return 'Soporte VIP Telegram 24/7';
         }
         return '';
