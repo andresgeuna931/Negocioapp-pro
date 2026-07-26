@@ -143,7 +143,15 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
             setTopProducts(topRes.data ?? []);
             setChartData(fillDays(histRes.data ?? [], fromISO, toISO));
             setPaymentData(payRes.data ?? []);
-            setEconomicData(ecoRes.data ?? null);
+            if (ecoRes.error) console.error('Economic result error:', ecoRes.error);
+            setEconomicData(ecoRes.data ?? {
+                totalVentas: 0,
+                costoMercaderia: 0,
+                gananciaBruta: 0,
+                gastos: 0,
+                gananciaNeta: 0,
+                tieneHistorico: false,
+            });
         } catch (e) {
             console.error('Error cargando datos:', e);
         } finally {
