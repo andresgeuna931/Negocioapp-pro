@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Sale, CreateSaleData } from '@/lib/types';
+import { hasPermission } from '@/lib/permissions';
 import { updateCashSessionFromSale } from './cash';
 
 async function getTenantId(): Promise<string | null> {
@@ -315,7 +316,6 @@ export async function cancelSale(saleId: string, reason?: string) {
 
     if (!profile?.tenant_id) return { success: false, error: 'Perfil no encontrado' };
 
-    const { hasPermission } = await import('@/lib/permissions');
     if (!hasPermission(profile.role, 'reports:view_all')) {
         return { success: false, error: 'Solo el dueño o administrador puede anular ventas' };
     }
