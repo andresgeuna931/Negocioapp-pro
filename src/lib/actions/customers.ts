@@ -300,6 +300,31 @@ export async function getCustomerMovements(customerId: string) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
+    // Para ventas fiadas, traer el detalle de productos usando reference_id
+    if (data) {
+        const saleMovements = data.filter((m: any) => m.type === 'sale' && m.reference_id);
+        if (saleMovements.length > 0) {
+            const saleIds = saleMovements.map((m: any) => m.reference_id);
+            const { data: items } = await supabase
+                .from('sale_items')
+                .select('sale_id, product_name, qty, unit_price, line_total')
+                .in('sale_id', saleIds);
+
+            if (items) {
+                const itemsBySaleId: Record<string, any[]> = {};
+                for (const item of items) {
+                    if (!itemsBySaleId[item.sale_id]) itemsBySaleId[item.sale_id] = [];
+                    itemsBySaleId[item.sale_id].push(item);
+                }
+                data.forEach((m: any) => {
+                    if (m.type === 'sale' && m.reference_id) {
+                        m.sale_items = itemsBySaleId[m.reference_id] || [];
+                    }
+                });
+            }
+        }
+    }
+
     if (error) {
         console.error('Error fetching movements:', error);
         return { success: false, error: 'Error al cargar movimientos' };
