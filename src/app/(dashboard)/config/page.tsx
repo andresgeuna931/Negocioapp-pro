@@ -26,6 +26,7 @@ export default async function ConfigPage() {
 
     const team = teamResult.data || [];
     const isOwner = session?.profile.role === 'owner';
+    const allowStaffPriceLists = await getAllowStaffPriceLists();
     const isAdmin = session?.profile.role === 'admin';
 
     return (
