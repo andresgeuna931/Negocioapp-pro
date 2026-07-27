@@ -63,3 +63,30 @@ export async function setAnnouncement(text: string): Promise<{ success: boolean;
     revalidatePath('/');
     return { success: true };
 }
+
+export async function getAllowStaffPriceLists(): Promise<boolean> {
+    const supabase = getAdmin();
+    const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'allow_staff_price_lists')
+        .single();
+    return data?.value === 'true';
+}
+
+export async function setAllowStaffPriceLists(enabled: boolean): Promise<{ success: boolean; error?: string }> {
+    const supabase = getAdmin();
+    const { error } = await supabase
+        .from('system_settings')
+        .update({ value: String(enabled), updated_at: new Date().toISOString() })
+        .eq('key', 'allow_staff_price_lists');
+
+    if (error) {
+        console.error('Error setting allow_staff_price_lists:', error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath('/config');
+    revalidatePath('/ventas');
+    return { success: true };
+}
