@@ -65,21 +65,48 @@ export async function setAnnouncement(text: string): Promise<{ success: boolean;
 }
 
 export async function getAllowStaffPriceLists(): Promise<boolean> {
-    const supabase = getAdmin();
-    const { data } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'allow_staff_price_lists')
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
         .single();
-    return data?.value === 'true';
+
+    if (!profile?.tenant_id) return false;
+
+    const admin = getAdmin();
+    const { data } = await admin
+        .from('tenants')
+        .select('allow_staff_price_lists')
+        .eq('id', profile.tenant_id)
+        .single();
+
+    return data?.allow_staff_price_lists === true;
 }
 
 export async function setAllowStaffPriceLists(enabled: boolean): Promise<{ success: boolean; error?: string }> {
-    const supabase = getAdmin();
-    const { error } = await supabase
-        .from('system_settings')
-        .update({ value: String(enabled), updated_at: new Date().toISOString() })
-        .eq('key', 'allow_staff_price_lists');
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'No autenticado' };
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) return { success: false, error: 'Tenant no encontrado' };
+
+    const admin = getAdmin();
+    const { error } = await admin
+        .from('tenants')
+        .update({ allow_staff_price_lists: enabled })
+        .eq('id', profile.tenant_id);
 
     if (error) {
         console.error('Error setting allow_staff_price_lists:', error);
