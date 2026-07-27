@@ -35,10 +35,35 @@ async function getTenantId(): Promise<string | null> {
     return profile?.tenant_id || null;
 }
 
+async function getUserRole(): Promise<string | null> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    return profile?.role || null;
+}
+
 export async function getPriceLists() {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { data: null, error: 'No autenticado' };
+
+    // Si el usuario es staff, verificar si tiene permiso para usar listas
+    const role = await getUserRole();
+    if (role === 'staff') {
+        const { data: setting } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'allow_staff_price_lists')
+            .single();
+        if (setting?.value !== 'true') {
+            return { data: [], error: null };
+        }
+    }
 
     const { data, error } = await supabase
         .from('price_lists')
