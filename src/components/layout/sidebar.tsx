@@ -55,7 +55,6 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
         { href: '/inventario', label: 'Inventario', icon: ClipboardList },
         { href: '/reportes', label: 'Reportes', icon: BarChart3 },
         { href: '/config', label: 'Configuración', icon: Settings },
-        { href: '/ayuda', label: 'Ayuda', icon: HelpCircle },
     ];
 
     // Staff: Ayuda al final de baseNavItems. Owner/admin: Ayuda al final de ownerNavItems
@@ -126,6 +125,22 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                         >
                             <Receipt className="w-5 h-5" />
                             Gastos
+                        </Link>
+                    )}
+
+                    {isOwner && (
+                        <Link
+                            href="/ayuda"
+                            onClick={onClose}
+                            className={cn(
+                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                                pathname.startsWith('/ayuda')
+                                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
+                            )}
+                        >
+                            <HelpCircle className="w-5 h-5" />
+                            Ayuda
                         </Link>
                     )}
 
