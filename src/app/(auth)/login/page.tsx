@@ -60,11 +60,13 @@ function LoginForm() {
             <CardContent className="p-8">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <img
-                        src="/negocioapp-pro-logo-vertical-transparente.png"
-                        alt="NegocioApp Pro"
-                        className="h-40 w-auto mx-auto"
-                    />
+                    <div className="w-20 h-20 mx-auto rounded-2xl bg-emerald-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
+                        <span className="text-4xl font-bold text-white" style={{fontFamily: 'sans-serif'}}>N</span>
+                    </div>
+                    <div className="mt-2">
+                        <span className="text-2xl font-bold text-white">NegocioApp</span>
+                        <span className="text-2xl font-bold text-emerald-400 ml-1">Pro</span>
+                    </div>
                     <p className="text-slate-400 mt-1">Iniciá sesión para continuar</p>
                 </div>
 
