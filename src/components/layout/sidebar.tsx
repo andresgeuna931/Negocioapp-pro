@@ -55,9 +55,13 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
         { href: '/inventario', label: 'Inventario', icon: ClipboardList },
         { href: '/reportes', label: 'Reportes', icon: BarChart3 },
         { href: '/config', label: 'Configuración', icon: Settings },
+        { href: '/ayuda', label: 'Ayuda', icon: HelpCircle },
     ];
 
-    const navItems = isStaff ? baseNavItems : [...baseNavItems, ...ownerNavItems];
+    // Staff: Ayuda al final de baseNavItems. Owner/admin: Ayuda al final de ownerNavItems
+    const staffItems = baseNavItems;
+    const ownerItems = [...baseNavItems.filter(i => i.href !== '/ayuda'), ...ownerNavItems];
+    const navItems = isStaff ? staffItems : ownerItems;
 
     return (
         <>
