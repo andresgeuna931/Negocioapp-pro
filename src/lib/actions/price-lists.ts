@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { getAllowStaffPriceLists } from '@/lib/actions/system-settings';
 import { revalidatePath } from 'next/cache';
 
 export interface PriceList {
@@ -55,12 +56,8 @@ export async function getPriceLists() {
     // Si el usuario es staff, verificar si tiene permiso para usar listas
     const role = await getUserRole();
     if (role === 'staff') {
-        const { data: setting } = await supabase
-            .from('system_settings')
-            .select('value')
-            .eq('key', 'allow_staff_price_lists')
-            .single();
-        if (setting?.value !== 'true') {
+        const allowed = await getAllowStaffPriceLists();
+        if (!allowed) {
             return { data: [], error: null };
         }
     }
