@@ -61,7 +61,7 @@ function LoginForm() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <img
-                        src="/negocioapp-pro-logo-vertical-oscuro.png"
+                        src="/negocioapp-pro-logo-vertical-transparente.png"
                         alt="NegocioApp Pro"
                         className="h-40 w-auto mx-auto"
                     />
