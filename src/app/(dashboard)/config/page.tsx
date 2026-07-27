@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getTenantSettings, getSubscriptionStatus, getTeamMembers, getCurrentSession } from '@/lib/actions/auth';
+import { getAllowStaffPriceLists } from '@/lib/actions/system-settings';
+import { StaffPriceListToggle } from '@/components/config/StaffPriceListToggle';
 import { formatDate } from '@/lib/utils';
 import { TenantSettingsForm, TeamManagement, CategoryManager, PaymentSettingsForm } from '@/components/config';
 
@@ -250,6 +252,11 @@ export default async function ConfigPage() {
                     </CardContent>
                 </Card>
             </Link>
+
+            {/* Toggle staff price lists */}
+            {isOwner && (
+                <StaffPriceListToggle initialValue={allowStaffPriceLists} />
+            )}
 
             {/* Team Management */}
             <TeamManagement
