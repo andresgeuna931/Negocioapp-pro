@@ -2,11 +2,31 @@ import { redirect } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout';
 import { getCurrentSession } from '@/lib/actions/auth';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { verifySubscriptionWithMP } from '@/lib/actions/verify-subscription';
 import { getMaintenanceMode } from '@/lib/actions/system-settings';
 import { PauseCircle } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+
+const SUSPENDED_SCREEN = (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                <PauseCircle className="w-10 h-10 text-amber-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-3">
+                Cuenta suspendida temporalmente
+            </h1>
+            <p className="text-slate-400 leading-relaxed">
+                Tu cuenta está pausada en este momento. Comunicate con soporte para más información.
+            </p>
+            <div className="mt-8 pt-6 border-t border-slate-800">
+                <p className="text-xs text-slate-600">NegocioApp Pro</p>
+            </div>
+        </div>
+    </div>
+);
 
 export default async function DashboardRootLayout({
     children,
@@ -43,15 +63,21 @@ export default async function DashboardRootLayout({
     }
 
     const supabase = await createClient();
-    
-    const { data: profile } = await supabase
+    const admin = createAdminClient();
+
+    const { data: profile } = await admin
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, is_demo_disabled')
         .eq('id', session.user.id)
         .single();
 
     if (!profile?.tenant_id) {
         redirect('/login');
+    }
+
+    // ─── USUARIO DEMO DESHABILITADO ───────────────────────────────────────────
+    if (profile?.is_demo_disabled && session.profile.role !== 'admin') {
+        return SUSPENDED_SCREEN;
     }
 
     const { data: tenant } = await supabase
@@ -74,26 +100,9 @@ export default async function DashboardRootLayout({
         session.subscription = subscription;
     }
 
-    // ─── PAUSA TEMPORAL ───────────────────────────────────────────────────────
+    // ─── PAUSA TEMPORAL DE TENANT ─────────────────────────────────────────────
     if (tenant?.is_paused && session.profile.role !== 'admin') {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-                <div className="text-center max-w-sm">
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                        <PauseCircle className="w-10 h-10 text-amber-400" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-white mb-3">
-                        Cuenta suspendida temporalmente
-                    </h1>
-                    <p className="text-slate-400 leading-relaxed">
-                        Tu cuenta está pausada en este momento. Comunicate con soporte para más información.
-                    </p>
-                    <div className="mt-8 pt-6 border-t border-slate-800">
-                        <p className="text-xs text-slate-600">NegocioApp Pro</p>
-                    </div>
-                </div>
-            </div>
-        );
+        return SUSPENDED_SCREEN;
     }
 
     if (session.tenant.status === 'trial') {
