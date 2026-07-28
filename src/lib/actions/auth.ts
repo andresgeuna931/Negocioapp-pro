@@ -15,6 +15,10 @@ export async function signIn(email: string, password: string) {
     });
 
     if (error) {
+        // Usuario baneado (cuenta demo deshabilitada)
+        if (error.message.toLowerCase().includes('banned')) {
+            return { error: 'Esta cuenta de demostración está temporalmente deshabilitada.' };
+        }
         // Mensaje genérico en español — no revela si el email existe o no
         return { error: 'Email o contraseña incorrectos. Revisá tus datos e intentá de nuevo.' };
     }
