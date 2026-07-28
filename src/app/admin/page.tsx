@@ -1,16 +1,18 @@
-import { getAdminMetrics } from '@/lib/actions/admin';
+import { getAdminMetrics, getDemoUsersStatus } from '@/lib/actions/admin';
 import { listTenantInvitations, createTenantInvitation } from '@/lib/actions/tenant-invitations';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Users, CreditCard, TrendingUp, Link2, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Building2, Users, CreditCard, TrendingUp, Link2, CheckCircle2, Clock, XCircle, FlaskConical } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { PLANS, formatPrice } from '@/lib/config/plans';
 import { InvitationManager } from '@/components/admin/invitation-manager';
+import { DemoUsersToggle } from '@/components/admin/demo-users-toggle';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
     const metrics = await getAdminMetrics();
     const { invitations = [] } = await listTenantInvitations();
+    const demoStatus = await getDemoUsersStatus();
 
     const statCards = [
         {
@@ -71,6 +73,20 @@ export default async function AdminDashboard() {
                         </CardContent>
                     </Card>
                 ))}
+            </div>
+
+            {/* ─── USUARIOS DEMO ─── */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-violet-500/10">
+                        <FlaskConical className="w-5 h-5 text-violet-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Usuarios Demo</h2>
+                        <p className="text-sm text-slate-500">Habilitá o deshabilitá el acceso a las cuentas de demostración</p>
+                    </div>
+                </div>
+                <DemoUsersToggle initialOwner={demoStatus.owner} initialStaff={demoStatus.staff} />
             </div>
 
             {/* ─── SECCIÓN DE INVITACIONES ─── */}
