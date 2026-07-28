@@ -104,7 +104,6 @@ export async function suspendTenant(tenantId: string) {
                 console.log(`✅ Suscripción MP cancelada: ${subscription.external_subscription_id}`);
             }
         } catch (error) {
-            // Si MP falla, seguimos suspendiendo en Supabase igual
             console.error('Error llamando a MP API:', error);
         }
     } else {
@@ -124,6 +123,50 @@ export async function suspendTenant(tenantId: string) {
         .from('subscriptions')
         .update({ status: 'canceled', updated_at: new Date().toISOString() })
         .eq('tenant_id', tenantId);
+
+    revalidatePath('/admin/tenants');
+    return { success: true };
+}
+
+/**
+ * Pausa temporalmente un tenant sin afectar su suscripción en MP.
+ */
+export async function pauseTenant(tenantId: string): Promise<{ success: boolean; error?: string }> {
+    await requireAdmin();
+
+    const supabaseServiceRole = createSupabaseAdmin(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error } = await supabaseServiceRole
+        .from('tenants')
+        .update({ is_paused: true })
+        .eq('id', tenantId);
+
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/admin/tenants');
+    return { success: true };
+}
+
+/**
+ * Reanuda un tenant pausado.
+ */
+export async function unpauseTenant(tenantId: string): Promise<{ success: boolean; error?: string }> {
+    await requireAdmin();
+
+    const supabaseServiceRole = createSupabaseAdmin(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error } = await supabaseServiceRole
+        .from('tenants')
+        .update({ is_paused: false })
+        .eq('id', tenantId);
+
+    if (error) return { success: false, error: error.message };
 
     revalidatePath('/admin/tenants');
     return { success: true };
