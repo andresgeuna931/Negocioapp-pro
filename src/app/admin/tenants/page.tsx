@@ -1,7 +1,7 @@
 import { getAllTenants } from '@/lib/actions/admin';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, Calendar } from 'lucide-react';
+import { Building2, Mail, Calendar, PauseCircle } from 'lucide-react';
 import { TenantActions } from '@/components/admin/tenant-actions';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +40,7 @@ export default async function AdminTenantsPage() {
                 {tenants.map((tenant) => {
                     const sub = tenant.subscriptions?.[0];
                     const settings = tenant.settings as any;
+                    const isPaused = !!(tenant as any).is_paused;
 
                     // --- PLAN LOGIC ---
                     const hasSub = sub?.status === 'active' && sub?.plan && !['free', 'trial'].includes(sub.plan);
@@ -56,7 +57,7 @@ export default async function AdminTenantsPage() {
                     const isSystemAdmin = ownerProfile?.role === 'admin';
                     const displayEmail = tenant.email || ownerProfile?.email || 'Sin email';
 
-                    // --- EXPIRY LOGIC — solo de Supabase, sin fallbacks ---
+                    // --- EXPIRY LOGIC ---
                     let expiryDate: string | null = sub?.current_period_end || null;
 
                     if (!expiryDate && tenant.status === 'trial') {
@@ -66,12 +67,15 @@ export default async function AdminTenantsPage() {
                     }
 
                     return (
-                        <Card key={tenant.id} className="overflow-hidden hover:border-purple-300 transition-all border-slate-200 dark:border-slate-800">
+                        <Card key={tenant.id} className={`overflow-hidden transition-all border-slate-200 dark:border-slate-800 ${isPaused ? 'border-amber-400/50 dark:border-amber-500/30' : 'hover:border-purple-300'}`}>
                             <CardContent className="p-6">
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
-                                            <Building2 className="w-6 h-6 text-slate-500" />
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isPaused ? 'bg-amber-500/10' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                                            {isPaused
+                                                ? <PauseCircle className="w-6 h-6 text-amber-500" />
+                                                : <Building2 className="w-6 h-6 text-slate-500" />
+                                            }
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -79,6 +83,11 @@ export default async function AdminTenantsPage() {
                                                 {isManual && (
                                                     <Badge variant="info" size="sm" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
                                                         Manual
+                                                    </Badge>
+                                                )}
+                                                {isPaused && (
+                                                    <Badge variant="warning" size="sm" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
+                                                        PAUSADO
                                                     </Badge>
                                                 )}
                                             </div>
@@ -117,7 +126,7 @@ export default async function AdminTenantsPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-end">
-                                            <TenantActions tenantId={tenant.id} tenantName={tenant.name} />
+                                            <TenantActions tenantId={tenant.id} tenantName={tenant.name} isPaused={isPaused} />
                                         </div>
                                     </div>
                                 </div>
