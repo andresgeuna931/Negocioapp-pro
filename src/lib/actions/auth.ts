@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { Profile, Tenant, Subscription, UserSession } from '@/lib/types';
@@ -21,8 +22,9 @@ export async function signIn(email: string, password: string) {
         return { error: 'Email o contraseña incorrectos. Revisá tus datos e intentá de nuevo.' };
     }
 
-    // Verificar si es usuario demo deshabilitado
-    const { data: profile } = await supabase
+    // Verificar si es usuario demo deshabilitado (usando admin client para bypassear RLS)
+    const admin = createAdminClient();
+    const { data: profile } = await admin
         .from('profiles')
         .select('is_demo_disabled')
         .eq('id', data.user.id)
