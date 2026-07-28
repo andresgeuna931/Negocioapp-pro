@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { activateTenantManual, suspendTenant } from '@/lib/actions/admin-actions';
+import { activateTenantManual, suspendTenant, pauseTenant, unpauseTenant } from '@/lib/actions/admin-actions';
 import { toast } from 'sonner';
 import { 
     DropdownMenu, 
@@ -10,9 +10,9 @@ import {
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { CreditCard, MoreHorizontal, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { CreditCard, MoreHorizontal, CheckCircle2, Loader2, XCircle, PauseCircle, PlayCircle } from 'lucide-react';
 
-export function TenantActions({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
+export function TenantActions({ tenantId, tenantName, isPaused }: { tenantId: string; tenantName: string; isPaused: boolean }) {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleActivate = async (planId: string) => {
@@ -37,6 +37,26 @@ export function TenantActions({ tenantId, tenantName }: { tenantId: string; tena
             const result = await suspendTenant(tenantId);
             if (result.success) {
                 toast.success(`${tenantName} suspendido correctamente`);
+            }
+        } catch (error: any) {
+            toast.error(`Error: ${error.message}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleTogglePause = async () => {
+        const action = isPaused ? 'reanudar' : 'pausar';
+        if (!confirm(`¿Estás seguro de ${action} ${tenantName}?`)) return;
+        setIsLoading(true);
+        try {
+            const result = isPaused
+                ? await unpauseTenant(tenantId)
+                : await pauseTenant(tenantId);
+            if (result.success) {
+                toast.success(`${tenantName} ${isPaused ? 'reanudado' : 'pausado'} correctamente`);
+            } else {
+                toast.error(`Error: ${result.error}`);
             }
         } catch (error: any) {
             toast.error(`Error: ${error.message}`);
@@ -82,6 +102,17 @@ export function TenantActions({ tenantId, tenantName }: { tenantId: string; tena
                     Activar BUSINESS
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                    disabled={isLoading}
+                    onClick={handleTogglePause}
+                    className={`cursor-pointer ${isPaused ? 'text-emerald-600 focus:text-emerald-600' : 'text-amber-600 focus:text-amber-600'}`}
+                >
+                    {isPaused
+                        ? <PlayCircle className="w-4 h-4 mr-2" />
+                        : <PauseCircle className="w-4 h-4 mr-2" />
+                    }
+                    {isPaused ? 'Reanudar Negocio' : 'Pausar Negocio'}
+                </DropdownMenuItem>
                 <DropdownMenuItem 
                     disabled={isLoading}
                     onClick={handleSuspend}
