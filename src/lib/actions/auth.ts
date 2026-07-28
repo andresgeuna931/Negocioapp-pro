@@ -15,12 +15,22 @@ export async function signIn(email: string, password: string) {
     });
 
     if (error) {
-        // Usuario baneado (cuenta demo deshabilitada)
         if (error.message.toLowerCase().includes('banned')) {
             return { error: 'Esta cuenta de demostración está temporalmente deshabilitada.' };
         }
-        // Mensaje genérico en español — no revela si el email existe o no
         return { error: 'Email o contraseña incorrectos. Revisá tus datos e intentá de nuevo.' };
+    }
+
+    // Verificar si es usuario demo deshabilitado
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_demo_disabled')
+        .eq('id', data.user.id)
+        .single();
+
+    if (profile?.is_demo_disabled) {
+        await supabase.auth.signOut();
+        return { error: 'Esta cuenta de demostración está temporalmente deshabilitada.' };
     }
 
     // Update last login
