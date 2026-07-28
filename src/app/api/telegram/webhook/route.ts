@@ -29,7 +29,33 @@ FUNCIONES DE LA APP:
 - Gestión de clientes con abonos a cuenta corriente (efectivo, transferencia o QR)
 - Pago mixto: se registra la venta en cuenta corriente y luego se abona la parte pagada desde Clientes > Registrar Pago, seleccionando el medio de pago
 
-MÓDULO DE GASTOS (solo visible para dueño/administrador):
+VENTA RÁPIDA — LISTAS DE PRECIOS:
+- En la pantalla de Venta Rápida hay un selector de lista de precios (aparece solo si el tenant tiene listas configuradas)
+- El dueño siempre puede elegir cualquier lista al vender
+- Los empleados pueden elegir lista solo si el dueño habilitó la opción "Listas de precios para empleados" en Configuración
+- Al cambiar la lista, los precios del carrito se recalculan automáticamente
+- La opción "— Precio de lista —" usa el precio base del producto sin ajuste
+
+MÓDULO DE CAJA:
+- Para vender con efectivo, QR o transferencia, la caja debe estar abierta
+- El dueño o empleado abre la caja indicando el monto inicial
+- Durante la sesión se registran todas las ventas y movimientos
+- El cierre de caja muestra el resumen: efectivo esperado, ventas por método, egresos
+- Los retiros de caja tienen selector de método: Efectivo (descuenta el físico) o Transferencia (no afecta el efectivo físico)
+- "Cuenta corriente" reemplaza al label "Otros" en el desglose por método
+
+ANULACIÓN DE VENTAS:
+- Desde Caja > Ventas de esta sesión, el dueño puede anular ventas de la sesión activa
+- Al anular: se restaura el stock, se revierte el fiado si aplica, y se ajusta el total de caja
+- Las ventas anuladas quedan registradas pero excluidas del desglose y totales
+- Solo se pueden anular ventas de la sesión actual
+
+HISTORIAL DE CIERRES:
+- En Caja se pueden ver los últimos 60 cierres
+- Cada cierre es expandible y muestra el desglose por método de pago y la lista de ventas
+- Las ventas dentro del historial también son expandibles para ver el detalle de productos
+
+MÓDULO DE GASTOS (solo visible para dueño):
 - El dueño puede registrar gastos del negocio con categoría, monto, fecha y descripción
 - Categorías: Mercadería, Alquiler, Electricidad, Agua, Gas, Internet/Teléfono, Sueldos, Limpieza, Mantenimiento, Impuestos, Otros
 - Los egresos registrados en Caja aparecen automáticamente en Gastos con el badge "De Caja"
@@ -38,8 +64,26 @@ MÓDULO DE GASTOS (solo visible para dueño/administrador):
 - Los empleados NO ven el módulo de Gastos ni el balance financiero
 
 PERMISOS POR ROL:
-- Dueño/Admin: acceso completo incluyendo Gastos y balance financiero
-- Empleado: puede vender, manejar caja y registrar egresos, pero NO ve Gastos ni el balance financiero
+- Dueño: acceso completo incluyendo Gastos, balance financiero, configuración, listas de precios, anulación de ventas e historial completo
+- Empleado: puede vender, manejar caja y ver sus propios cierres; NO ve Gastos ni el balance financiero; puede usar listas de precios solo si el dueño lo habilitó en Configuración
+
+CONFIGURACIÓN:
+- Recargos por método de pago: el dueño configura % de recargo para débito, crédito 1 cuota y crédito 3 cuotas
+- Alertas de stock: umbral por defecto configurable; también se puede configurar por producto
+- Listas de precios: se crean desde Configuración > Listas de Precios; se puede definir ajuste por % o monto fijo
+- Listas de precios para empleados: toggle en Configuración que habilita/deshabilita el selector de lista para empleados al vender
+- Equipo: el dueño puede invitar empleados al sistema
+
+MÓDULO DE AYUDA:
+- Dentro de la app hay una sección de Ayuda con 9 secciones y más de 40 preguntas frecuentes
+- Cubre: primeros pasos, ventas, caja, productos, clientes, reportes, gastos, configuración y cuenta
+- Accesible desde el menú lateral para todos los roles
+
+USUARIOS DEMO:
+- Existe una cuenta de demostración para que potenciales clientes prueben la app
+- Demo Dueño: demo-dueno@negocioapp.pro
+- Demo Empleado: demo-empleado@negocioapp.pro
+- Las cuentas demo pueden estar habilitadas o deshabilitadas según lo decida el equipo
 
 PLANES Y PRECIOS:
 - Starter: $19.000/mes — hasta 1.000 productos, 1 usuario, soporte Chat Tawk.to (autogestión)
