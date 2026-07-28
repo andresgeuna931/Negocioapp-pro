@@ -63,24 +63,34 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // F-02: verificar rol para rutas restringidas
-    if (user) {
+    // Verificar perfil una sola vez para rol y demo
+    if (user && !isPublicRoute) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, is_demo_disabled')
+            .eq('id', user.id)
+            .single();
+
+        // ─── USUARIO DEMO DESHABILITADO ───────────────────────────────────────
+        if (profile?.is_demo_disabled && profile?.role !== 'admin') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/demo-suspended';
+            // Evitar loop si ya está en la pantalla de suspensión
+            if (pathname !== '/demo-suspended') {
+                return NextResponse.redirect(url);
+            }
+            return supabaseResponse;
+        }
+
+        // F-02: verificar rol para rutas restringidas
         const isRestrictedRoute = STAFF_RESTRICTED_ROUTES.some((route) =>
             pathname.startsWith(route)
         );
 
-        if (isRestrictedRoute) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .single();
-
-            if (profile?.role === 'staff') {
-                const url = request.nextUrl.clone();
-                url.pathname = '/';
-                return NextResponse.redirect(url);
-            }
+        if (isRestrictedRoute && profile?.role === 'staff') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/';
+            return NextResponse.redirect(url);
         }
     }
 
