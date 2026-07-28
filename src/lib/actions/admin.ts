@@ -63,3 +63,53 @@ export async function getAllTenants(page = 1, limit = 20) {
         total: tenants.length
     };
 }
+
+// ─── USUARIOS DEMO ────────────────────────────────────────────────────────────
+
+const DEMO_USERS = {
+    owner: '6a5ea8ab-296f-4023-9745-829d85b2512a',
+    staff:  '8796a05c-cfd3-462f-a6e9-8b7b635a755a',
+} as const;
+
+export async function getDemoUsersStatus(): Promise<{
+    owner: boolean;
+    staff: boolean;
+}> {
+    await requireAdmin();
+    const supabase = createAdminClient();
+
+    const [ownerRes, staffRes] = await Promise.all([
+        supabase.auth.admin.getUserById(DEMO_USERS.owner),
+        supabase.auth.admin.getUserById(DEMO_USERS.staff),
+    ]);
+
+    // Un usuario está habilitado cuando banned_until es null o está en el pasado
+    const isEnabled = (user: any) => {
+        if (!user) return false;
+        const banned = user.banned_until;
+        if (!banned) return true;
+        return new Date(banned) <= new Date();
+    };
+
+    return {
+        owner: isEnabled(ownerRes.data?.user),
+        staff: isEnabled(staffRes.data?.user),
+    };
+}
+
+export async function toggleDemoUser(
+    role: 'owner' | 'staff',
+    enabled: boolean
+): Promise<{ success: boolean; error?: string }> {
+    await requireAdmin();
+    const supabase = createAdminClient();
+
+    const userId = DEMO_USERS[role];
+
+    const { error } = await supabase.auth.admin.updateUserById(userId, {
+        ban_duration: enabled ? 'none' : '876000h', // 'none' = desbanear | 100 años = ban permanente
+    });
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+}
