@@ -27,7 +27,6 @@ export async function createSale(saleData: CreateSaleData) {
         return { data: null, error: 'Tu período de prueba ha finalizado. Suscribite para seguir vendiendo.' };
     }
 
-    // Check if there's an open cash session
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) return { data: null, error: 'No autenticado' };
 
@@ -86,7 +85,6 @@ export async function createSale(saleData: CreateSaleData) {
         const customerData = Array.isArray(customerAccount.customer) ? customerAccount.customer[0] : customerAccount.customer;
         const limit = customerData?.credit_limit ?? 0;
 
-        // BUG FIX: límite 0 = sin crédito permitido
         if (limit === 0) {
             return {
                 data: null,
@@ -320,101 +318,19 @@ export async function cancelSale(saleId: string, reason?: string) {
         return { success: false, error: 'Solo el dueño o administrador puede anular ventas' };
     }
 
-    const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .select(`*, items:sale_items(*)`)
-        .eq('id', saleId)
-        .eq('tenant_id', profile.tenant_id)
-        .single();
+    // Llamar al RPC transaccional — todo ocurre en una sola transacción PostgreSQL
+    const { data: result, error } = await supabase.rpc('cancel_sale_v2', {
+        p_sale_id: saleId,
+        p_reason: reason || 'Anulada por operador',
+    });
 
-    if (saleError || !sale) return { success: false, error: 'Venta no encontrada' };
-    if (sale.is_cancelled) return { success: false, error: 'La venta ya fue anulada' };
-
-    const { error: updateError } = await supabase
-        .from('sales')
-        .update({
-            is_cancelled: true,
-            cancelled_at: new Date().toISOString(),
-            cancelled_by: user.id,
-            cancellation_reason: reason || 'Anulada por operador',
-        })
-        .eq('id', saleId)
-        .eq('tenant_id', profile.tenant_id);
-
-    if (updateError) return { success: false, error: updateError.message };
-
-    // Restaurar stock de cada item
-    for (const item of (sale.items || [])) {
-        const { data: product } = await supabase
-            .from('products')
-            .select('stock_on_hand')
-            .eq('id', item.product_id)
-            .eq('tenant_id', profile.tenant_id)
-            .single();
-
-        if (product) {
-            const newStock = product.stock_on_hand + Number(item.qty);
-            await supabase
-                .from('products')
-                .update({ stock_on_hand: newStock })
-                .eq('id', item.product_id)
-                .eq('tenant_id', profile.tenant_id);
-
-            await supabase.from('inventory_movements').insert({
-                tenant_id: profile.tenant_id,
-                product_id: item.product_id,
-                type: 'adjustment',
-                qty_change: Number(item.qty),
-                stock_before: product.stock_on_hand,
-                stock_after: newStock,
-                notes: `Anulación venta #${saleId.slice(0, 8)}`,
-                created_by: user.id,
-            });
-        }
+    if (error) {
+        console.error('Error anulando venta:', error);
+        return { success: false, error: error.message };
     }
 
-    // Si era venta fiada, revertir movimiento de cuenta corriente
-    if (sale.payment_method === 'mixed') {
-        const { data: movement } = await supabase
-            .from('account_movements')
-            .select('id, account_id, amount')
-            .eq('reference_id', saleId)
-            .eq('type', 'sale')
-            .single();
-
-        if (movement) {
-            await supabase.from('account_movements').insert({
-                tenant_id: profile.tenant_id,
-                account_id: movement.account_id,
-                type: 'adjustment_credit',
-                amount: movement.amount,
-                description: `Anulación venta #${saleId.slice(0, 8)}`,
-                reference_id: saleId,
-                created_by: user.id,
-            } as any);
-        }
-    }
-
-    // Ajustar totales de caja si hay sesión abierta
-    const { data: openSession } = await supabase
-        .from('cash_sessions')
-        .select('id, total_sales_cash, total_sales_other')
-        .eq('status', 'open')
-        .eq('tenant_id', profile.tenant_id)
-        .single();
-
-    if (openSession) {
-        if (sale.payment_method === 'cash') {
-            await supabase
-                .from('cash_sessions')
-                .update({ total_sales_cash: Math.max(0, openSession.total_sales_cash - Number(sale.total_amount)) })
-                .eq('id', openSession.id);
-        } else if (sale.payment_method !== 'mixed') {
-            await supabase
-                .from('cash_sessions')
-                .update({ total_sales_other: Math.max(0, openSession.total_sales_other - Number(sale.total_amount)) })
-                .eq('id', openSession.id);
-        }
+    if (!result?.success) {
+        return { success: false, error: result?.error || 'Error al anular la venta' };
     }
 
     revalidatePath('/caja');
