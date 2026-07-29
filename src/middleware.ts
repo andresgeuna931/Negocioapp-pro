@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited'];
 
 // F-02: rutas restringidas para staff — el servidor redirige antes de enviar contenido
 const STAFF_RESTRICTED_ROUTES = [
@@ -42,6 +42,13 @@ export async function middleware(request: NextRequest) {
 
     const pathname = request.nextUrl.pathname;
 
+    // Bloquear /register directamente — acceso solo por invitación
+    if (pathname === '/register' || pathname.startsWith('/register/')) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        return NextResponse.redirect(url);
+    }
+
     const isPublicRoute = PUBLIC_ROUTES.some((route) =>
         pathname.startsWith(route)
     );
@@ -57,7 +64,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    if (user && (pathname === '/login' || pathname === '/register')) {
+    if (user && pathname === '/login') {
         const url = request.nextUrl.clone();
         url.pathname = '/';
         return NextResponse.redirect(url);
@@ -75,7 +82,6 @@ export async function middleware(request: NextRequest) {
         if (profile?.is_demo_disabled && profile?.role !== 'admin') {
             const url = request.nextUrl.clone();
             url.pathname = '/demo-suspended';
-            // Evitar loop si ya está en la pantalla de suspensión
             if (pathname !== '/demo-suspended') {
                 return NextResponse.redirect(url);
             }
