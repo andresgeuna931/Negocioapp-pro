@@ -2,21 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/actions/auth";
 import { PLANS, PlanId } from "@/lib/config/plans";
 
 // ─── GENERAR INVITACIÓN (solo admin) ─────────────────────────────────────────
 export async function createTenantInvitation(planId: PlanId, notes?: string) {
+    const session = await requireAdmin();
     const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return { error: "No autenticado." };
-    }
-
-    const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID;
-    if (user.id !== ADMIN_USER_ID) {
-        return { error: "No tenés permisos para generar invitaciones." };
-    }
 
     const plan = PLANS[planId.toUpperCase() as keyof typeof PLANS];
     if (!plan) {
@@ -30,7 +22,7 @@ export async function createTenantInvitation(planId: PlanId, notes?: string) {
         .insert({
             plan_id: plan.id,
             billing,
-            created_by: user.id,
+            created_by: session!.user.id,
             notes: notes || null,
         })
         .select()
@@ -48,8 +40,6 @@ export async function createTenantInvitation(planId: PlanId, notes?: string) {
 
 // ─── VALIDAR TOKEN (público — usa admin client para bypassear RLS) ────────────
 export async function validateInvitationToken(token: string) {
-    // Usamos el cliente admin porque esta página es pública (sin sesión de usuario)
-    // El cliente normal falla con RLS cuando no hay sesión activa
     const adminSupabase = createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -66,9 +56,6 @@ export async function validateInvitationToken(token: string) {
     }
 
     if (data.used_at) {
-        // Si la invitación ya fue usada pero tiene un tenant asociado y activo,
-        // significa que el usuario completó el registro y está siendo redirigido a MP.
-        // En ese caso no mostramos error — redirigimos al login.
         if (data.used_by_tenant_id) {
             const { data: tenant } = await adminSupabase
                 .from("tenants")
@@ -95,7 +82,7 @@ export async function validateInvitationToken(token: string) {
     };
 }
 
-// ─── MARCAR COMO USADA — usa cliente admin para evitar problemas de sesión ───
+// ─── MARCAR COMO USADA ────────────────────────────────────────────────────────
 export async function markInvitationAsUsed(token: string, tenantId: string) {
     const adminSupabase = createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -120,12 +107,8 @@ export async function markInvitationAsUsed(token: string, tenantId: string) {
 
 // ─── LISTAR INVITACIONES (solo admin) ────────────────────────────────────────
 export async function listTenantInvitations() {
+    await requireAdmin();
     const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return { error: "No autenticado." };
-    }
 
     const { data, error } = await supabase
         .from("tenant_invitations")
@@ -139,20 +122,16 @@ export async function listTenantInvitations() {
     return { success: true, invitations: data };
 }
 
-// ─── REVOCAR INVITACIÓN — elimina directamente el registro ───────────────────
+// ─── REVOCAR INVITACIÓN (solo admin) ─────────────────────────────────────────
 export async function revokeInvitation(id: string) {
+    await requireAdmin();
     const supabase = await createClient();
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-        return { error: "No autenticado." };
-    }
 
     const { error } = await supabase
         .from("tenant_invitations")
         .delete()
         .eq("id", id)
-        .is("used_at", null); // Solo elimina si no fue usada realmente
+        .is("used_at", null);
 
     if (error) {
         return { error: "Error al eliminar la invitación." };
