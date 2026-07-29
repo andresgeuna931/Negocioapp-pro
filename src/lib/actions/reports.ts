@@ -6,19 +6,16 @@ import type { SalesSummary, TopProduct, LowStockProduct, UnitType } from '@/lib/
 
 const TZ = 'America/Argentina/Buenos_Aires';
 
-// Convierte una fecha UTC a fecha string YYYY-MM-DD en timezone Argentina
 function toArgDate(utcString: string): string {
     return new Date(utcString).toLocaleDateString('en-CA', { timeZone: TZ });
 }
 
-// Ajusta el toISO para incluir hasta el final del día en Argentina
 function endOfDayAR(isoString: string): string {
     const d = new Date(isoString);
     d.setHours(d.getHours() + 3);
     return d.toISOString();
 }
 
-// Helper to get current user's tenant_id y role
 async function getCurrentUserContext() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -34,7 +31,6 @@ async function getCurrentUserContext() {
     return { supabase, tenantId: profile.tenant_id, role: profile.role };
 }
 
-// Get sales summary for a period
 export async function getSalesSummary(period: 'today' | 'week' | 'month' | 'year' = 'today') {
     const supabase = await createClient();
 
@@ -59,13 +55,11 @@ export async function getSalesSummary(period: 'today' | 'week' | 'month' | 'year
     };
 }
 
-// Get sales summary for a custom date range — solo owner/admin
 export async function getSalesSummaryByRange(from: string, to: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
     const { supabase, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede ver reportes históricos
     if (!hasPermission(role, 'reports:view_all')) {
         return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
@@ -74,6 +68,7 @@ export async function getSalesSummaryByRange(from: string, to: string) {
         .from('sales')
         .select('total_amount')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', from)
         .lte('created_at', endOfDayAR(to));
 
@@ -91,7 +86,6 @@ export async function getSalesSummaryByRange(from: string, to: string) {
     };
 }
 
-// Get top selling products
 export async function getTopProducts(
     limit: number = 5,
     period: 'today' | 'week' | 'month' | 'year' = 'month'
@@ -111,13 +105,11 @@ export async function getTopProducts(
     return { data: data as TopProduct[], error: null };
 }
 
-// Get top selling products for a custom date range — solo owner/admin
 export async function getTopProductsByRange(limit: number = 10, from: string, to: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
     const { supabase, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede ver reportes históricos
     if (!hasPermission(role, 'reports:view_all')) {
         return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
@@ -126,6 +118,7 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
         .from('sales')
         .select('id')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', from)
         .lte('created_at', endOfDayAR(to));
 
@@ -172,7 +165,6 @@ export async function getTopProductsByRange(limit: number = 10, from: string, to
     return { data: sorted, error: null };
 }
 
-// Get low stock products
 export async function getLowStockReport() {
     const supabase = await createClient();
 
@@ -186,7 +178,6 @@ export async function getLowStockReport() {
     return { data: data as LowStockProduct[], error: null };
 }
 
-// Get dashboard data (all in one call)
 export async function getDashboardData() {
     const [todaySummary, monthSummary, topProducts, lowStock] = await Promise.all([
         getSalesSummary('today'),
@@ -203,13 +194,11 @@ export async function getDashboardData() {
     };
 }
 
-// Get sales by date range for charts — solo owner/admin
 export async function getSalesByDateRange(from: string, to: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
     const { supabase, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede ver reportes históricos
     if (!hasPermission(role, 'reports:view_all')) {
         return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
@@ -218,6 +207,7 @@ export async function getSalesByDateRange(from: string, to: string) {
         .from('sales')
         .select('created_at, total_amount')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', from)
         .lte('created_at', endOfDayAR(to))
         .order('created_at');
@@ -246,13 +236,11 @@ export async function getSalesByDateRange(from: string, to: string) {
     };
 }
 
-// Get inventory value — solo owner/admin
 export async function getInventoryValue() {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
     const { supabase, tenantId, role } = ctx;
 
-    // SEC-09: solo owner/admin puede ver valor de inventario
     if (!hasPermission(role, 'reports:view_all')) {
         return { data: null, error: 'No tenés permiso para ver el inventario' };
     }
@@ -304,7 +292,6 @@ export async function getSalesHistory(days: number = 30) {
     return filledData;
 }
 
-// Get sales breakdown by payment method — solo owner/admin
 export async function getSalesByPaymentMethod(from: string, to: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
@@ -318,6 +305,7 @@ export async function getSalesByPaymentMethod(from: string, to: string) {
         .from('sales')
         .select('payment_method, total_amount')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', from)
         .lte('created_at', endOfDayAR(to));
 
@@ -358,7 +346,6 @@ export async function getSalesByPaymentMethod(from: string, to: string) {
     return { data: result, error: null };
 }
 
-// Get economic result for a period — solo owner/admin
 export async function getEconomicResult(from: string, to: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
@@ -368,11 +355,11 @@ export async function getEconomicResult(from: string, to: string) {
         return { data: null, error: 'No tenés permiso para ver reportes históricos' };
     }
 
-    // Ventas del período con sus items y costos
     const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select('id, total_amount')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', from)
         .lte('created_at', endOfDayAR(to));
 
@@ -383,7 +370,6 @@ export async function getEconomicResult(from: string, to: string) {
 
     const saleIds = sales.map(s => s.id);
 
-    // Items con costo histórico
     const { data: items, error: itemsError } = await supabase
         .from('sale_items')
         .select('qty, unit_price, unit_cost, line_total')
@@ -391,7 +377,6 @@ export async function getEconomicResult(from: string, to: string) {
 
     if (itemsError) return { data: null, error: itemsError.message };
 
-    // Gastos del período (módulo de gastos)
     const { data: expenses, error: expError } = await supabase
         .from('expenses')
         .select('amount')
@@ -401,7 +386,6 @@ export async function getEconomicResult(from: string, to: string) {
 
     if (expError) console.error('Error fetching expenses:', expError.message);
 
-    // Egresos de caja del período (retiros y gastos registrados desde Caja)
     const { data: cashMovements } = await supabase
         .from('cash_movements')
         .select('amount')
@@ -412,11 +396,9 @@ export async function getEconomicResult(from: string, to: string) {
 
     const totalVentas = sales.reduce((s, v) => s + Number(v.total_amount), 0);
 
-    // Verificar si hay costos históricos
     const itemsConCosto = (items || []).filter(i => i.unit_cost !== null && i.unit_cost !== undefined);
     const tieneHistorico = itemsConCosto.length > 0;
 
-    // Costo mercadería vendida
     const costoMercaderia = (items || []).reduce((s, i) => {
         const costo = i.unit_cost !== null && i.unit_cost !== undefined
             ? Number(i.unit_cost) * Number(i.qty)
@@ -443,7 +425,6 @@ export async function getEconomicResult(from: string, to: string) {
     };
 }
 
-// Get sales breakdown for a specific cash session range — para historial de cierres
 export async function getSalesBySessionRange(openedAt: string, closedAt: string) {
     const ctx = await getCurrentUserContext();
     if (!ctx) return { data: null, error: 'No autenticado' };
