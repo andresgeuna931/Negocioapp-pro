@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { requireAdmin } from '@/lib/actions/auth';
 import { revalidatePath } from 'next/cache';
 
 function getAdmin() {
@@ -21,6 +22,7 @@ export async function getMaintenanceMode(): Promise<boolean> {
 }
 
 export async function setMaintenanceMode(enabled: boolean): Promise<{ success: boolean; error?: string }> {
+    await requireAdmin();
     const supabase = getAdmin();
     const { error } = await supabase
         .from('system_settings')
@@ -48,6 +50,7 @@ export async function getAnnouncement(): Promise<string> {
 }
 
 export async function setAnnouncement(text: string): Promise<{ success: boolean; error?: string }> {
+    await requireAdmin();
     const supabase = getAdmin();
     const { error } = await supabase
         .from('system_settings')
