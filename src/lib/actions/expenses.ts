@@ -2,17 +2,19 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { hasPermission } from '@/lib/permissions';
 
-async function getCurrentTenantId() {
+async function getCurrentUserContext() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
-    return profile?.tenant_id || null;
+    if (!profile?.tenant_id) return null;
+    return { supabase, tenantId: profile.tenant_id, role: profile.role };
 }
 
 function getPeriodFrom(period: 'today' | 'week' | 'month' | 'year'): string {
@@ -33,13 +35,16 @@ function getPeriodFrom(period: 'today' | 'week' | 'month' | 'year'): string {
 }
 
 export async function getExpenses(period: 'today' | 'week' | 'month' | 'year' = 'month') {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
-    if (!tenantId) return { data: null, error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { data: null, error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
+
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { data: null, error: 'No tenés permiso para ver gastos' };
+    }
 
     const from = getPeriodFrom(period);
 
-    // Gastos cargados manualmente por el dueño
     const { data: expenses, error: expensesError } = await supabase
         .from('expenses')
         .select('*')
@@ -49,7 +54,6 @@ export async function getExpenses(period: 'today' | 'week' | 'month' | 'year' = 
 
     if (expensesError) return { data: null, error: expensesError.message };
 
-    // Egresos de caja registrados por empleados
     const { data: cashMovements } = await supabase
         .from('cash_movements')
         .select('id, amount, description, created_at, type')
@@ -58,7 +62,6 @@ export async function getExpenses(period: 'today' | 'week' | 'month' | 'year' = 
         .gte('created_at', from + 'T00:00:00.000Z')
         .order('created_at', { ascending: false });
 
-    // Convertir cash_movements al formato de expenses
     const cashExpenses = (cashMovements || []).map(mov => ({
         id: `cash_${mov.id}`,
         tenant_id: tenantId,
@@ -70,7 +73,6 @@ export async function getExpenses(period: 'today' | 'week' | 'month' | 'year' = 
         from_cash: true,
     }));
 
-    // Combinar y ordenar por fecha
     const allExpenses = [...(expenses || []).map(e => ({ ...e, from_cash: false })), ...cashExpenses]
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -96,9 +98,13 @@ export async function createExpense(formData: {
     description?: string;
     date: string;
 }) {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
-    if (!tenantId) return { error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
+
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { error: 'No tenés permiso para registrar gastos' };
+    }
 
     const { error } = await supabase
         .from('expenses')
@@ -118,11 +124,14 @@ export async function createExpense(formData: {
 }
 
 export async function deleteExpense(id: string) {
-    const supabase = await createClient();
-    const tenantId = await getCurrentTenantId();
-    if (!tenantId) return { error: 'No autenticado' };
+    const ctx = await getCurrentUserContext();
+    if (!ctx) return { error: 'No autenticado' };
+    const { supabase, tenantId, role } = ctx;
 
-    // No permitir eliminar egresos de caja
+    if (!hasPermission(role, 'reports:view_all')) {
+        return { error: 'No tenés permiso para eliminar gastos' };
+    }
+
     if (id.startsWith('cash_')) return { error: 'No podés eliminar egresos de caja desde este módulo' };
 
     const { error } = await supabase
