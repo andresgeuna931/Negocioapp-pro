@@ -306,11 +306,15 @@ export async function adjustStock(productId: string, newStock: number, notes?: s
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
 
     if (!profile) return { success: false, error: 'Perfil no encontrado' };
+
+    if (!hasPermission(profile.role, 'products:edit')) {
+        return { success: false, error: 'No tenés permiso para ajustar el stock' };
+    }
 
     const { data: product, error: fetchError } = await supabase
         .from('products')
