@@ -366,7 +366,12 @@ export default function SalesPage() {
         } else {
             setCart(prev => prev.map(item => {
                 if (item.product.id !== productId) return item;
-                return { ...item, qty: Math.min(qty, item.product.stock_on_hand) };
+                const maxStock = item.product.stock_on_hand;
+                if (qty > maxStock) {
+                    setError(`Stock insuficiente. Solo quedan ${maxStock} unidades de ${item.product.name}.`);
+                    return { ...item, qty: maxStock };
+                }
+                return { ...item, qty };
             }));
         }
     };
