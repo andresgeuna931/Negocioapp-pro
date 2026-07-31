@@ -11,12 +11,14 @@ interface CashHistoryTableProps {
     sessions: CashSession[];
 }
 
+const TZ = 'America/Argentina/Buenos_Aires';
+
 function formatDateShort(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: '2-digit' });
+    return new Date(dateStr).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: '2-digit', timeZone: TZ });
 }
 
 function formatTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
 }
 
 function isSameDay(a: string, b: string) {
@@ -113,7 +115,7 @@ export function CashHistoryTable({ sessions }: CashHistoryTableProps) {
                                         ) : (
                                             <>
                                                 <div className="font-medium text-slate-900 dark:text-white">
-                                                    {session.closed_at && new Date(session.closed_at).toLocaleDateString('es-AR')}
+                                                    {session.closed_at && new Date(session.closed_at).toLocaleDateString('es-AR', { timeZone: TZ })}
                                                 </div>
                                                 <div className="text-xs text-slate-500">
                                                     {session.opened_at && formatTime(session.opened_at)}
