@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Package, Check, AlertTriangle, Loader2, X, Lock } from 'lucide-react';
+import { Search, Package, Check, AlertTriangle, Loader2, X, Lock, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,14 +32,18 @@ export function InventoryCountForm() {
     const [applying, setApplying] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+    const [loadError, setLoadError] = useState('');
     const [isOwner, setIsOwner] = useState(false);
 
-    // Load products and check role
     const loadProducts = async (searchTerm?: string) => {
         setLoading(true);
+        setLoadError('');
         const result = await getProductsForCount(searchTerm);
-        if (result.data) {
-            setProducts(result.data.map(p => ({
+        if (result.error) {
+            setLoadError('No se pudieron cargar los productos. Intentá recargar la página.');
+            setProducts([]);
+        } else {
+            setProducts((result.data ?? []).map(p => ({
                 id: p.id,
                 name: p.name,
                 barcode: p.barcode,
@@ -147,8 +151,19 @@ export function InventoryCountForm() {
                         {error}
                     </div>
                 )}
+                {loadError && (
+                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-sm">
+                            <AlertTriangle className="w-5 h-5 shrink-0" />
+                            {loadError}
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => loadProducts(search || undefined)}>
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                            Reintentar
+                        </Button>
+                    </div>
+                )}
 
-                {/* Aviso para empleados */}
                 {!isOwner && (
                     <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center gap-3">
                         <Lock className="w-5 h-5 text-blue-500 shrink-0" />
@@ -177,6 +192,11 @@ export function InventoryCountForm() {
                 {loading ? (
                     <div className="py-12 text-center">
                         <Loader2 className="w-8 h-8 mx-auto animate-spin text-slate-400" />
+                    </div>
+                ) : !loadError && products.length === 0 ? (
+                    <div className="py-12 text-center text-slate-500">
+                        <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                        <p>No se encontraron productos activos.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
