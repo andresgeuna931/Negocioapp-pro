@@ -273,8 +273,9 @@ export default function SalesPage() {
         getPriceLists().then(result => {
             if (result.data && result.data.length > 0) {
                 setPriceLists(result.data);
-                const defaultList = result.data.find(l => l.is_default) || result.data[0];
-                setSelectedPriceList(defaultList);
+                // Siempre arrancar con "— Precio de lista —" (null)
+                // El cajero elige la lista manualmente si la necesita
+                setSelectedPriceList(null);
             }
         });
         getPaymentSettings().then(result => {
