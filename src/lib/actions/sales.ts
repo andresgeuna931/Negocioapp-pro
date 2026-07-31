@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import type { Sale, CreateSaleData } from '@/lib/types';
 import { hasPermission } from '@/lib/permissions';
-import { updateCashSessionFromSale } from './cash';
 
 async function getTenantId(): Promise<string | null> {
     const supabase = await createClient();
@@ -27,86 +26,20 @@ export async function createSale(saleData: CreateSaleData) {
         return { data: null, error: 'Tu período de prueba ha finalizado. Suscribite para seguir vendiendo.' };
     }
 
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (!currentUser) return { data: null, error: 'No autenticado' };
-
-    const { data: currentProfile } = await supabase
-        .from('profiles')
-        .select('tenant_id')
-        .eq('id', currentUser.id)
-        .single();
-
-    if (!currentProfile?.tenant_id) return { data: null, error: 'Perfil no encontrado' };
-
-    const { data: openSession } = await supabase
-        .from('cash_sessions')
-        .select('id')
-        .eq('status', 'open')
-        .eq('tenant_id', currentProfile.tenant_id)
-        .single();
-
-    if (!openSession) {
-        return { data: null, error: 'No hay caja abierta. Abrí la caja antes de realizar ventas.' };
-    }
-
     if (!saleData.items || saleData.items.length === 0) {
         return { data: null, error: 'La venta debe tener al menos un producto' };
     }
 
-    let estimatedTotal = 0;
-    if (saleData.payment_method === 'account') {
-        if (!saleData.customer_id) {
-            return { data: null, error: 'Se requiere cliente para Cuenta Corriente' };
-        }
+    const notes = saleData.notes
+        || (saleData.payment_method === 'account' ? 'Venta en Cta. Cte.' : null);
 
-        const { data: customerAccount } = await supabase
-            .from('customer_accounts')
-            .select(`id, balance, customer:customers(credit_limit, full_name)`)
-            .eq('customer_id', saleData.customer_id)
-            .single();
-
-        if (!customerAccount) {
-            return { data: null, error: 'El cliente no tiene cuenta habilitada.' };
-        }
-
-        const productIds = saleData.items.map(i => i.product_id);
-        const { data: products } = await supabase
-            .from('products')
-            .select('id, price')
-            .in('id', productIds);
-
-        if (products) {
-            saleData.items.forEach(item => {
-                const p = products.find(prod => prod.id === item.product_id);
-                if (p) estimatedTotal += p.price * item.qty;
-            });
-        }
-
-        const customerData = Array.isArray(customerAccount.customer) ? customerAccount.customer[0] : customerAccount.customer;
-        const limit = customerData?.credit_limit ?? 0;
-
-        if (limit === 0) {
-            return {
-                data: null,
-                error: `${customerData?.full_name || 'El cliente'} no tiene límite de crédito habilitado. El dueño debe asignarle un límite antes de fiar.`
-            };
-        }
-
-        if (Number(customerAccount.balance) + estimatedTotal > limit) {
-            return {
-                data: null,
-                error: `Límite de crédito excedido. Debe: $${Number(customerAccount.balance).toLocaleString('es-AR')} + Venta: $${estimatedTotal.toLocaleString('es-AR')} > Límite: $${limit.toLocaleString('es-AR')}`
-            };
-        }
-    }
-
-    const dbPaymentMethod = saleData.payment_method === 'account' ? 'mixed' : saleData.payment_method;
-    const notes = saleData.notes || (saleData.payment_method === 'account' ? 'Venta en Cta. Cte.' : null);
-
-    const { data: saleId, error } = await supabase.rpc('process_sale', {
+    // BL-11: venta, items, stock, deuda de cuenta corriente e impacto en caja
+    // ocurren dentro de una única transacción PostgreSQL.
+    const { data: result, error } = await supabase.rpc('process_sale_v4', {
         p_items: saleData.items,
-        p_payment_method: dbPaymentMethod,
+        p_payment_method: saleData.payment_method,
         p_notes: notes,
+        p_customer_id: saleData.customer_id || null,
     });
 
     if (error) {
@@ -114,53 +47,11 @@ export async function createSale(saleData: CreateSaleData) {
         return { data: null, error: error.message };
     }
 
-    if (saleData.payment_method === 'account' && saleData.customer_id) {
-        const { data: customerAccount } = await supabase
-            .from('customer_accounts')
-            .select('id')
-            .eq('customer_id', saleData.customer_id)
-            .single();
-
-        if (customerAccount) {
-            const { data: saleRecord } = await supabase
-                .from('sales')
-                .select('total_amount')
-                .eq('id', saleId)
-                .single();
-
-            const finalAmount = saleRecord?.total_amount || estimatedTotal;
-
-            const { error: moveError } = await supabase
-                .from('account_movements')
-                .insert({
-                    tenant_id: currentProfile.tenant_id,
-                    account_id: customerAccount.id,
-                    type: 'sale',
-                    amount: finalAmount,
-                    description: 'Compra en mostrador',
-                    reference_id: saleId,
-                    created_by: currentUser.id
-                } as any);
-
-            if (moveError) {
-                console.error('Error creating account movement:', moveError);
-                return { data: saleId, error: `Venta creada, pero falló registro de deuda: ${moveError.message}` };
-            }
-        }
+    if (!result?.success) {
+        return { data: null, error: result?.error || 'Error al procesar la venta' };
     }
 
-    const { data: saleRecord } = await supabase
-        .from('sales')
-        .select('total_amount, payment_method')
-        .eq('id', saleId)
-        .single();
-
-    if (saleRecord) {
-        await updateCashSessionFromSale(
-            Number(saleRecord.total_amount),
-            saleRecord.payment_method
-        );
-    }
+    const saleId = result.sale_id as string;
 
     revalidatePath('/');
     revalidatePath('/ventas');
@@ -170,32 +61,34 @@ export async function createSale(saleData: CreateSaleData) {
     revalidatePath('/clientes');
 
     try {
-        const tenantId = currentProfile.tenant_id;
-        const productIds = saleData.items.map(i => i.product_id);
+        const tenantId = await getTenantId();
+        if (tenantId) {
+            const productIds = saleData.items.map(i => i.product_id);
 
-        const { data: lowStockProducts } = await supabase.rpc('get_low_stock_products');
+            const { data: lowStockProducts } = await supabase.rpc('get_low_stock_products');
 
-        if (lowStockProducts && lowStockProducts.length > 0) {
-            const { createTenantNotification, tenantNotificationExists } = await import('./tenant-notifications');
+            if (lowStockProducts && lowStockProducts.length > 0) {
+                const { createTenantNotification, tenantNotificationExists } = await import('./tenant-notifications');
 
-            const relevantProducts = lowStockProducts.filter((p: any) =>
-                productIds.includes(p.id)
-            );
-
-            for (const product of relevantProducts) {
-                const alreadyNotified = await tenantNotificationExists(
-                    tenantId,
-                    'stock_low',
-                    product.name
+                const relevantProducts = lowStockProducts.filter((p: any) =>
+                    productIds.includes(p.id)
                 );
 
-                if (!alreadyNotified) {
-                    await createTenantNotification(
+                for (const product of relevantProducts) {
+                    const alreadyNotified = await tenantNotificationExists(
                         tenantId,
                         'stock_low',
-                        '📦 Stock bajo',
-                        `${product.name} — quedan ${product.stock_on_hand} unidades`
+                        product.name
                     );
+
+                    if (!alreadyNotified) {
+                        await createTenantNotification(
+                            tenantId,
+                            'stock_low',
+                            '📦 Stock bajo',
+                            `${product.name} — quedan ${product.stock_on_hand} unidades`
+                        );
+                    }
                 }
             }
         }
@@ -203,8 +96,9 @@ export async function createSale(saleData: CreateSaleData) {
         console.error('Error en notificación de stock bajo:', stockNotifError);
     }
 
-    return { data: saleId as string, error: null };
+    return { data: saleId, error: null };
 }
+
 
 export async function getSales(options?: {
     from?: string;
