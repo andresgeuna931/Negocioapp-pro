@@ -364,15 +364,19 @@ export default function SalesPage() {
         if (qty <= 0) {
             setCart(prev => prev.filter(item => item.product.id !== productId));
         } else {
-            setCart(prev => prev.map(item => {
-                if (item.product.id !== productId) return item;
-                const maxStock = item.product.stock_on_hand;
-                if (qty > maxStock) {
-                    setError(`Stock insuficiente. Solo quedan ${maxStock} unidades de ${item.product.name}.`);
-                    return { ...item, qty: maxStock };
-                }
-                return { ...item, qty };
-            }));
+            const item = cart.find(i => i.product.id === productId);
+            if (item && qty > item.product.stock_on_hand) {
+                setError(`Stock insuficiente. Solo quedan ${item.product.stock_on_hand} unidades de ${item.product.name}.`);
+                setCart(prev => prev.map(i =>
+                    i.product.id === productId
+                        ? { ...i, qty: i.product.stock_on_hand }
+                        : i
+                ));
+            } else {
+                setCart(prev => prev.map(i =>
+                    i.product.id === productId ? { ...i, qty } : i
+                ));
+            }
         }
     };
 
