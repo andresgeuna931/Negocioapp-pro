@@ -7,9 +7,21 @@ import { ADJUSTMENT_REASONS, type AdjustmentReason } from '@/lib/constants/adjus
 export async function getProductsForCount(search?: string) {
     const supabase = await createClient();
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: 'No autenticado' };
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile?.tenant_id) return { data: null, error: 'Perfil no encontrado' };
+
     let query = supabase
         .from('products')
         .select('id, name, barcode, stock_on_hand, unit_type, category')
+        .eq('tenant_id', profile.tenant_id)
         .eq('is_active', true)
         .order('name');
 
@@ -24,7 +36,7 @@ export async function getProductsForCount(search?: string) {
         return { data: null, error: error.message };
     }
 
-    return { data, error: null };
+    return { data: data ?? [], error: null };
 }
 
 export async function applyInventoryAdjustments(
@@ -65,7 +77,8 @@ export async function applyInventoryAdjustments(
                 stock_on_hand: adj.countedStock,
                 updated_at: new Date().toISOString()
             })
-            .eq('id', adj.productId);
+            .eq('id', adj.productId)
+            .eq('tenant_id', profile.tenant_id);
 
         if (updateError) {
             errors.push(`Error actualizando ${adj.productName}: ${updateError.message}`);
