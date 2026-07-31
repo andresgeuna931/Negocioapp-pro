@@ -82,29 +82,6 @@ export async function validateInvitationToken(token: string) {
     };
 }
 
-// ─── MARCAR COMO USADA ────────────────────────────────────────────────────────
-export async function markInvitationAsUsed(token: string, tenantId: string) {
-    const adminSupabase = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { error } = await adminSupabase
-        .from("tenant_invitations")
-        .update({
-            used_at: new Date().toISOString(),
-            used_by_tenant_id: tenantId,
-        })
-        .eq("token", token);
-
-    if (error) {
-        console.error("Error marcando invitación como usada:", error);
-        return { error: "Error al actualizar la invitación." };
-    }
-
-    return { success: true };
-}
-
 // ─── LISTAR INVITACIONES (solo admin) ────────────────────────────────────────
 export async function listTenantInvitations() {
     await requireAdmin();
