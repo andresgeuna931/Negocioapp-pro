@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { validateInvitationToken, markInvitationAsUsed } from "@/lib/actions/tenant-invitations";
+import { validateInvitationToken } from "@/lib/actions/tenant-invitations";
 import { CATEGORIES_BY_BUSINESS_TYPE } from "@/lib/constants/business-types";
 
 // Genera un slug único a partir del nombre del negocio
@@ -9,7 +9,7 @@ function generateSlug(name: string): string {
     return name
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '') // elimina acentos
+        .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9\s-]/g, '')
         .trim()
         .replace(/\s+/g, '-')
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 6. Crear suscripción inicial (se actualiza al webhook de MP cuando el usuario pague)
+        // 6. Crear suscripción inicial
         const { error: subError } = await adminSupabase
             .from("subscriptions")
             .insert({
@@ -111,7 +111,6 @@ export async function POST(request: NextRequest) {
         }
 
         // 7. Insertar categorías base según el tipo de negocio
-        // Si no viene businessType o no hay match, usamos kiosco como fallback
         const categoryNames = CATEGORIES_BY_BUSINESS_TYPE[businessType || 'kiosco']
             ?? CATEGORIES_BY_BUSINESS_TYPE['kiosco'];
 
@@ -125,16 +124,25 @@ export async function POST(request: NextRequest) {
             .insert(categoryRows);
 
         if (catError) {
-            // No bloquear el registro si falla — el usuario puede agregar categorías manualmente
             console.error("Error insertando categorías base:", catError);
         } else {
             console.log(`✅ ${categoryRows.length} categorías insertadas para tenant ${tenant.id} (${businessType || 'kiosco'})`);
         }
 
-        // 8. Marcar invitación como usada
-        await markInvitationAsUsed(token, tenant.id);
+        // 8. Marcar invitación como usada (inline — no se expone como Server Action)
+        const { error: invError } = await adminSupabase
+            .from("tenant_invitations")
+            .update({
+                used_at: new Date().toISOString(),
+                used_by_tenant_id: tenant.id,
+            })
+            .eq("token", token);
 
-        // 9. Notificación admin de nuevo registro — no bloquea el flujo si falla
+        if (invError) {
+            console.error("Error marcando invitación como usada:", invError);
+        }
+
+        // 9. Notificación admin de nuevo registro
         try {
             await adminSupabase.from("admin_notifications").insert({
                 type: 'new_tenant',
