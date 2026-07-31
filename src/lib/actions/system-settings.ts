@@ -99,11 +99,16 @@ export async function setAllowStaffPriceLists(enabled: boolean): Promise<{ succe
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
 
     if (!profile?.tenant_id) return { success: false, error: 'Tenant no encontrado' };
+
+    // Solo el dueño o admin puede cambiar esta configuración
+    if (!['owner', 'admin'].includes(profile.role)) {
+        return { success: false, error: 'Solo el dueño puede cambiar esta configuración' };
+    }
 
     const admin = getAdmin();
     const { error } = await admin
