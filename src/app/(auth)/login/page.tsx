@@ -140,9 +140,9 @@ function LoginForm() {
 
                 {/* Register link */}
                 <div className="mt-4 text-center text-sm text-slate-400">
-                    ¿No tenés cuenta?{' '}
+                    ¿Querés conocer la plataforma?{' '}
                     <a href="/register" className="text-emerald-400 hover:underline font-medium">
-                        Registrate gratis
+                        Solicitá una invitación
                     </a>
                 </div>
             </CardContent>
