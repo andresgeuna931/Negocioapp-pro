@@ -91,6 +91,14 @@ export async function getProductById(id: string) {
     return { data: data as Product, error: null };
 }
 
+// Normaliza categoría: "bebidas", "BEBIDAS", "BEBIdas" → "Bebidas"
+function normalizeCategory(category?: string): string | undefined {
+    if (!category) return category;
+    const trimmed = category.trim();
+    if (!trimmed) return undefined;
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+}
+
 export async function createProduct(formData: ProductFormData) {
     const session = await getCurrentSession();
     if (!session) return { data: null, error: 'No autenticado' };
@@ -114,7 +122,7 @@ export async function createProduct(formData: ProductFormData) {
 
     const { data, error } = await supabase
         .from('products')
-        .insert({ ...formData, tenant_id: profile.tenant_id })
+        .insert({ ...formData, tenant_id: profile.tenant_id, category: normalizeCategory(formData.category) })
         .select()
         .single();
 
@@ -143,7 +151,7 @@ export async function updateProduct(id: string, formData: Partial<ProductFormDat
 
     const { data, error } = await supabase
         .from('products')
-        .update(formData)
+        .update({ ...formData, category: normalizeCategory(formData.category) })
         .eq('id', id)
         .eq('tenant_id', tenantId)
         .select()
@@ -414,7 +422,7 @@ export async function importProducts(
                         price: p.price,
                         cost: p.cost,
                         stock_on_hand: p.stock_on_hand,
-                        category: p.category,
+                        category: normalizeCategory(p.category),
                         unit_type: p.unit_type || 'unit',
                         is_active: true
                     })
@@ -434,7 +442,7 @@ export async function importProducts(
                         price: p.price,
                         cost: p.cost,
                         stock_on_hand: p.stock_on_hand,
-                        category: p.category,
+                        category: normalizeCategory(p.category),
                         unit_type: p.unit_type || 'unit',
                         is_active: true
                     });
