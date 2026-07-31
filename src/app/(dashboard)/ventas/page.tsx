@@ -52,7 +52,7 @@ function QtyInput({ value, max, step, onCommit }: {
         if (isNaN(parsed) || localValue === '') {
             setLocalValue(String(value));
         } else {
-            onCommit(Math.min(Math.max(0, parsed), max));
+            onCommit(Math.max(0, parsed)); // commitQty maneja el límite de stock
         }
     };
 
@@ -365,18 +365,15 @@ export default function SalesPage() {
             setCart(prev => prev.filter(item => item.product.id !== productId));
         } else {
             const item = cart.find(i => i.product.id === productId);
-            if (item && qty > item.product.stock_on_hand) {
-                setError(`Stock insuficiente. Solo quedan ${item.product.stock_on_hand} unidades de ${item.product.name}.`);
-                setCart(prev => prev.map(i =>
-                    i.product.id === productId
-                        ? { ...i, qty: i.product.stock_on_hand }
-                        : i
-                ));
-            } else {
-                setCart(prev => prev.map(i =>
-                    i.product.id === productId ? { ...i, qty } : i
-                ));
+            const maxStock = item?.product.stock_on_hand ?? qty;
+            if (qty > maxStock) {
+                setError(`Stock insuficiente. Solo quedan ${maxStock} unidades de ${item?.product.name}.`);
             }
+            setCart(prev => prev.map(i =>
+                i.product.id === productId
+                    ? { ...i, qty: Math.min(qty, i.product.stock_on_hand) }
+                    : i
+            ));
         }
     };
 
