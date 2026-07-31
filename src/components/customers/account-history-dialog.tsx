@@ -37,15 +37,20 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
         if (open && customer) {
             loadMovements();
         }
+        if (!open) {
+            // Resetear al cerrar para evitar datos stale en la próxima apertura
+            setMovements([]);
+            setExpandedId(null);
+        }
     }, [open, customer]);
 
     async function loadMovements() {
         if (!customer) return;
         setIsLoading(true);
+        setMovements([]); // Resetear antes de cargar para evitar datos stale
         const res = await getCustomerMovements(customer.id);
-        if (res.success && res.data) {
-            setMovements(res.data);
-        }
+        // Setear siempre, incluso si data es vacío
+        setMovements(res.data ?? []);
         setIsLoading(false);
     }
 
