@@ -234,7 +234,7 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo hago un ajuste de inventario?',
-                answer: 'Si el stock real no coincide con el sistema, editá el producto y modificá el campo "Stock actual". Esto corrige la diferencia y queda registrado como ajuste en el historial de inventario.',
+                answer: 'Si el stock real no coincide con el sistema, usá el módulo Inventario:\n\n1. Andá a Inventario\n2. Buscá el producto\n3. Ingresá la cantidad real contada\n4. El sistema calcula la diferencia y te pide el motivo\n5. Aplicá el ajuste\n\nEl ajuste queda registrado con fecha, usuario y motivo. No se puede modificar el stock directamente desde el formulario del producto.',
                 keywords: ['ajuste', 'diferencia', 'corregir', 'inventario']
             }
         ]
