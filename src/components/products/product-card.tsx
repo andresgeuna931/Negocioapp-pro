@@ -56,7 +56,7 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
     const [price, setPrice] = useState(product.price.toString());
     const [cost, setCost] = useState(product.cost?.toString() || '');
     const [stockOnHand, setStockOnHand] = useState(product.stock_on_hand.toString());
-    const [threshold, setThreshold] = useState(product.low_stock_threshold_override?.toString() || '');
+    const [threshold, setThreshold] = useState(product.low_stock_threshold_override ? product.low_stock_threshold_override.toString() : '');
 
     const unitLabel = unitLabels[unitType] || 'unidad';
     const priceNum = parseFloat(price) || 0;
@@ -332,7 +332,7 @@ export function ProductCard({ product, canEdit = true }: ProductCardProps) {
                                     min="0"
                                     value={threshold}
                                     onChange={(e) => setThreshold(e.target.value)}
-                                    placeholder="Por defecto"
+                                    placeholder="5 (por defecto)"
                                 />
                             </div>
                         </div>
