@@ -62,7 +62,6 @@ export function EditProductModal({ product, onClose }: { product: Product; onClo
                 category: category || undefined,
                 price: parseFloat(price),
                 cost: cost ? parseFloat(cost) : undefined,
-                stock_on_hand: parseFloat(stockOnHand),
                 low_stock_threshold_override: threshold ? parseFloat(threshold) : undefined,
             });
             if (result.error) {
@@ -165,8 +164,10 @@ export function EditProductModal({ product, onClose }: { product: Product; onClo
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                     Stock actual <span className="text-slate-400 font-normal">({unitLabel})</span>
                                 </label>
-                                <input type="number" step="0.001" min="0" value={stockOnHand} onChange={(e) => setStockOnHand(e.target.value)}
-                                    className="w-full h-11 px-4 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+                                <div className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex items-center justify-between">
+                                    <span className="font-medium text-slate-700 dark:text-slate-300">{stockOnHand} {unitLabel}</span>
+                                    <span className="text-xs text-slate-400">Solo desde Inventario</span>
+                                </div>
                             </div>
                             <Input label="Alerta stock bajo" type="number" step="1" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder="5 (por defecto)" />
                         </div>
