@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Lock } from 'lucide-react';
+import { Lock, Mail } from 'lucide-react';
 
 export default function RegisterPage() {
     return (
@@ -20,17 +20,16 @@ export default function RegisterPage() {
                 </p>
 
                 <p className="text-slate-400 text-sm mb-8">
-                    Si ya recibiste tu invitación, usá el link que te enviamos. Si querés conocer la plataforma, contactanos.
+                    Si ya recibiste tu invitación, usá el link que te enviamos. Si querés conocer la plataforma, escribinos y te contactamos.
                 </p>
 
                 <div className="space-y-3">
                     <a
-                        href="https://wa.me/5493513000000?text=Hola%2C%20quiero%20conocer%20NegocioApp%20Pro"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full h-12 px-6 inline-flex items-center justify-center rounded-xl font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all"
+                        href="mailto:amgdigital.ok@gmail.com?subject=Quiero%20conocer%20NegocioApp%20Pro"
+                        className="w-full h-12 px-6 inline-flex items-center justify-center gap-2 rounded-xl font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all"
                     >
-                        Contactar por WhatsApp
+                        <Mail className="w-4 h-4" />
+                        Contactar por Email
                     </a>
                     <Link
                         href="/login"
