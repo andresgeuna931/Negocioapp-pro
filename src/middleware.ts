@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited', '/register'];
 
 // F-02: rutas restringidas para staff — el servidor redirige antes de enviar contenido
 const STAFF_RESTRICTED_ROUTES = [
@@ -41,13 +41,6 @@ export async function middleware(request: NextRequest) {
     );
 
     const pathname = request.nextUrl.pathname;
-
-    // Bloquear /register directamente — acceso solo por invitación
-    if (pathname === '/register' || pathname.startsWith('/register/')) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        return NextResponse.redirect(url);
-    }
 
     const isPublicRoute = PUBLIC_ROUTES.some((route) =>
         pathname.startsWith(route)
