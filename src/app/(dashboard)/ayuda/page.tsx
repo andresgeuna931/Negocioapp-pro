@@ -223,9 +223,9 @@ const faqData: FAQCategory[] = [
         color: 'amber',
         items: [
             {
-                question: '¿Cómo cargo stock de un producto?',
-                answer: 'Andá a Inventario > "+ Nueva Entrada". Buscá el producto, ingresá la cantidad recibida y opcionalmente el costo. El stock se suma automáticamente.',
-                keywords: ['stock', 'cargar', 'entrada', 'reponer', 'inventario']
+                question: '¿Cómo cargo stock cuando llega mercadería nueva?',
+                answer: 'Seguí estos dos pasos:\n\n1. **Actualizá el stock en Inventario**\nAndá a Inventario, buscá el producto, ingresá la cantidad total que tenés ahora (stock anterior + lo que llegó). Por ejemplo: tenías 30 y llegaron 30 más → ponés 60. El sistema calcula la diferencia de +30 y te pide el motivo.\n\n2. **Registrá el gasto en Gastos**\nAndá a Gastos y registrá el monto total de la compra con categoría "Mercadería". Así el gasto aparece en el Resultado Económico y la ganancia neta es correcta.\n\nEste flujo manual estará reemplazado por el Módulo de Proveedores próximamente.',
+                keywords: ['stock', 'cargar', 'entrada', 'reponer', 'inventario', 'mercadería', 'compra']
             },
             {
                 question: '¿Cómo funciona la alerta de stock bajo?',
