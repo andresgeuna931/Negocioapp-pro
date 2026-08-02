@@ -233,7 +233,7 @@ export async function createCategory(name: string) {
 
     const { error } = await supabase
         .from('categories')
-        .insert({ tenant_id: tenantId, name: name.trim() });
+        .insert({ tenant_id: tenantId, name: normalizeCategory(name) || name.trim() });
 
     if (error) {
         if (error.code === '23505') return { error: 'Ya existe una categoría con ese nombre' };
@@ -262,7 +262,7 @@ export async function updateCategory(id: string, name: string) {
     if (fetchError || !existing) return { error: 'Categoría no encontrada' };
 
     const oldName = existing.name;
-    const newName = name.trim();
+    const newName = normalizeCategory(name) || name.trim();
 
     // 2. Renombrar en la tabla categories
     const { error: updateError } = await supabase
