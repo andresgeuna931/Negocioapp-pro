@@ -25,7 +25,9 @@ export default function RegisterPage() {
 
                 <div className="space-y-3">
                     <a
-                        href="mailto:amgdigital.ok@gmail.com?subject=Quiero%20conocer%20NegocioApp%20Pro"
+                        href="https://mail.google.com/mail/?view=cm&to=amgdigital.ok@gmail.com&su=Quiero%20conocer%20NegocioApp%20Pro"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="w-full h-12 px-6 inline-flex items-center justify-center gap-2 rounded-xl font-medium bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all"
                     >
                         <Mail className="w-4 h-4" />
