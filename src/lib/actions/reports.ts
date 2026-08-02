@@ -318,11 +318,11 @@ export async function getSalesByPaymentMethod(from: string, to: string) {
         debit:    { label: 'Tarjeta débito',    total: 0, count: 0 },
         credit:   { label: 'Tarjeta crédito',   total: 0, count: 0 },
         account:  { label: 'Cuenta corriente',  total: 0, count: 0 },
-        mixed:    { label: 'Mixto',             total: 0, count: 0 },
     };
 
     for (const sale of data) {
-        const key = sale.payment_method as string;
+        const rawKey = sale.payment_method as string;
+        const key = rawKey === 'mixed' ? 'account' : rawKey;
         if (!methodMap[key]) {
             methodMap[key] = { label: key, total: 0, count: 0 };
         }
@@ -453,7 +453,9 @@ export async function getSalesBySessionRange(openedAt: string, closedAt: string)
     const methodMap: Record<string, { label: string; total: number; count: number; cancelled: number }> = {};
 
     for (const sale of (sales || [])) {
-        const key = sale.payment_method as string;
+        // Normalizar mixed→account para unificar ventas fiadas históricas y nuevas
+        const rawKey = sale.payment_method as string;
+        const key = rawKey === 'mixed' ? 'account' : rawKey;
         if (!methodMap[key]) {
             methodMap[key] = { label: METHOD_LABELS[key] || key, total: 0, count: 0, cancelled: 0 };
         }
