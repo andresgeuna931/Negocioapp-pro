@@ -247,6 +247,7 @@ export default function SalesPage() {
     });
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
+    const [productPrices, setProductPrices] = useState<Record<string, number>>({});
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
     const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
     const [showScanner, setShowScanner] = useState(false);
@@ -288,6 +289,8 @@ export default function SalesPage() {
 
     const getAdjustedPrice = (product: Product): number => {
         if (!selectedPriceList) return product.price;
+        // Precio fijo por producto tiene prioridad sobre el ajuste global
+        if (productPrices[product.id] !== undefined) return productPrices[product.id];
         return calculateAdjustedPrice(product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
     };
 
@@ -345,12 +348,38 @@ export default function SalesPage() {
     };
 
     useEffect(() => {
-        if (cart.length > 0) {
-            setCart(prev => prev.map(item => ({
-                ...item,
-                adjustedPrice: selectedPriceList ? calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value) : item.product.price
-            })));
-        }
+        const loadPricesAndUpdateCart = async () => {
+            let specificPrices: Record<string, number> = {};
+
+            if (selectedPriceList) {
+                // Cargar precios específicos de esta lista en una sola query
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                const { data } = await supabase
+                    .from('product_prices')
+                    .select('product_id, price')
+                    .eq('price_list_id', selectedPriceList.id);
+
+                if (data) {
+                    specificPrices = Object.fromEntries(data.map(p => [p.product_id, Number(p.price)]));
+                }
+            }
+
+            setProductPrices(specificPrices);
+
+            if (cart.length > 0) {
+                setCart(prev => prev.map(item => {
+                    if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
+                    const specificPrice = specificPrices[item.product.id];
+                    const adjustedPrice = specificPrice !== undefined
+                        ? specificPrice
+                        : calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
+                    return { ...item, adjustedPrice };
+                }));
+            }
+        };
+
+        loadPricesAndUpdateCart();
     }, [selectedPriceList]);
 
     const updateQty = (productId: string, delta: number) => {
