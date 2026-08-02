@@ -52,8 +52,8 @@ export default async function CajaPage() {
         qr: { label: 'Código QR', icon: Smartphone, color: 'text-indigo-600' },
         debit: { label: 'Débito', icon: CreditCard, color: 'text-purple-600' },
         credit: { label: 'Crédito', icon: CreditCard, color: 'text-orange-600' },
+        account: { label: 'Cuenta corriente', icon: ArrowLeftRight, color: 'text-amber-600' },
         mixed: { label: 'Cuenta corriente', icon: ArrowLeftRight, color: 'text-amber-600' },
-        account: { label: 'Cuenta Corriente', icon: ArrowLeftRight, color: 'text-amber-600' },
     };
 
     return (
