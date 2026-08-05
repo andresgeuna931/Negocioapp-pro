@@ -7,6 +7,7 @@ import { PLANS } from '@/lib/config/plans';
 import type { LowStockProduct } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+import { ForbiddenToast } from '@/components/ui/forbidden-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
@@ -30,6 +31,7 @@ interface PageProps {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const paymentId = searchParams?.payment_id as string;
+  const forbidden = searchParams?.forbidden === '1';
   if (paymentId) {
     await verifyMercadoPagoPayment(paymentId);
   }
@@ -86,7 +88,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {forbidden && <ForbiddenToast />}
+      <div className="space-y-6">
       {announcement && (
         <div className="flex items-start gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
           <span className="text-lg">📢</span>
@@ -313,5 +317,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </Card>
       )}
     </div>
+    </>
   );
 }
