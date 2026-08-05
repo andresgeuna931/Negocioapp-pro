@@ -175,12 +175,14 @@ export async function getSalesStats() {
         .from('sales')
         .select('total_amount')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', today.toISOString());
 
     const { data: monthStats } = await supabase
         .from('sales')
         .select('total_amount')
         .eq('tenant_id', tenantId)
+        .eq('is_cancelled', false)
         .gte('created_at', monthStart.toISOString());
 
     return {
