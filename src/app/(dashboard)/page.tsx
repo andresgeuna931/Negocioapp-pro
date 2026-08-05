@@ -8,6 +8,7 @@ import type { LowStockProduct } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 import { ForbiddenToast } from '@/components/ui/forbidden-toast';
+import { cookies } from 'next/headers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
@@ -31,7 +32,8 @@ interface PageProps {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const paymentId = searchParams?.payment_id as string;
-  const forbidden = searchParams?.forbidden === '1';
+  const cookieStore = await cookies();
+  const forbidden = cookieStore.get('flash_forbidden')?.value === '1';
   if (paymentId) {
     await verifyMercadoPagoPayment(paymentId);
   }
