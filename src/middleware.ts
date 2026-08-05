@@ -89,9 +89,7 @@ export async function middleware(request: NextRequest) {
         if (isRestrictedRoute && profile?.role === 'staff') {
             const url = request.nextUrl.clone();
             url.pathname = '/';
-            const response = NextResponse.redirect(url);
-            response.cookies.set('flash_forbidden', '1', { maxAge: 5, path: '/' });
-            return response;
+            return NextResponse.redirect(url);
         }
     }
 
