@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     ScanLine, Search, Plus, Minus, X, ShoppingCart,
     CreditCard, Banknote, ArrowRight, CheckCircle,
-    Tag, User, Scale, Smartphone, Building2, AlertTriangle, Check, Loader2
+    Tag, User, Scale, Smartphone, Building2, AlertTriangle, Check
 } from 'lucide-react';
 import Link from 'next/link';
 import { CustomerSelector } from '@/components/pos/customer-selector';
@@ -236,7 +236,6 @@ function CheckoutModal({ total, cart, paymentSettings, onConfirm, onCancel, proc
 }
 
 export default function SalesPage() {
-    const cartRef = useRef<CartItemWithPrice[]>([]);
     const [cart, setCart] = useState<CartItemWithPrice[]>(() => {
         // Cargar carrito desde localStorage al iniciar
         try {
@@ -249,7 +248,6 @@ export default function SalesPage() {
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
     const [productPrices, setProductPrices] = useState<Record<string, number>>({});
-    const [loadingPrices, setLoadingPrices] = useState(false);
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
     const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
     const [showScanner, setShowScanner] = useState(false);
@@ -267,7 +265,6 @@ export default function SalesPage() {
 
     // Guardar carrito en localStorage cuando cambia
     useEffect(() => {
-        cartRef.current = cart;
         try {
             localStorage.setItem('pos_cart', JSON.stringify(cart));
         } catch { /* ignore */ }
@@ -352,11 +349,9 @@ export default function SalesPage() {
 
     useEffect(() => {
         const loadPricesAndUpdateCart = async () => {
-            setLoadingPrices(true);
             let specificPrices: Record<string, number> = {};
 
             if (selectedPriceList) {
-                // Cargar precios específicos de esta lista en una sola query
                 const { createClient } = await import('@/lib/supabase/client');
                 const supabase = createClient();
                 const { data } = await supabase
@@ -371,19 +366,17 @@ export default function SalesPage() {
 
             setProductPrices(specificPrices);
 
-            if (cartRef.current.length > 0) {
-                setCart(prev => prev.map(item => {
-                    if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
-                    const specificPrice = specificPrices[item.product.id];
-                    const adjustedPrice = specificPrice !== undefined
-                        ? specificPrice
-                        : calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
-                    return { ...item, adjustedPrice };
-                }));
-            }
+            setCart(prev => prev.map(item => {
+                if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
+                const specificPrice = specificPrices[item.product.id];
+                const adjustedPrice = specificPrice !== undefined
+                    ? specificPrice
+                    : calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
+                return { ...item, adjustedPrice };
+            }));
         };
 
-        loadPricesAndUpdateCart().finally(() => setLoadingPrices(false));
+        loadPricesAndUpdateCart();
     }, [selectedPriceList]);
 
     const updateQty = (productId: string, delta: number) => {
@@ -492,7 +485,6 @@ export default function SalesPage() {
                 {priceLists.length > 0 && (
                     <div className="flex items-center gap-2">
                         <Tag className="w-5 h-5 text-slate-400" />
-                        {loadingPrices && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
                         <select
                             value={selectedPriceList?.id || ''}
                             onChange={(e) => { if (!e.target.value) { setSelectedPriceList(null); } else { const list = priceLists.find(l => l.id === e.target.value); if (list) setSelectedPriceList(list); } }}
