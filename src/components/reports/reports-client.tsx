@@ -332,6 +332,15 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                     {loading ? <span className="inline-block h-7 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" /> : formatCurrency(summary.total_amount)}
                                 </p>
                                 <p className="text-xs text-slate-400">{summary.total_sales} ventas</p>
+                                {!loading && (() => {
+                                    const fiado = paymentData.find(p => p.key === 'account')?.total ?? 0;
+                                    return fiado > 0 ? (
+                                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                                            <span>⚠️</span>
+                                            <span>Incluye {formatCurrency(fiado)} en ventas fiadas pendientes de cobro</span>
+                                        </p>
+                                    ) : null;
+                                })()}
                             </div>
                         </div>
                     </CardContent>
