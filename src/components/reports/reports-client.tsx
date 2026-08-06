@@ -329,7 +329,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                             <div>
                                 <p className="text-sm text-slate-500">Ventas del período</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {loading ? '...' : formatCurrency(summary.total_amount)}
+                                    {loading ? <span className="inline-block h-7 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" /> : formatCurrency(summary.total_amount)}
                                 </p>
                                 <p className="text-xs text-slate-400">{summary.total_sales} ventas</p>
                             </div>
@@ -346,7 +346,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                             <div>
                                 <p className="text-sm text-slate-500">Ticket Promedio</p>
                                 <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                    {loading ? '...' : formatCurrency(summary.average_sale)}
+                                    {loading ? <span className="inline-block h-7 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" /> : formatCurrency(summary.average_sale)}
                                 </p>
                                 <p className="text-xs text-slate-400">este período</p>
                             </div>
@@ -370,7 +370,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                             : 'text-red-500'
                                 }`}>
                                     {loading
-                                        ? '...'
+                                        ? <span className="inline-block h-7 w-28 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
                                         : variacion === null
                                             ? 'Sin datos anteriores'
                                             : `${variacion >= 0 ? '↑' : '↓'} ${Math.abs(variacion).toFixed(0)}%`
