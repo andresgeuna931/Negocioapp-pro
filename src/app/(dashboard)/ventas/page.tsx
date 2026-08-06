@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     ScanLine, Search, Plus, Minus, X, ShoppingCart,
     CreditCard, Banknote, ArrowRight, CheckCircle,
-    Tag, User, Scale, Smartphone, Building2, AlertTriangle, Check
+    Tag, User, Scale, Smartphone, Building2, AlertTriangle, Check, Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { CustomerSelector } from '@/components/pos/customer-selector';
@@ -248,6 +248,7 @@ export default function SalesPage() {
     const [priceLists, setPriceLists] = useState<PriceList[]>([]);
     const [selectedPriceList, setSelectedPriceList] = useState<PriceList | null>(null);
     const [productPrices, setProductPrices] = useState<Record<string, number>>({});
+    const [loadingPrices, setLoadingPrices] = useState(false);
     const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null);
     const [cashSessionOpen, setCashSessionOpen] = useState<boolean | null>(null);
     const [showScanner, setShowScanner] = useState(false);
@@ -349,6 +350,7 @@ export default function SalesPage() {
 
     useEffect(() => {
         const loadPricesAndUpdateCart = async () => {
+            setLoadingPrices(true);
             let specificPrices: Record<string, number> = {};
 
             if (selectedPriceList) {
@@ -379,7 +381,7 @@ export default function SalesPage() {
             }
         };
 
-        loadPricesAndUpdateCart();
+        loadPricesAndUpdateCart().finally(() => setLoadingPrices(false));
     }, [selectedPriceList]);
 
     const updateQty = (productId: string, delta: number) => {
@@ -488,6 +490,7 @@ export default function SalesPage() {
                 {priceLists.length > 0 && (
                     <div className="flex items-center gap-2">
                         <Tag className="w-5 h-5 text-slate-400" />
+                        {loadingPrices && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
                         <select
                             value={selectedPriceList?.id || ''}
                             onChange={(e) => { if (!e.target.value) { setSelectedPriceList(null); } else { const list = priceLists.find(l => l.id === e.target.value); if (list) setSelectedPriceList(list); } }}
