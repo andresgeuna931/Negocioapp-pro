@@ -236,6 +236,7 @@ function CheckoutModal({ total, cart, paymentSettings, onConfirm, onCancel, proc
 }
 
 export default function SalesPage() {
+    const cartRef = useRef<CartItemWithPrice[]>([]);
     const [cart, setCart] = useState<CartItemWithPrice[]>(() => {
         // Cargar carrito desde localStorage al iniciar
         try {
@@ -266,6 +267,7 @@ export default function SalesPage() {
 
     // Guardar carrito en localStorage cuando cambia
     useEffect(() => {
+        cartRef.current = cart;
         try {
             localStorage.setItem('pos_cart', JSON.stringify(cart));
         } catch { /* ignore */ }
@@ -369,7 +371,7 @@ export default function SalesPage() {
 
             setProductPrices(specificPrices);
 
-            if (cart.length > 0) {
+            if (cartRef.current.length > 0) {
                 setCart(prev => prev.map(item => {
                     if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
                     const specificPrice = specificPrices[item.product.id];
