@@ -367,16 +367,18 @@ export default function SalesPage() {
 
             setProductPrices(specificPrices);
 
-            if (cart.length > 0) {
-                setCart(prev => prev.map(item => {
+            // Usar setCart con updater function para evitar stale closure de cart
+            setCart(prev => {
+                if (prev.length === 0) return prev;
+                return prev.map(item => {
                     if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
                     const specificPrice = specificPrices[item.product.id];
                     const adjustedPrice = specificPrice !== undefined
                         ? specificPrice
                         : calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
                     return { ...item, adjustedPrice };
-                }));
-            }
+                });
+            });
         };
 
         loadPricesAndUpdateCart();
