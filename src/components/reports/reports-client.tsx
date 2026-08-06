@@ -337,7 +337,7 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                     return fiado > 0 ? (
                                         <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                                             <span>⚠️</span>
-                                            <span>Incluye {formatCurrency(fiado)} en ventas fiadas pendientes de cobro</span>
+                                            <span>{formatCurrency(fiado)} corresponden a ventas en cuenta corriente</span>
                                         </p>
                                     ) : null;
                                 })()}
