@@ -98,10 +98,20 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
                                         <TableHead>Tipo</TableHead>
                                         <TableHead>Concepto</TableHead>
                                         <TableHead className="text-right">Monto</TableHead>
+                                        <TableHead className="text-right">Saldo</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {movements.map((move) => {
+                                    {(() => {
+                                    // Calcular saldo acumulado: recorrer del más viejo al más nuevo
+                                    let runningBalance = 0;
+                                    const movementsWithBalance = [...movements].reverse().map(move => {
+                                        const isDebit = ['sale', 'adjustment_debit'].includes(move.type);
+                                        runningBalance += isDebit ? Number(move.amount) : -Number(move.amount);
+                                        return { ...move, balance: runningBalance };
+                                    }).reverse();
+
+                                    return movementsWithBalance.map((move) => {
                                         const isDebit = ['sale', 'adjustment_debit'].includes(move.type);
                                         const hasSaleItems = move.type === 'sale' && move.sale_items?.length > 0;
                                         const isExpanded = expandedId === move.id;
@@ -133,13 +143,16 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
                                                         }
                                                     </TableCell>
                                                     <TableCell className={`text-right font-medium ${isDebit ? 'text-red-500' : 'text-emerald-500'}`}>
-                                                        {isDebit ? `+${formatCurrency(move.amount)}` : formatCurrency(move.amount)}
+                                                        {isDebit ? `+${formatCurrency(move.amount)}` : `-${formatCurrency(move.amount)}`}
+                                                    </TableCell>
+                                                    <TableCell className={`text-right font-medium ${move.balance > 0 ? 'text-red-500' : move.balance < 0 ? 'text-emerald-500' : 'text-slate-400'}`}>
+                                                        {move.balance > 0 ? formatCurrency(move.balance) : move.balance < 0 ? `Saldo a favor ${formatCurrency(Math.abs(move.balance))}` : '$0'}
                                                     </TableCell>
                                                 </TableRow>
 
                                                 {isExpanded && hasSaleItems && (
                                                     <TableRow key={`${move.id}-detail`}>
-                                                        <TableCell colSpan={5} className="bg-slate-50 dark:bg-slate-800/30 px-6 py-3">
+                                                        <TableCell colSpan={6} className="bg-slate-50 dark:bg-slate-800/30 px-6 py-3">
                                                             <div className="space-y-1">
                                                                 {move.sale_items.map((item: any, idx: number) => (
                                                                     <div key={idx} className="flex justify-between items-center text-sm">
@@ -164,7 +177,8 @@ export function AccountHistoryDialog({ customer, open, onOpenChange }: AccountHi
                                                 )}
                                             </>
                                         );
-                                    })}
+                                    });
+                                })()}
                                 </TableBody>
                             </Table>
                         </div>
