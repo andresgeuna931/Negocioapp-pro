@@ -352,6 +352,7 @@ export default function SalesPage() {
             let specificPrices: Record<string, number> = {};
 
             if (selectedPriceList) {
+                // Cargar precios específicos de esta lista en una sola query
                 const { createClient } = await import('@/lib/supabase/client');
                 const supabase = createClient();
                 const { data } = await supabase
@@ -366,14 +367,16 @@ export default function SalesPage() {
 
             setProductPrices(specificPrices);
 
-            setCart(prev => prev.map(item => {
-                if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
-                const specificPrice = specificPrices[item.product.id];
-                const adjustedPrice = specificPrice !== undefined
-                    ? specificPrice
-                    : calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
-                return { ...item, adjustedPrice };
-            }));
+            if (cart.length > 0) {
+                setCart(prev => prev.map(item => {
+                    if (!selectedPriceList) return { ...item, adjustedPrice: item.product.price };
+                    const specificPrice = specificPrices[item.product.id];
+                    const adjustedPrice = specificPrice !== undefined
+                        ? specificPrice
+                        : calculateAdjustedPrice(item.product.price, selectedPriceList.adjustment_type, selectedPriceList.adjustment_value);
+                    return { ...item, adjustedPrice };
+                }));
+            }
         };
 
         loadPricesAndUpdateCart();
