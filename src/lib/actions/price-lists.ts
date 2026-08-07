@@ -114,6 +114,8 @@ export async function createPriceList(data: {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { data: null, error: 'No autenticado' };
+    const roleCreate = await getUserRole();
+    if (roleCreate !== 'owner' && roleCreate !== 'admin') return { data: null, error: 'No tenés permiso para crear listas de precios' };
 
     const { data: newList, error } = await supabase
         .from('price_lists')
@@ -152,6 +154,8 @@ export async function updatePriceList(
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { data: null, error: 'No autenticado' };
+    const roleUpdate = await getUserRole();
+    if (roleUpdate !== 'owner' && roleUpdate !== 'admin') return { data: null, error: 'No tenés permiso para modificar listas de precios' };
 
     const { data: updated, error } = await supabase
         .from('price_lists')
@@ -174,6 +178,8 @@ export async function deletePriceList(id: string) {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { success: false, error: 'No autenticado' };
+    const roleDelete = await getUserRole();
+    if (roleDelete !== 'owner' && roleDelete !== 'admin') return { success: false, error: 'No tenés permiso para eliminar listas de precios' };
 
     const { data: list } = await supabase
         .from('price_lists')
@@ -217,6 +223,8 @@ export async function setProductPrices(
     prices: Array<{ priceListId: string; price: number }>
 ) {
     const supabase = await createClient();
+    const roleSet = await getUserRole();
+    if (roleSet !== 'owner' && roleSet !== 'admin') return { success: false, error: 'No tenés permiso para modificar precios por producto' };
 
     await supabase
         .from('product_prices')
