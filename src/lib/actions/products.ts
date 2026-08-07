@@ -230,6 +230,9 @@ export async function createCategory(name: string) {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { error: 'No autenticado' };
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: prof } = await supabase.from('profiles').select('role').eq('id', user!.id).single();
+    if (!hasPermission(prof?.role, 'products:edit')) return { error: 'No tenés permiso para crear categorías' };
 
     const { error } = await supabase
         .from('categories')
@@ -250,6 +253,9 @@ export async function updateCategory(id: string, name: string) {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { error: 'No autenticado' };
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: prof } = await supabase.from('profiles').select('role').eq('id', user!.id).single();
+    if (!hasPermission(prof?.role, 'products:edit')) return { error: 'No tenés permiso para editar categorías' };
 
     // 1. Leer el nombre actual antes de renombrar
     const { data: existing, error: fetchError } = await supabase
@@ -293,6 +299,9 @@ export async function deleteCategory(id: string) {
     const supabase = await createClient();
     const tenantId = await getTenantId();
     if (!tenantId) return { error: 'No autenticado' };
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: prof } = await supabase.from('profiles').select('role').eq('id', user!.id).single();
+    if (!hasPermission(prof?.role, 'products:edit')) return { error: 'No tenés permiso para eliminar categorías' };
 
     const { error } = await supabase
         .from('categories')
