@@ -174,7 +174,7 @@ export function CashSessionCard({ session, expectedCash }: CashSessionCardProps)
                                     </span>
                                 </div>
                                 <p className="text-slate-500 text-sm">
-                                    Desde {new Date(session.opened_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                    Desde {new Date(session.opened_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })}
                                 </p>
                             </div>
                         </div>
