@@ -31,13 +31,19 @@ export function formatDate(date: string | Date, format: 'short' | 'long' | 'time
     switch (format) {
         case 'long':
             return new Intl.DateTimeFormat('es-AR', {
-                dateStyle: 'long',
-                timeStyle: 'short',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
                 timeZone: 'America/Argentina/Buenos_Aires',
             }).format(d);
         case 'time':
             return new Intl.DateTimeFormat('es-AR', {
-                timeStyle: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
                 timeZone: 'America/Argentina/Buenos_Aires',
             }).format(d);
         default:
