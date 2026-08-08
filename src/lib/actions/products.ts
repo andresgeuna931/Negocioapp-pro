@@ -149,9 +149,22 @@ export async function updateProduct(id: string, formData: Partial<ProductFormDat
     const tenantId = await getTenantId();
     if (!tenantId) return { data: null, error: 'No autenticado' };
 
+    // Extraer solo los campos permitidos para evitar que se actualicen campos sensibles
+    const { name, barcode, sku, price, cost, unit_type, category, low_stock_threshold_override, is_active } = formData;
+    const safeData: Record<string, any> = {};
+    if (name !== undefined) safeData.name = name;
+    if (barcode !== undefined) safeData.barcode = barcode;
+    if (sku !== undefined) safeData.sku = sku;
+    if (price !== undefined) safeData.price = price;
+    if (cost !== undefined) safeData.cost = cost;
+    if (unit_type !== undefined) safeData.unit_type = unit_type;
+    if (category !== undefined) safeData.category = normalizeCategory(category);
+    if (low_stock_threshold_override !== undefined) safeData.low_stock_threshold_override = low_stock_threshold_override;
+    if (is_active !== undefined) safeData.is_active = is_active;
+
     const { data, error } = await supabase
         .from('products')
-        .update({ ...formData, category: normalizeCategory(formData.category) })
+        .update({ ...safeData, updated_at: new Date().toISOString() })
         .eq('id', id)
         .eq('tenant_id', tenantId)
         .select()
