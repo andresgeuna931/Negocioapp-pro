@@ -160,7 +160,7 @@ export async function updateProduct(id: string, formData: Partial<ProductFormDat
     if (unit_type !== undefined) safeData.unit_type = unit_type;
     if (category !== undefined) safeData.category = normalizeCategory(category);
     if (low_stock_threshold_override !== undefined) safeData.low_stock_threshold_override = low_stock_threshold_override;
-    if (is_active !== undefined) safeData.is_active = is_active;
+    // is_active excluido — solo el dueño puede activar/desactivar productos desde la UI
 
     const { data, error } = await supabase
         .from('products')
