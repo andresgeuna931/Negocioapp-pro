@@ -18,7 +18,7 @@ function formatDateShort(dateStr: string) {
 }
 
 function formatTime(dateStr: string) {
-    return new Date(dateStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: TZ });
+    return new Date(dateStr).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
 }
 
 function isSameDay(a: string, b: string) {
