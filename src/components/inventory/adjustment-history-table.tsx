@@ -53,7 +53,7 @@ export function AdjustmentHistoryTable({ adjustments }: AdjustmentHistoryTablePr
                                         {new Date(adj.created_at).toLocaleDateString('es-AR')}
                                     </div>
                                     <div className="text-xs text-slate-500">
-                                        {new Date(adj.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                        {new Date(adj.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })}
                                     </div>
                                 </td>
                                 <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
