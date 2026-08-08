@@ -280,7 +280,7 @@ export function InventoryCountForm() {
                     </div>
                 )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
                     <div className="text-sm text-slate-500">
                         {productsWithDifference.length > 0 ? (
                             <span className="text-amber-600 font-medium">
@@ -290,8 +290,8 @@ export function InventoryCountForm() {
                             <span>Ingresá las cantidades contadas</span>
                         )}
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleClear}>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <Button variant="outline" onClick={handleClear} className="flex-1 sm:flex-none">
                             <X className="w-4 h-4 mr-2" />
                             Limpiar
                         </Button>
@@ -300,6 +300,7 @@ export function InventoryCountForm() {
                             disabled={productsWithDifference.length === 0 || applying || !isOwner}
                             loading={applying}
                             title={!isOwner ? 'Solo el dueño puede aplicar ajustes' : ''}
+                            className="flex-1 sm:flex-none"
                         >
                             {!isOwner ? (
                                 <Lock className="w-4 h-4 mr-2" />
