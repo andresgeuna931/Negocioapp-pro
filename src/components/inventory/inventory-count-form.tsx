@@ -196,7 +196,7 @@ export function InventoryCountForm() {
                 ) : !loadError && products.length === 0 ? (
                     <div className="py-12 text-center text-slate-500">
                         <Package className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                        <p>No se encontraron productos activos.</p>
+                        <p>{search ? `No se encontraron productos para "${search}".` : 'No hay productos activos todavía.'}</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
