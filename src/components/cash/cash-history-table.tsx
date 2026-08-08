@@ -89,7 +89,8 @@ export function CashHistoryTable({ sessions }: CashHistoryTableProps) {
                         const isExpanded = expandedId === session.id;
                         const isLoading = loadingId === session.id;
                         const data = sessionData[session.id];
-                        const totalVendido = session.total_sales_cash + session.total_sales_other;
+                        // Usar el total del desglose si está disponible (incluye fiado), si no usar el de la sesión
+                        const totalVendido = data?.totalVendido ?? (session.total_sales_cash + session.total_sales_other);
 
                         return (
                             <>
