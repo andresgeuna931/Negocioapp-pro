@@ -187,7 +187,7 @@ export default async function CajaPage() {
                                                     {mov.description || (mov.type === 'withdrawal' || mov.type === 'expense' ? 'Retiro/Gasto' : 'Ingreso')}
                                                 </p>
                                                 <p className="text-xs text-slate-500">
-                                                    {new Date(mov.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                                    {new Date(mov.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' })}
                                                     {mov.creator?.full_name && ` · ${mov.creator.full_name}`}
                                                 </p>
                                             </div>
