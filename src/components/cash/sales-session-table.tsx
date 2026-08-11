@@ -20,6 +20,7 @@ interface Sale {
     total_amount: number;
     payment_method: string;
     notes?: string;
+    price_list_name?: string;
     created_at: string;
     is_cancelled?: boolean;
     cancellation_reason?: string;
@@ -198,6 +199,11 @@ export function SalesSessionTable({ sales, userRole }: SalesSessionTableProps) {
                                     {formatTime(selectedSale.created_at)} · {selectedSale.seller?.full_name}
                                     {selectedSale.notes && ` · ${selectedSale.notes}`}
                                 </p>
+                                {selectedSale.price_list_name && (
+                                    <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        🏷️ Lista aplicada: {selectedSale.price_list_name}
+                                    </p>
+                                )}
                             </div>
                             <button onClick={() => setSelectedSale(null)} className="p-1 text-slate-400 hover:text-slate-600">
                                 <X className="w-5 h-5" />
