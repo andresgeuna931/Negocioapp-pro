@@ -421,6 +421,7 @@ export default function SalesPage() {
                 payment_method: paymentMethod,
                 customer_id: customerId,
                 notes: installments ? `Crédito ${installments} cuota${installments > 1 ? 's' : ''} (+${surcharge}%)` : surcharge > 0 ? `Recargo ${surcharge}%` : undefined,
+                price_list_name: selectedPriceList?.name || undefined,
             });
             if (result.error) {
                 setError(result.error);
