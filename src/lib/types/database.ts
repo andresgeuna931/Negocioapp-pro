@@ -207,6 +207,7 @@ export interface CreateSaleData {
   payment_method: PaymentMethod;
   customer_id?: string;
   notes?: string;
+  price_list_name?: string; // Nombre de la lista de precios aplicada
 }
 
 // ============================================
