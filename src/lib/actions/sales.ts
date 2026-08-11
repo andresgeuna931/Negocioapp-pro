@@ -40,6 +40,7 @@ export async function createSale(saleData: CreateSaleData) {
         p_payment_method: saleData.payment_method,
         p_notes: notes,
         p_customer_id: saleData.customer_id || null,
+        p_price_list_name: saleData.price_list_name || null,
     });
 
     if (error) {
