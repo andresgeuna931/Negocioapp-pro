@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Users, LinkIcon, MoreVertical, Copy, Check, Loader2, Lock } from 'lucide-react';
+import { Users, LinkIcon, MoreVertical, Copy, Check, Loader2, Lock, UserX, UserCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -288,12 +288,19 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
                                                 <MoreVertical className="w-4 h-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
+                                        <DropdownMenuContent align="end" className="min-w-[160px]">
                                             <DropdownMenuItem
-                                                className="cursor-pointer"
+                                                className={`cursor-pointer flex items-center gap-2 font-medium ${
+                                                    member.is_active
+                                                        ? 'text-red-500 focus:text-red-500 focus:bg-red-500/10'
+                                                        : 'text-emerald-500 focus:text-emerald-500 focus:bg-emerald-500/10'
+                                                }`}
                                                 onClick={() => handleToggleActive(member.id, member.is_active)}
                                             >
-                                                {member.is_active ? 'Desactivar' : 'Activar'}
+                                                {member.is_active
+                                                    ? <><UserX className="w-4 h-4" /> Desactivar</>
+                                                    : <><UserCheck className="w-4 h-4" /> Activar</>
+                                                }
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
