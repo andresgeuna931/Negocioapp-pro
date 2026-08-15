@@ -8,6 +8,7 @@ import { getAllowStaffPriceLists } from '@/lib/actions/system-settings';
 import { StaffPriceListToggle } from '@/components/config/StaffPriceListToggle';
 import { formatDate } from '@/lib/utils';
 import { TenantSettingsForm, TeamManagement, CategoryManager, PaymentSettingsForm } from '@/components/config';
+import { PLANS } from '@/lib/config/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,20 @@ export default async function ConfigPage() {
     const isOwner = session?.profile.role === 'owner';
     const allowStaffPriceLists = await getAllowStaffPriceLists();
     const isAdmin = session?.profile.role === 'admin';
+
+    // Límite de usuarios según el plan activo
+    const tenantSettings = tenant?.settings as any;
+    const activePlanId = tenantSettings?.plan_id || tenant?.plan_type || subscriptionInfo?.subscription?.plan || 'starter';
+    const basePlanId = activePlanId.replace('_annual', '');
+    const planKeyMap: Record<string, keyof typeof PLANS> = {
+        starter: 'STARTER',
+        professional: 'PROFESSIONAL',
+        business: 'BUSINESS',
+        basic: 'STARTER',
+        premium: 'PROFESSIONAL',
+    };
+    const planKey = planKeyMap[basePlanId] ?? 'STARTER';
+    const maxUsers = PLANS[planKey].limits.users;
 
     return (
         <div className="space-y-6 max-w-4xl">
@@ -264,6 +279,7 @@ export default async function ConfigPage() {
                 team={team}
                 currentUserId={session?.user.id || ''}
                 isOwner={isOwner}
+                maxUsers={maxUsers}
             />
         </div>
     );
