@@ -464,22 +464,22 @@ export function ReportsClient({ inventoryData, isOwner }: ReportsClientProps) {
                         )}
                         <div className="grid gap-4" style={{gridTemplateColumns: "3fr 2fr"}}>
                             {/* Columna izquierda: detalle */}
-                            <div className="border-r border-slate-100 dark:border-slate-800 pr-4 space-y-0">
-                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Ventas</span>
-                                    <span className="text-xs font-medium text-slate-900 dark:text-white">{formatCurrency(economicData.totalVentas)}</span>
+                            <div className="border-r border-slate-200 dark:border-slate-700 pr-6 divide-y divide-slate-200 dark:divide-slate-700">
+                                <div className="flex justify-between items-center py-3">
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">Ventas</span>
+                                    <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(economicData.totalVentas)}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Costo mercadería</span>
-                                    <span className="text-xs font-medium text-red-500">− {formatCurrency(economicData.costoMercaderia)}</span>
+                                <div className="flex justify-between items-center py-3">
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">Costo mercadería</span>
+                                    <span className="text-sm font-semibold text-red-500">− {formatCurrency(economicData.costoMercaderia)}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Ganancia bruta</span>
-                                    <span className={`text-xs font-medium ${economicData.gananciaBruta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaBruta)}</span>
+                                <div className="flex justify-between items-center py-3">
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">Ganancia bruta</span>
+                                    <span className={`text-sm font-semibold ${economicData.gananciaBruta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{formatCurrency(economicData.gananciaBruta)}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-xs text-slate-500 dark:text-slate-400">Gastos</span>
-                                    <span className="text-xs font-medium text-red-500">− {formatCurrency(economicData.gastos)}</span>
+                                <div className="flex justify-between items-center py-3">
+                                    <span className="text-sm text-slate-500 dark:text-slate-400">Gastos</span>
+                                    <span className="text-sm font-semibold text-red-500">− {formatCurrency(economicData.gastos)}</span>
                                 </div>
                             </div>
                             {/* Columna derecha: donut para owners, ganancia destacada para todos */}
