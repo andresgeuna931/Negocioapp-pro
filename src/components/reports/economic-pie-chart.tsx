@@ -28,16 +28,17 @@ export function EconomicPieChart({ totalVentas, costoMercaderia, gastos, gananci
     if (data.length === 0) return null;
 
     return (
-        <div className="flex flex-col items-center gap-3">
-            <div className="relative w-32 h-32">
+        <div className="flex flex-col items-center gap-4 w-full">
+            {/* Donut más grande */}
+            <div className="relative w-48 h-48">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={data}
                             cx="50%"
                             cy="50%"
-                            innerRadius={38}
-                            outerRadius={56}
+                            innerRadius={58}
+                            outerRadius={82}
                             dataKey="value"
                             startAngle={90}
                             endAngle={-270}
@@ -54,32 +55,32 @@ export function EconomicPieChart({ totalVentas, costoMercaderia, gastos, gananci
                                 border: '1px solid #334155',
                                 borderRadius: '8px',
                                 color: 'white',
-                                fontSize: '12px',
+                                fontSize: '13px',
                             }}
                         />
                     </PieChart>
                 </ResponsiveContainer>
                 {/* Centro del donut */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-lg font-bold text-emerald-500 leading-none">{margenPct}%</span>
-                    <span className="text-[10px] text-slate-500">margen</span>
+                    <span className="text-2xl font-bold text-emerald-500 leading-none">{margenPct}%</span>
+                    <span className="text-xs text-slate-400 mt-1">margen neto</span>
                 </div>
             </div>
 
-            {/* Leyenda */}
-            <div className="w-full space-y-1.5">
+            {/* Leyenda con separadores */}
+            <div className="w-full divide-y divide-slate-700">
                 {data.map((entry) => (
-                    <div key={entry.name} className="flex items-center gap-2 justify-between">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: entry.color }} />
-                            <span className="text-[11px] text-slate-400 truncate">{entry.name}</span>
+                    <div key={entry.name} className="flex items-center justify-between py-2.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: entry.color }} />
+                            <span className="text-sm text-slate-300 truncate">{entry.name}</span>
                         </div>
-                        <span className="text-[11px] font-semibold text-white flex-shrink-0">{formatCurrency(entry.value)}</span>
+                        <span className="text-sm font-semibold text-white flex-shrink-0 ml-3">{formatCurrency(entry.value)}</span>
                     </div>
                 ))}
             </div>
 
-            <p className="text-[10px] text-slate-500 text-center">Solo visible para dueños</p>
+            <p className="text-xs text-slate-500 text-center">Solo visible para dueños</p>
         </div>
     );
 }
