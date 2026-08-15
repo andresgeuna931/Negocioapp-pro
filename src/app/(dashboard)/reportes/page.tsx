@@ -14,6 +14,7 @@ export default async function ReportsPage() {
     }
 
     const inventory = await getInventoryValue();
+    const isOwner = session?.profile.role === 'owner';
 
     return (
         <div className="space-y-6">
@@ -30,7 +31,7 @@ export default async function ReportsPage() {
             </div>
 
             {/* Selector de período + cards + gráfico + top productos + botones exportar */}
-            <ReportsClient inventoryData={inventory.data} />
+            <ReportsClient inventoryData={inventory.data} isOwner={isOwner} />
 
             {/* Inventory Summary — estático, no cambia con el período */}
             <Card>
