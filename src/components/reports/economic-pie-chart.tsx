@@ -48,7 +48,7 @@ export function EconomicPieChart({ totalVentas, costoMercaderia, gastos, gananci
                             ))}
                         </Pie>
                         <Tooltip
-                            formatter={(value: number) => formatCurrency(value)}
+                            formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                             contentStyle={{
                                 background: '#1e293b',
                                 border: '1px solid #334155',
