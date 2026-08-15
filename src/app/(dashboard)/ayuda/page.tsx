@@ -213,6 +213,11 @@ const faqData: FAQCategory[] = [
                 question: '¿Qué pasa si el cliente supera su límite de crédito?',
                 answer: 'El sistema no permite registrar una venta fiada si supera el límite de crédito del cliente. El dueño puede aumentar el límite desde la ficha del cliente en Clientes > editar.',
                 keywords: ['limite', 'credito', 'supera', 'no permite']
+            },
+            {
+                question: '¿Cómo interpreto el saldo de un cliente?',
+                answer: 'El saldo se muestra de forma clara en la lista de clientes:\n\n- 🔴 "Debe $X": el cliente te debe plata. Compró fiado y tiene saldo pendiente.\n- 🟢 "A favor $X": el cliente tiene crédito. Pagó más de lo que debía o hizo un pago anticipado. Se descuenta en su próxima compra.\n- Gris "$0": está al día, sin deuda ni crédito.',
+                keywords: ['saldo', 'debe', 'a favor', 'credito', 'deuda', 'interpretar', 'negativo']
             }
         ]
     },
@@ -307,6 +312,11 @@ const faqData: FAQCategory[] = [
                 question: '¿Cómo veo qué productos se venden más?',
                 answer: 'En Reportes hay una sección "Top 10 Productos" con los más vendidos por ingresos en el período seleccionado. También podés ver la cantidad vendida de cada uno.',
                 keywords: ['top', 'mas vendido', 'popular', 'ranking']
+            },
+            {
+                question: '¿Qué es el gráfico de dona en el Resultado económico?',
+                answer: 'Es una visualización del destino de cada peso que entrá al negocio. Solo es visible para el dueño.\n\nEl gráfico muestra tres partes:\n- 🟢 Verde: Ganancia neta (lo que te queda)\n- 🔵 Azul: Costo de mercadería (lo que pagaste por los productos)\n- 🔴 Rojo: Gastos (alquiler, servicios, otros egresos)\n\nEl número del centro es el margen neto: qué porcentaje de las ventas totales te quedó como ganancia. Por ejemplo, 30% significa que de cada $100 que cobraste, $30 son ganancia real.',
+                keywords: ['dona', 'grafico', 'margen', 'ganancia', 'costo', 'gastos', 'porcentaje', 'resultado economico']
             }
         ]
     },
@@ -328,8 +338,18 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo invito a un empleado?',
-                answer: 'Andá a Configuración > Gestión de Equipo. Ingresá el email del empleado y enviá la invitación. El empleado recibirá un correo para registrarse con su contraseña.',
-                keywords: ['empleado', 'invitar', 'equipo', 'usuario', 'email']
+                answer: 'Andá a Configuración > Equipo y tocá "Invitar". Elegí el rol (Empleado o Dueño), generá el link y mandáselo por WhatsApp.\n\nTu empleado abre el link, completa su nombre, email y contraseña, y ya queda vinculado a tu negocio sin necesidad de correo de confirmación.\n\nEl link vence en 7 días.',
+                keywords: ['empleado', 'invitar', 'equipo', 'usuario', 'link', 'whatsapp']
+            },
+            {
+                question: '¿Cuántos empleados puedo tener según mi plan?',
+                answer: 'Los límites de empleados por plan son:\n\n- Starter: sin empleados (solo el dueño)\n- Profesional: hasta 2 empleados activos\n- Business: hasta 3 empleados activos\n\nEl dueño no cuenta para el límite. Los empleados desactivados tampoco cuentan.\n\nSi llegás al límite, podés desactivar uno antes de activar otro, o mejorar tu plan.',
+                keywords: ['limite', 'empleados', 'plan', 'cuantos', 'starter', 'profesional', 'business']
+            },
+            {
+                question: '¿Cómo desactivo a un empleado?',
+                answer: 'Andá a Configuración > Equipo. En la fila del empleado, tocá el ícono de tres puntos (⋮) y seleccioná "Desactivar".\n\nEl empleado queda marcado como Inactivo y pierde el acceso al sistema inmediatamente — la próxima vez que intente entrar verá una pantalla de "Cuenta desactivada".\n\nPodés reactivarlo en cualquier momento desde el mismo menú, siempre que no hayas llegado al límite de tu plan.',
+                keywords: ['desactivar', 'bloquear', 'empleado', 'inactivo', 'acceso', 'reactivar']
             },
             {
                 question: '¿Quién puede anular ventas?',
