@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited', '/register'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited', '/register', '/cuenta-suspendida'];
 
 // F-02: rutas restringidas para staff — el servidor redirige antes de enviar contenido
 const STAFF_RESTRICTED_ROUTES = [
@@ -63,11 +63,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // Verificar perfil una sola vez para rol y demo
+    // Verificar perfil una sola vez para rol, demo y estado activo
     if (user && !isPublicRoute) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('role, is_demo_disabled')
+            .select('role, is_demo_disabled, is_active')
             .eq('id', user.id)
             .single();
 
@@ -76,6 +76,16 @@ export async function middleware(request: NextRequest) {
             const url = request.nextUrl.clone();
             url.pathname = '/demo-suspended';
             if (pathname !== '/demo-suspended') {
+                return NextResponse.redirect(url);
+            }
+            return supabaseResponse;
+        }
+
+        // ─── USUARIO DESACTIVADO POR EL DUEÑO ────────────────────────────────
+        if (profile?.is_active === false && profile?.role !== 'admin') {
+            const url = request.nextUrl.clone();
+            url.pathname = '/cuenta-suspendida';
+            if (pathname !== '/cuenta-suspendida') {
                 return NextResponse.redirect(url);
             }
             return supabaseResponse;
