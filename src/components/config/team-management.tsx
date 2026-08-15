@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, LinkIcon, Shield, MoreVertical, Copy, Check, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Users, LinkIcon, MoreVertical, Copy, Check, Loader2, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,14 +31,17 @@ interface TeamManagementProps {
     team: Profile[];
     currentUserId: string;
     isOwner: boolean;
+    maxUsers: number;
 }
 
-export function TeamManagement({ team, currentUserId, isOwner }: TeamManagementProps) {
+export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamManagementProps) {
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [inviteRole, setInviteRole] = useState<UserRole>('staff');
     const [isLoading, setIsLoading] = useState(false);
     const [inviteUrl, setInviteUrl] = useState('');
     const [copied, setCopied] = useState(false);
+
+    const atUserLimit = team.length >= maxUsers;
 
     const handleGenerateLink = async () => {
         setIsLoading(true);
@@ -116,96 +120,110 @@ export function TeamManagement({ team, currentUserId, isOwner }: TeamManagementP
                     </div>
 
                     {isOwner && (
-                        <Dialog open={isInviteOpen} onOpenChange={(open) => {
-                            setIsInviteOpen(open);
-                            if (!open) {
-                                setInviteUrl('');
-                                setCopied(false);
-                            }
-                        }}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" className="gap-2">
-                                    <LinkIcon className="w-4 h-4" />
-                                    Invitar
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Invitar empleado</DialogTitle>
-                                </DialogHeader>
+                        atUserLimit ? (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400">
+                                    {team.length}/{maxUsers} usuario{maxUsers !== 1 ? 's' : ''}
+                                </span>
+                                <Link href="/precios">
+                                    <Button size="sm" variant="outline" className="gap-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+                                        <Lock className="w-3 h-3" />
+                                        Mejorar plan
+                                    </Button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <Dialog open={isInviteOpen} onOpenChange={(open) => {
+                                setIsInviteOpen(open);
+                                if (!open) {
+                                    setInviteUrl('');
+                                    setCopied(false);
+                                }
+                            }}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" className="gap-2">
+                                        <LinkIcon className="w-4 h-4" />
+                                        Invitar
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Invitar empleado</DialogTitle>
+                                    </DialogHeader>
 
-                                <div className="space-y-4 py-4">
-                                    <p className="text-sm text-slate-500">
-                                        Generá un link de invitación y mandalo por WhatsApp.
-                                        Tu empleado podrá crear su cuenta y acceder al negocio.
-                                    </p>
+                                    <div className="space-y-4 py-4">
+                                        <p className="text-sm text-slate-500">
+                                            Generá un link de invitación y mandalo por WhatsApp.
+                                            Tu empleado podrá crear su cuenta y acceder al negocio.
+                                        </p>
 
-                                    <Select
-                                        label="Rol del empleado"
-                                        value={inviteRole}
-                                        onChange={(e) => setInviteRole(e.target.value as UserRole)}
-                                        options={roleOptions}
-                                    />
+                                        <Select
+                                            label="Rol del empleado"
+                                            value={inviteRole}
+                                            onChange={(e) => setInviteRole(e.target.value as UserRole)}
+                                            options={roleOptions}
+                                        />
 
-                                    {!inviteUrl ? (
-                                        <Button
-                                            onClick={handleGenerateLink}
-                                            disabled={isLoading}
-                                            className="w-full"
-                                        >
-                                            {isLoading ? (
-                                                <>
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                    Generando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <LinkIcon className="w-4 h-4 mr-2" />
-                                                    Generar Link de Invitación
-                                                </>
-                                            )}
-                                        </Button>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                                <p className="text-xs text-slate-500 mb-1">Link de invitación:</p>
-                                                <p className="text-sm text-slate-900 dark:text-white break-all font-mono">
-                                                    {inviteUrl}
-                                                </p>
-                                            </div>
-
+                                        {!inviteUrl ? (
                                             <Button
-                                                onClick={handleCopyLink}
+                                                onClick={handleGenerateLink}
+                                                disabled={isLoading}
                                                 className="w-full"
-                                                variant={copied ? 'outline' : undefined}
                                             >
-                                                {copied ? (
+                                                {isLoading ? (
                                                     <>
-                                                        <Check className="w-4 h-4 mr-2 text-emerald-500" />
-                                                        ¡Copiado! Mandalo por WhatsApp
+                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                        Generando...
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Copy className="w-4 h-4 mr-2" />
-                                                        Copiar Link
+                                                        <LinkIcon className="w-4 h-4 mr-2" />
+                                                        Generar Link de Invitación
                                                     </>
                                                 )}
                                             </Button>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                                    <p className="text-xs text-slate-500 mb-1">Link de invitación:</p>
+                                                    <p className="text-sm text-slate-900 dark:text-white break-all font-mono">
+                                                        {inviteUrl}
+                                                    </p>
+                                                </div>
 
-                                            <p className="text-xs text-slate-400 text-center">
-                                                ⏰ Este link vence en 7 días
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
+                                                <Button
+                                                    onClick={handleCopyLink}
+                                                    className="w-full"
+                                                    variant={copied ? 'outline' : undefined}
+                                                >
+                                                    {copied ? (
+                                                        <>
+                                                            <Check className="w-4 h-4 mr-2 text-emerald-500" />
+                                                            ¡Copiado! Mandalo por WhatsApp
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Copy className="w-4 h-4 mr-2" />
+                                                            Copiar Link
+                                                        </>
+                                                    )}
+                                                </Button>
 
-                                <DialogFooter>
-                                    <DialogClose asChild>
-                                        <Button variant="outline">Cerrar</Button>
-                                    </DialogClose>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                                                <p className="text-xs text-slate-400 text-center">
+                                                    ⏰ Este link vence en 7 días
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Cerrar</Button>
+                                        </DialogClose>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        )
                     )}
                 </div>
             </CardHeader>
