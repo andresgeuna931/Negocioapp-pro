@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { getSalesSummaryByRange, getTopProductsByRange, getSalesByDateRange, getSalesByPaymentMethod, getEconomicResult } from '@/lib/actions/reports';
 import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { SalesChart } from '@/components/reports/sales-chart';
+import { EconomicPieChart } from '@/components/reports/economic-pie-chart';
 import { exportSummaryToExcel } from '@/lib/utils/export-excel';
 
 type PeriodMode = 'last30' | 'thisMonth' | 'prevMonth' | 'custom' | 'custom-range';
@@ -96,9 +97,10 @@ interface ReportsClientProps {
         valueAtPrice: number;
         potentialProfit: number;
     } | null;
+    isOwner: boolean;
 }
 
-export function ReportsClient({ inventoryData }: ReportsClientProps) {
+export function ReportsClient({ inventoryData, isOwner }: ReportsClientProps) {
     const [mode, setMode] = useState<PeriodMode>('last30');
     const [customYear, setCustomYear] = useState(() => new Date().getFullYear());
     const [customMonth, setCustomMonth] = useState(() => new Date().getMonth());
@@ -480,16 +482,27 @@ export function ReportsClient({ inventoryData }: ReportsClientProps) {
                                     <span className="text-xs font-medium text-red-500">− {formatCurrency(economicData.gastos)}</span>
                                 </div>
                             </div>
-                            {/* Columna derecha: ganancia neta destacada */}
+                            {/* Columna derecha: donut para owners, ganancia destacada para todos */}
                             <div className="flex flex-col items-center justify-center gap-2">
-                                <span className="text-xs text-slate-500 dark:text-slate-400">Ganancia neta</span>
-                                <span className={`text-3xl font-bold ${economicData.gananciaNeta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                                    {formatCurrency(economicData.gananciaNeta)}
-                                </span>
-                                {economicData.totalVentas > 0 && (
-                                    <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
-                                        {Math.round((economicData.gananciaNeta / economicData.totalVentas) * 100)}% de margen neto
-                                    </span>
+                                {isOwner ? (
+                                    <EconomicPieChart
+                                        totalVentas={economicData.totalVentas}
+                                        costoMercaderia={economicData.costoMercaderia}
+                                        gastos={economicData.gastos}
+                                        gananciaNeta={economicData.gananciaNeta}
+                                    />
+                                ) : (
+                                    <>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">Ganancia neta</span>
+                                        <span className={`text-3xl font-bold ${economicData.gananciaNeta >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                            {formatCurrency(economicData.gananciaNeta)}
+                                        </span>
+                                        {economicData.totalVentas > 0 && (
+                                            <span className="text-xs px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
+                                                {Math.round((economicData.gananciaNeta / economicData.totalVentas) * 100)}% de margen neto
+                                            </span>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
