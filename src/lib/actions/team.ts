@@ -48,7 +48,7 @@ export async function generateInviteLink(role: UserRole = 'staff') {
 
     // Build the invite URL using the invitation UUID as token
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
-    const inviteUrl = `${baseUrl}/unirse/${invitation.id}`;
+    const inviteUrl = `${baseUrl}/unirse/empleado/${invitation.id}`;
 
     revalidatePath('/config');
     return {
@@ -297,5 +297,88 @@ export async function cancelInvitation(invitationId: string) {
     }
 
     revalidatePath('/config');
+    return { error: null };
+}
+// ─── REGISTRAR EMPLEADO VIA INVITE (admin client — email pre-confirmado) ──────
+export async function joinAsEmployee(data: {
+    token: string;
+    email: string;
+    password: string;
+    fullName: string;
+}) {
+    const { createClient: createAdminSupabase } = await import('@supabase/supabase-js');
+    const adminSupabase = createAdminSupabase(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const email = data.email.trim().toLowerCase();
+
+    // 1. Verificar que la invitación es válida
+    const { data: invitation, error: invError } = await adminSupabase
+        .from('team_invitations')
+        .select('*')
+        .eq('id', data.token)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+    if (invError || !invitation) {
+        return { error: 'La invitación ya no es válida o expiró.' };
+    }
+
+    // 2. Verificar que el email no esté ya registrado en el tenant
+    const { data: existingProfile } = await adminSupabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .eq('tenant_id', invitation.tenant_id)
+        .maybeSingle();
+
+    if (existingProfile) {
+        return { error: 'Este email ya está registrado en este negocio.' };
+    }
+
+    // 3. Crear usuario con email pre-confirmado (sin necesidad de confirmar inbox)
+    const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
+        email,
+        password: data.password,
+        email_confirm: true,
+        user_metadata: { full_name: data.fullName },
+    });
+
+    if (authError || !authData.user) {
+        return { error: authError?.message || 'Error al crear la cuenta.' };
+    }
+
+    // 4. Crear perfil vinculado al tenant del owner
+    const { error: profileError } = await adminSupabase
+        .from('profiles')
+        .insert({
+            id: authData.user.id,
+            tenant_id: invitation.tenant_id,
+            role: invitation.role,
+            full_name: data.fullName.trim(),
+            email,
+            is_active: true,
+        });
+
+    if (profileError) {
+        // Rollback: eliminar el usuario recién creado
+        await adminSupabase.auth.admin.deleteUser(authData.user.id);
+        return { error: 'Error al vincular con el equipo: ' + profileError.message };
+    }
+
+    // 5. Marcar invitación como aceptada
+    await adminSupabase
+        .from('team_invitations')
+        .update({
+            status: 'accepted',
+            email,
+            full_name: data.fullName.trim(),
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', invitation.id);
+
     return { error: null };
 }
