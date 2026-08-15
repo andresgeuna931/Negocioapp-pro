@@ -138,10 +138,19 @@ export function CustomersTable({ initialCustomers }: CustomersTableProps) {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono font-medium">
-                                            <span className={isNegative ? "text-red-600" : "text-emerald-600"}>
-                                                {formatCurrency(balance)}
-                                            </span>
-                                            {isNegative && <span className="text-xs text-red-500 block">Debe</span>}
+                                            {balance === 0 ? (
+                                                <span className="text-slate-400">{formatCurrency(0)}</span>
+                                            ) : isNegative ? (
+                                                <div>
+                                                    <span className="text-red-500">{formatCurrency(balance)}</span>
+                                                    <span className="text-xs text-red-400 block">Debe</span>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <span className="text-emerald-500">{formatCurrency(Math.abs(balance))}</span>
+                                                    <span className="text-xs text-emerald-400 block">A favor</span>
+                                                </div>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-right text-slate-500">
                                             {formatCurrency(customer.credit_limit)}
