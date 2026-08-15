@@ -2,7 +2,7 @@ export const PLANS = {
     STARTER: {
         id: 'starter',
         name: 'Starter',
-        price: 19000,
+        price: 16,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_STARTER,
         limits: {
@@ -23,7 +23,7 @@ export const PLANS = {
     PROFESSIONAL: {
         id: 'professional',
         name: 'Profesional',
-        price: 15,
+        price: 17,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_PROFESSIONAL,
         limits: {
@@ -67,7 +67,7 @@ export const PLANS = {
     BUSINESS: {
         id: 'business',
         name: 'Business',
-        price: 29,
+        price: 18,
         billing: 'monthly',
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS,
         limits: {
