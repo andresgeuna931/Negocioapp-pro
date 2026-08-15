@@ -52,7 +52,6 @@ export function EmployeeRegisterForm({ token, businessName }: Props) {
         });
 
         if (signInError) {
-            // Registro OK pero login falló — redirigir al login manual
             router.push('/login');
             return;
         }
@@ -89,7 +88,7 @@ export function EmployeeRegisterForm({ token, businessName }: Props) {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <Input
                         label="Nombre completo"
-                        leftIcon={<User className="w-4 h-4" />}
+                        icon={<User className="w-4 h-4" />}
                         placeholder="Tu nombre"
                         value={formData.fullName}
                         onChange={(e) => setFormData(p => ({ ...p, fullName: e.target.value }))}
@@ -99,28 +98,42 @@ export function EmployeeRegisterForm({ token, businessName }: Props) {
                     <Input
                         label="Email"
                         type="email"
-                        leftIcon={<Mail className="w-4 h-4" />}
+                        icon={<Mail className="w-4 h-4" />}
                         placeholder="tu@email.com"
                         value={formData.email}
                         onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))}
                         disabled={loading}
                         required
                     />
-                    <Input
-                        label="Contraseña"
-                        type={showPassword ? 'text' : 'password'}
-                        leftIcon={<Lock className="w-4 h-4" />}
-                        rightIcon={
-                            <button type="button" onClick={() => setShowPassword(p => !p)} tabIndex={-1}>
+
+                    {/* Campo contraseña con toggle manual (Input no soporta rightIcon) */}
+                    <div className="w-full">
+                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                            Contraseña
+                        </label>
+                        <div className="relative">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                <Lock className="w-4 h-4" />
+                            </div>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Mínimo 6 caracteres"
+                                value={formData.password}
+                                onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
+                                disabled={loading}
+                                required
+                                className="flex h-12 w-full rounded-xl border border-slate-700 bg-slate-800/80 pl-11 pr-11 py-2 text-base text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(p => !p)}
+                                tabIndex={-1}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                            >
                                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                             </button>
-                        }
-                        placeholder="Mínimo 6 caracteres"
-                        value={formData.password}
-                        onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
-                        disabled={loading}
-                        required
-                    />
+                        </div>
+                    </div>
 
                     {error && (
                         <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
