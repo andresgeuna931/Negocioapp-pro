@@ -288,7 +288,7 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
                                                 <MoreVertical className="w-4 h-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="min-w-[160px]">
+                                        <DropdownMenuContent align="end" className="min-w-[160px] border-slate-700 bg-slate-800">
                                             <DropdownMenuItem
                                                 className={`cursor-pointer flex items-center gap-2 font-medium ${
                                                     member.is_active
