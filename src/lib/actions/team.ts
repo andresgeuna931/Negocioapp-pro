@@ -171,21 +171,26 @@ export async function joinTeamViaInvite(data: {
 
 // Toggle user active status
 export async function toggleUserActive(userId: string, newStatus: boolean) {
-    const supabase = await createClient();
-
-    // Verify current user is owner
+    // Verificar que el usuario actual es owner
     const session = await getCurrentSession();
     if (!session || session.profile.role !== 'owner') {
         return { error: 'Solo el dueño puede gestionar usuarios' };
     }
 
-    // Can't deactivate yourself
+    // No puede desactivarse a sí mismo
     if (userId === session.user.id) {
         return { error: 'No podés desactivarte a vos mismo' };
     }
 
-    // Verify target user is in same tenant
-    const { data: targetProfile } = await supabase
+    // Usar admin client para bypassear RLS
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    const adminSupabase = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // Verificar que el usuario target pertenece al mismo tenant
+    const { data: targetProfile } = await adminSupabase
         .from('profiles')
         .select('tenant_id')
         .eq('id', userId)
@@ -195,8 +200,8 @@ export async function toggleUserActive(userId: string, newStatus: boolean) {
         return { error: 'Usuario no encontrado' };
     }
 
-    // Update user status
-    const { error } = await supabase
+    // Actualizar estado
+    const { error } = await adminSupabase
         .from('profiles')
         .update({ is_active: newStatus })
         .eq('id', userId);
@@ -299,6 +304,7 @@ export async function cancelInvitation(invitationId: string) {
     revalidatePath('/config');
     return { error: null };
 }
+
 // ─── REGISTRAR EMPLEADO VIA INVITE (admin client — email pre-confirmado) ──────
 export async function joinAsEmployee(data: {
     token: string;
