@@ -74,10 +74,10 @@ GESTIÓN DE EQUIPO:
 - Se elige el rol (Empleado o Dueño), se genera un link y se manda por WhatsApp
 - El empleado abre el link, completa nombre, email y contraseña, y queda vinculado al negocio sin necesidad de confirmar email
 - El link de invitación vence en 7 días
-- Límites de empleados activos por plan (el dueño no cuenta):
-  · Starter: sin empleados (solo el dueño)
-  · Profesional: hasta 2 empleados activos
-  · Business: hasta 3 empleados activos
+- Límites de usuarios adicionales activos por plan:
+  · Starter: solo el dueño (sin usuarios adicionales)
+  · Profesional: hasta 2 usuarios adicionales activos
+  · Business: hasta 3 usuarios adicionales activos
 - Si se llega al límite, hay que desactivar uno antes de activar otro o mejorar el plan
 - El dueño puede desactivar/reactivar empleados desde Configuración > Equipo (menú de tres puntos)
 - Un empleado desactivado pierde el acceso inmediatamente: al intentar entrar ve una pantalla de "Cuenta desactivada" con indicación de contactar al dueño
