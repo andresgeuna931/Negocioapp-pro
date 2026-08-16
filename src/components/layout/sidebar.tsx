@@ -146,7 +146,7 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
 
                     {hasVipSupport && (
                         <button
-                            onClick={() => { window.open('https://t.me/negocioapp_soporte_bot', '_blank'); onClose(); }}
+                            onClick={async () => { const res = await fetch('/api/telegram/token', { method: 'POST' }); const data = await res.json(); if (data.url) { window.open(data.url, '_blank'); onClose(); } }}
                             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border border-[#229ED9]/30 text-[#229ED9] hover:text-white mt-2"
                         >
                             <TelegramIcon />
