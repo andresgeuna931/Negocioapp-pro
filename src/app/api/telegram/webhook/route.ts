@@ -25,9 +25,11 @@ FUNCIONES DE LA APP:
 - Actualización masiva de precios por porcentaje
 - Reportes de ventas (básicos en Starter, avanzados en Profesional y Business)
 - Exportación a Excel — solo Profesional y Business
+- Gráfico de dona en Resultado económico (solo visible para el dueño): muestra el destino de cada peso — verde es ganancia neta, azul es costo de mercadería y rojo son gastos. El número del centro es el margen neto: qué porcentaje de las ventas totales quedó como ganancia real
 - Importación masiva de productos desde Excel
 - Gestión de clientes con abonos a cuenta corriente (efectivo, transferencia o QR)
 - Pago mixto: se registra la venta en cuenta corriente y luego se abona la parte pagada desde Clientes > Registrar Pago, seleccionando el medio de pago
+- Saldo de clientes: "Debe $X" en rojo significa que el cliente tiene deuda pendiente; "A favor $X" en verde significa que el cliente pagó más de lo que debía o tiene crédito disponible; $0 significa que está al día
 
 VENTA RÁPIDA — LISTAS DE PRECIOS:
 - En la pantalla de Venta Rápida hay un selector de lista de precios (aparece solo si el tenant tiene listas configuradas)
@@ -64,15 +66,27 @@ MÓDULO DE GASTOS (solo visible para dueño):
 - Los empleados NO ven el módulo de Gastos ni el balance financiero
 
 PERMISOS POR ROL:
-- Dueño: acceso completo incluyendo Gastos, balance financiero, configuración, listas de precios, anulación de ventas e historial completo
-- Empleado: puede vender, manejar caja y ver sus propios cierres; NO ve Gastos ni el balance financiero; puede usar listas de precios solo si el dueño lo habilitó en Configuración
+- Dueño: acceso completo incluyendo Gastos, balance financiero, configuración, listas de precios, anulación de ventas e historial completo. También puede ver el gráfico de dona con el margen neto en Reportes.
+- Empleado: puede vender, manejar caja y ver sus propios cierres; NO ve Gastos ni el balance financiero ni el gráfico económico; puede usar listas de precios solo si el dueño lo habilitó en Configuración
+
+GESTIÓN DE EQUIPO:
+- El dueño puede invitar empleados desde Configuración > Equipo tocando "Invitar"
+- Se elige el rol (Empleado o Dueño), se genera un link y se manda por WhatsApp
+- El empleado abre el link, completa nombre, email y contraseña, y queda vinculado al negocio sin necesidad de confirmar email
+- El link de invitación vence en 7 días
+- Límites de empleados activos por plan (el dueño no cuenta):
+  · Starter: sin empleados (solo el dueño)
+  · Profesional: hasta 2 empleados activos
+  · Business: hasta 3 empleados activos
+- Si se llega al límite, hay que desactivar uno antes de activar otro o mejorar el plan
+- El dueño puede desactivar/reactivar empleados desde Configuración > Equipo (menú de tres puntos)
+- Un empleado desactivado pierde el acceso inmediatamente: al intentar entrar ve una pantalla de "Cuenta desactivada" con indicación de contactar al dueño
 
 CONFIGURACIÓN:
 - Recargos por método de pago: el dueño configura % de recargo para débito, crédito 1 cuota y crédito 3 cuotas
 - Alertas de stock: umbral por defecto configurable; también se puede configurar por producto
 - Listas de precios: se crean desde Configuración > Listas de Precios; se puede definir ajuste por % o monto fijo
 - Listas de precios para empleados: toggle en Configuración que habilita/deshabilita el selector de lista para empleados al vender
-- Equipo: el dueño puede invitar empleados al sistema
 
 MÓDULO DE AYUDA:
 - Dentro de la app hay una sección de Ayuda con 9 secciones y más de 40 preguntas frecuentes
@@ -86,9 +100,9 @@ USUARIOS DEMO:
 - Las cuentas demo pueden estar habilitadas o deshabilitadas según lo decida el equipo
 
 PLANES Y PRECIOS:
-- Starter: $19.000/mes — hasta 1.000 productos, 1 usuario, soporte Chat Tawk.to (autogestión)
-- Profesional: $39.000/mes o $390.000/año — hasta 5.000 productos, 2 usuarios, Soporte VIP Telegram 24/7
-- Business: $49.000/mes o $490.000/año — productos ilimitados, 5 usuarios, Soporte VIP Telegram 24/7
+- Starter: $19.000/mes — hasta 1.000 productos, solo el dueño (sin empleados), soporte Chat Tawk.to (autogestión)
+- Profesional: $39.000/mes o $390.000/año — hasta 5.000 productos, hasta 2 empleados activos, Soporte VIP Telegram 24/7
+- Business: $49.000/mes o $490.000/año — productos ilimitados, hasta 3 empleados activos, Soporte VIP Telegram 24/7
 
 FACTURACIÓN:
 - El cobro se procesa a través de MercadoPago (tarjeta de crédito o débito)
