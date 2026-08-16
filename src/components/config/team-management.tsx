@@ -43,8 +43,8 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
     const [inviteUrl, setInviteUrl] = useState('');
     const [copied, setCopied] = useState(false);
 
-    // Solo empleados activos (no owners) cuentan para el límite
-    const activeEmployees = team.filter(m => m.role !== 'owner' && m.is_active).length;
+    // Todos los usuarios activos excepto el dueño principal cuentan para el límite
+    const activeEmployees = team.filter(m => m.id !== currentUserId && m.is_active).length;
     const atUserLimit = maxUsers === 0 || activeEmployees >= maxUsers;
 
     const handleGenerateLink = async () => {
@@ -94,12 +94,12 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
         // Si está intentando activar, verificar que no supere el límite
         if (!currentStatus) {
             if (maxUsers === 0) {
-                toast.error('Tu plan no permite empleados. Mejorá el plan para agregar empleados.');
+                toast.error('Tu plan no permite usuarios adicionales. Mejorá el plan para invitar más personas.');
                 return;
             }
             if (activeEmployees >= maxUsers) {
                 toast.error(
-                    `Ya tenés ${maxUsers} empleado${maxUsers !== 1 ? 's' : ''} activo${maxUsers !== 1 ? 's' : ''}. Desactivá uno antes de activar otro.`
+                    `Ya tenés ${maxUsers} usuario${maxUsers !== 1 ? 's' : ''} activo${maxUsers !== 1 ? 's' : ''}. Desactivá uno antes de activar otro.`
                 );
                 return;
             }
@@ -111,7 +111,7 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
             if (result.error) {
                 toast.error(result.error);
             } else {
-                toast.success(currentStatus ? 'Empleado desactivado' : 'Empleado activado');
+                toast.success(currentStatus ? 'Usuario desactivado' : 'Usuario activado');
                 router.refresh();
             }
         } catch {
@@ -142,7 +142,7 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
                         atUserLimit ? (
                             <div className="flex items-center gap-2">
                                 <span className="text-xs text-slate-400">
-                                    {activeEmployees}/{maxUsers} empleado{maxUsers !== 1 ? 's' : ''}
+                                    {activeEmployees}/{maxUsers} usuario{maxUsers !== 1 ? 's' : ''}
                                 </span>
                                 <Link href="/precios">
                                     <Button size="sm" variant="outline" className="gap-2 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
@@ -154,7 +154,7 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
                         ) : (
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-slate-400">
-                                    {activeEmployees}/{maxUsers} empleado{maxUsers !== 1 ? 's' : ''}
+                                    {activeEmployees}/{maxUsers} usuario{maxUsers !== 1 ? 's' : ''}
                                 </span>
                                 <Dialog open={isInviteOpen} onOpenChange={(open) => {
                                     setIsInviteOpen(open);
@@ -171,17 +171,17 @@ export function TeamManagement({ team, currentUserId, isOwner, maxUsers }: TeamM
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Invitar empleado</DialogTitle>
+                                            <DialogTitle>Invitar usuario</DialogTitle>
                                         </DialogHeader>
 
                                         <div className="space-y-4 py-4">
                                             <p className="text-sm text-slate-500">
                                                 Generá un link de invitación y mandalo por WhatsApp.
-                                                Tu empleado podrá crear su cuenta y acceder al negocio.
+                                                La persona podrá crear su cuenta y acceder al negocio.
                                             </p>
 
                                             <Select
-                                                label="Rol del empleado"
+                                                label="Rol"
                                                 value={inviteRole}
                                                 onChange={(e) => setInviteRole(e.target.value as UserRole)}
                                                 options={roleOptions}
