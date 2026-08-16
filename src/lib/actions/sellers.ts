@@ -212,3 +212,48 @@ export async function getUnassignedTenants() {
 
     return { tenants: unassigned };
 }
+
+// --- Resumen de comisiones para el panel admin ---
+
+export async function getTotalMonthlyCommissions() {
+    await requireAdmin();
+    const admin = createAdminClient();
+
+    const planPrices: Record<string, number> = {
+        starter: 19000,
+        professional: 39000,
+        business: 49000,
+    };
+
+    const { data: sellers } = await admin
+        .from('sellers')
+        .select('id, full_name, commission_pct')
+        .eq('is_active', true);
+
+    if (!sellers || sellers.length === 0) return { totalCommissions: 0, sellerBreakdown: [] };
+
+    const { data: assignments } = await admin
+        .from('seller_assignments')
+        .select('seller_id, tenant_id, tenants(plan_type, subscription_status)');
+
+    const sellerBreakdown = sellers.map((seller: any) => {
+        const sellerAssignments = (assignments ?? []).filter((a: any) => a.seller_id === seller.id);
+        const activeRevenue = sellerAssignments.reduce((acc: number, a: any) => {
+            const t = a.tenants as any;
+            if (t?.subscription_status !== 'active') return acc;
+            return acc + (planPrices[t.plan_type] ?? 0);
+        }, 0);
+        const activeClients = sellerAssignments.filter((a: any) => (a.tenants as any)?.subscription_status === 'active').length;
+        const commission = Math.round(activeRevenue * (seller.commission_pct / 100));
+        return {
+            sellerId: seller.id,
+            fullName: seller.full_name,
+            commissionPct: seller.commission_pct,
+            activeClients,
+            commission,
+        };
+    });
+
+    const totalCommissions = sellerBreakdown.reduce((acc: number, s: any) => acc + s.commission, 0);
+    return { totalCommissions, sellerBreakdown };
+}
