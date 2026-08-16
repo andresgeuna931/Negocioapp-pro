@@ -29,7 +29,7 @@ export async function getSellers() {
             tenant_id,
             tenants (
                 id,
-                business_name
+                name
             )
         `);
 
@@ -55,7 +55,7 @@ export async function getSellers() {
                     assigned_at: a.assigned_at,
                     tenant: {
                         id: a.tenant_id,
-                        business_name: (a.tenants as any)?.business_name ?? '',
+                        business_name: (a.tenants as any)?.name ?? '',
                         subscriptions: sub ? [{ plan_id: sub.plan_id, status: sub.status }] : [],
                     },
                 };
@@ -206,8 +206,8 @@ export async function getUnassignedTenants() {
     // Todos los tenants
     const { data: allTenants } = await admin
         .from('tenants')
-        .select('id, business_name')
-        .order('business_name');
+        .select('id, name')
+        .order('name');
 
     // Tenants ya asignados
     const { data: assigned } = await admin
@@ -215,7 +215,9 @@ export async function getUnassignedTenants() {
         .select('tenant_id');
 
     const assignedIds = new Set((assigned ?? []).map((a: any) => a.tenant_id));
-    const unassigned = (allTenants ?? []).filter((t: any) => !assignedIds.has(t.id));
+    const unassigned = (allTenants ?? [])
+        .filter((t: any) => !assignedIds.has(t.id))
+        .map((t: any) => ({ id: t.id, business_name: t.name }));
 
     return { tenants: unassigned };
 }
