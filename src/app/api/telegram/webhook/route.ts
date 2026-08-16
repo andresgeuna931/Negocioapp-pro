@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY!;
@@ -213,11 +214,58 @@ export async function POST(request: NextRequest) {
     const firstName = message.from?.first_name || 'cliente';
     const username = message.from?.username;
 
+    const admin = createAdminClient();
+
     if (userText.startsWith('/start')) {
-      await sendMessage(
-        chatId,
-        `¡Hola ${firstName}! 👋 Soy Sofía del equipo de soporte de NegocioApp Pro. ¿En qué te puedo ayudar hoy?`
-      );
+      const token = userText.split(' ')[1]?.trim();
+
+      if (!token) {
+        await sendMessage(chatId, 'Para acceder al soporte, ingresá desde el botón "Soporte VIP" dentro de la app.');
+        return NextResponse.json({ ok: true });
+      }
+
+      // Verificar token de un solo uso
+      const { data: telegramToken } = await admin
+        .from('telegram_tokens')
+        .select('user_id, used')
+        .eq('token', token)
+        .single();
+
+      if (!telegramToken || telegramToken.used) {
+        await sendMessage(chatId, 'Este link ya fue usado o no es válido. Generá uno nuevo desde la app.');
+        return NextResponse.json({ ok: true });
+      }
+
+      // Marcar token como usado y vincular chat_id con user_id
+      await Promise.all([
+        admin.from('telegram_tokens').update({ used: true }).eq('token', token),
+        admin.from('telegram_users').upsert({ user_id: telegramToken.user_id, chat_id: chatId }, { onConflict: 'user_id' }),
+      ]);
+
+      await sendMessage(chatId, `¡Hola ${firstName}! 👋 Soy Sofía del equipo de soporte de NegocioApp Pro. ¿En qué te puedo ayudar hoy?`);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Verificar que el chat_id está registrado y el usuario sigue activo
+    const { data: telegramUser } = await admin
+      .from('telegram_users')
+      .select('user_id')
+      .eq('chat_id', chatId)
+      .single();
+
+    if (!telegramUser) {
+      await sendMessage(chatId, 'Para acceder al soporte, ingresá desde el botón "Soporte VIP" dentro de la app.');
+      return NextResponse.json({ ok: true });
+    }
+
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('is_active')
+      .eq('id', telegramUser.user_id)
+      .single();
+
+    if (!profile?.is_active) {
+      await sendMessage(chatId, 'Tu acceso fue revocado. Contactá al dueño del negocio.');
       return NextResponse.json({ ok: true });
     }
 
