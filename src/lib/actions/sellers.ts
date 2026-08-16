@@ -10,27 +10,60 @@ export async function getSellers() {
     await requireAdmin();
     const admin = createAdminClient();
 
-    const { data, error } = await admin
+    // Query 1: sellers
+    const { data: sellers, error: sellersError } = await admin
         .from('sellers')
-        .select(`
-            *,
-            seller_assignments (
-                id,
-                assigned_at,
-                tenant:tenants (
-                    id,
-                    business_name,
-                    subscriptions (
-                        plan_id,
-                        status
-                    )
-                )
-            )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-    if (error) return { error: error.message };
-    return { sellers: data };
+    if (sellersError) return { error: sellersError.message };
+    if (!sellers || sellers.length === 0) return { sellers: [] };
+
+    // Query 2: assignments con tenant
+    const { data: assignments } = await admin
+        .from('seller_assignments')
+        .select(`
+            id,
+            seller_id,
+            assigned_at,
+            tenant_id,
+            tenants (
+                id,
+                business_name
+            )
+        `);
+
+    // Query 3: subscriptions de los tenants asignados
+    const tenantIds = (assignments ?? []).map((a: any) => a.tenant_id);
+    let subscriptions: any[] = [];
+    if (tenantIds.length > 0) {
+        const { data: subs } = await admin
+            .from('subscriptions')
+            .select('tenant_id, plan_id, status')
+            .in('tenant_id', tenantIds);
+        subscriptions = subs ?? [];
+    }
+
+    // Merge
+    const sellersWithAssignments = sellers.map((seller: any) => {
+        const sellerAssignments = (assignments ?? [])
+            .filter((a: any) => a.seller_id === seller.id)
+            .map((a: any) => {
+                const sub = subscriptions.find((s: any) => s.tenant_id === a.tenant_id);
+                return {
+                    id: a.id,
+                    assigned_at: a.assigned_at,
+                    tenant: {
+                        id: a.tenant_id,
+                        business_name: (a.tenants as any)?.business_name ?? '',
+                        subscriptions: sub ? [{ plan_id: sub.plan_id, status: sub.status }] : [],
+                    },
+                };
+            });
+        return { ...seller, seller_assignments: sellerAssignments };
+    });
+
+    return { sellers: sellersWithAssignments };
 }
 
 export async function createSeller(formData: FormData) {
