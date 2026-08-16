@@ -19,7 +19,7 @@ export async function getSellers() {
     if (sellersError) return { error: sellersError.message };
     if (!sellers || sellers.length === 0) return { sellers: [] };
 
-    // Query 2: assignments con tenant
+    // Query 2: assignments con tenant — plan_type y subscription_status directo de tenants
     const { data: assignments } = await admin
         .from('seller_assignments')
         .select(`
@@ -29,34 +29,25 @@ export async function getSellers() {
             tenant_id,
             tenants (
                 id,
-                name
+                name,
+                plan_type,
+                subscription_status
             )
         `);
-
-    // Query 3: subscriptions de los tenants asignados
-    const tenantIds = (assignments ?? []).map((a: any) => a.tenant_id);
-    let subscriptions: any[] = [];
-    if (tenantIds.length > 0) {
-        const { data: subs } = await admin
-            .from('subscriptions')
-            .select('tenant_id, plan_id, status')
-            .in('tenant_id', tenantIds);
-        subscriptions = subs ?? [];
-    }
 
     // Merge
     const sellersWithAssignments = sellers.map((seller: any) => {
         const sellerAssignments = (assignments ?? [])
             .filter((a: any) => a.seller_id === seller.id)
             .map((a: any) => {
-                const sub = subscriptions.find((s: any) => s.tenant_id === a.tenant_id);
+                const t = a.tenants as any;
                 return {
                     id: a.id,
                     assigned_at: a.assigned_at,
                     tenant: {
                         id: a.tenant_id,
-                        business_name: (a.tenants as any)?.name ?? '',
-                        subscriptions: sub ? [{ plan_id: sub.plan_id, status: sub.status }] : [],
+                        business_name: t?.name ?? '',
+                        subscriptions: t ? [{ plan_id: t.plan_type, status: t.subscription_status }] : [],
                     },
                 };
             });
