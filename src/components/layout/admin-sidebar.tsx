@@ -9,7 +9,8 @@ import {
     ShieldCheck,
     ChevronLeft,
     X,
-    Building2
+    Building2,
+    UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,11 @@ const adminNavItems = [
         href: '/admin/tenants',
         label: 'Negocios / Clientes',
         icon: Building2,
+    },
+    {
+        href: '/admin/vendedores',
+        label: 'Vendedores',
+        icon: UserCheck,
     },
     {
         href: '/admin/settings',
