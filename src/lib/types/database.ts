@@ -253,6 +253,7 @@ export interface CashSession {
   difference?: number;
   total_sales_cash: number;
   total_sales_other: number;
+  total_sales_account?: number;
   total_withdrawals: number;
   total_deposits: number;
   status: CashSessionStatus;
