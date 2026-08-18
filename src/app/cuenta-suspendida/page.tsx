@@ -1,4 +1,6 @@
-import Link from 'next/link';
+'use client';
+
+import { signOut } from '@/lib/actions/auth';
 
 export default function CuentaSuspendidaPage() {
     return (
@@ -19,12 +21,14 @@ export default function CuentaSuspendidaPage() {
                     </p>
                 </div>
 
-                <Link
-                    href="/login"
-                    className="inline-block text-sm text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
-                >
-                    Volver al inicio de sesión
-                </Link>
+                <form action={signOut}>
+                    <button
+                        type="submit"
+                        className="text-sm text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
+                    >
+                        Cerrar sesión
+                    </button>
+                </form>
             </div>
         </div>
     );
