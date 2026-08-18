@@ -173,8 +173,8 @@ export async function joinTeamViaInvite(data: {
 export async function toggleUserActive(userId: string, newStatus: boolean) {
     // Verificar que el usuario actual es owner
     const session = await getCurrentSession();
-    if (!session || session.profile.role !== 'owner') {
-        return { error: 'Solo el dueño puede gestionar usuarios' };
+    if (!session || (session.profile.role !== 'owner' && session.profile.role !== 'admin')) {
+        return { error: 'Solo el dueño o admin puede gestionar usuarios' };
     }
 
     // No puede desactivarse a sí mismo
