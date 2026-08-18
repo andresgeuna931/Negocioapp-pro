@@ -72,7 +72,7 @@ export const PLANS = {
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS,
         limits: {
             products: -1,
-            users: 3, // 3 empleados (dueño no cuenta)
+            users: 5, // 5 empleados (dueño no cuenta)
         },
         features: {
             multi_price_lists: true,
@@ -95,7 +95,7 @@ export const PLANS = {
         mercadopago_plan_id: process.env.NEXT_PUBLIC_MP_PLAN_BUSINESS_ANNUAL,
         limits: {
             products: -1,
-            users: 3, // 3 empleados (dueño no cuenta)
+            users: 5, // 5 empleados (dueño no cuenta)
         },
         features: {
             multi_price_lists: true,
