@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentSession } from './auth';
 import { UserRole } from '@/lib/types';
+import { getPlanDetails } from '@/lib/config/plans';
 
 // Roles que un owner puede asignar dentro de su tenant
 // 'admin' es un rol de sistema global — nunca puede ser asignado por un tenant
@@ -25,6 +26,27 @@ export async function generateInviteLink(role: UserRole = 'staff') {
     }
 
     const tenantId = session.profile.tenant_id;
+
+    // LIM-01: Verificar límite de usuarios adicionales del plan
+    const planId = session.subscription?.plan_id || session.subscription?.plan || 'starter';
+    const planDetails = getPlanDetails(planId);
+    const userLimit = planDetails.limits.users; // usuarios adicionales permitidos (sin contar al dueño principal)
+
+    if (userLimit >= 0) {
+        const { count } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .neq('id', session.user.id);
+
+        if ((count ?? 0) >= userLimit) {
+            const limite = userLimit === 0
+                ? 'Tu plan no permite usuarios adicionales'
+                : `Tu plan ${planDetails.name} permite hasta ${userLimit} usuario${userLimit !== 1 ? 's' : ''} adicional${userLimit !== 1 ? 'es' : ''}`;
+            return { error: `${limite}. Desactivá uno antes de invitar otro o mejorá tu plan.` };
+        }
+    }
 
     // Create invitation record (no email needed — the link is generic)
     const { data: invitation, error: inviteError } = await supabase
@@ -343,6 +365,50 @@ export async function joinAsEmployee(data: {
 
     if (existingProfile) {
         return { error: 'Este email ya está registrado en este negocio.' };
+    }
+
+    // 2b. LIM-01: Verificar límite de usuarios adicionales del plan (segunda barrera)
+    const { data: subscription } = await adminSupabase
+        .from('subscriptions')
+        .select('plan, plan_id')
+        .eq('tenant_id', invitation.tenant_id)
+        .single();
+
+    const planId = (subscription as { plan_id?: string; plan?: string } | null)?.plan_id
+        || (subscription as { plan_id?: string; plan?: string } | null)?.plan
+        || 'starter';
+    const planDetails = getPlanDetails(planId);
+    const userLimit = planDetails.limits.users;
+
+    if (userLimit >= 0) {
+        // Contar propietario original del tenant para excluirlo del límite
+        const { data: tenantOwner } = await adminSupabase
+            .from('profiles')
+            .select('id')
+            .eq('tenant_id', invitation.tenant_id)
+            .eq('role', 'owner')
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .single();
+
+        let query = adminSupabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', invitation.tenant_id)
+            .eq('is_active', true);
+
+        if (tenantOwner) {
+            query = query.neq('id', tenantOwner.id);
+        }
+
+        const { count } = await query;
+
+        if ((count ?? 0) >= userLimit) {
+            const limite = userLimit === 0
+                ? 'Este plan no permite usuarios adicionales'
+                : `El plan ${planDetails.name} permite hasta ${userLimit} usuario${userLimit !== 1 ? 's' : ''} adicional${userLimit !== 1 ? 'es' : ''}`;
+            return { error: `${limite}. El dueño debe desactivar uno o mejorar el plan.` };
+        }
     }
 
     // 3. Crear usuario con email pre-confirmado (sin necesidad de confirmar inbox)
