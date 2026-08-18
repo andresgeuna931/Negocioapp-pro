@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/actions/auth';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export type NotificationType = 'new_tenant' | 'subscription_expiring' | 'subscription_expired' | 'payment_received';
@@ -67,6 +68,7 @@ export async function createAdminNotification(
     message: string,
     tenantId?: string
 ) {
+    await requireAdmin();
     const adminSupabase = createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
