@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentSession } from '@/lib/actions/auth';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export type TenantNotificationType = 'stock_low' | 'payment_received' | 'subscription_expiring';
@@ -73,6 +74,8 @@ export async function createTenantNotification(
     title: string,
     message: string
 ) {
+    const session = await getCurrentSession();
+    if (!session) return { success: false };
     const adminSupabase = createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
