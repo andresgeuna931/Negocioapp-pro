@@ -30,7 +30,7 @@ export async function generateInviteLink(role: UserRole = 'staff') {
     // LIM-01: Verificar límite de usuarios adicionales del plan
     const planId = session.subscription?.plan_id || session.subscription?.plan || 'starter';
     const planDetails = getPlanDetails(planId);
-    const userLimit = planDetails.limits.users; // usuarios adicionales permitidos (sin contar al dueño principal)
+    const userLimit = planDetails.limits.users as number; // usuarios adicionales permitidos (sin contar al dueño principal)
 
     if (userLimit >= 0) {
         const { count } = await supabase
@@ -378,7 +378,7 @@ export async function joinAsEmployee(data: {
         || (subscription as { plan_id?: string; plan?: string } | null)?.plan
         || 'starter';
     const planDetails = getPlanDetails(planId);
-    const userLimit = planDetails.limits.users;
+    const userLimit = planDetails.limits.users as number;
 
     if (userLimit >= 0) {
         // Contar propietario original del tenant para excluirlo del límite
