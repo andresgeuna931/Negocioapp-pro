@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/actions/auth';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { BusinessType } from '@/lib/constants/business-types';
 
@@ -19,6 +20,7 @@ const categoryMap: Record<string, string[]> = {
 };
 
 export async function seedTenantData(tenantId: string, type: BusinessType) {
+    await requireAdmin();
     // Use admin client to bypass RLS during seeding
     const supabase = createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
