@@ -189,7 +189,6 @@ GRANT EXECUTE ON FUNCTION get_top_products(INT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION update_subscription_status() TO authenticated;
 GRANT EXECUTE ON FUNCTION mark_payment_received(UUID, NUMERIC, INT) TO authenticated;
 GRANT EXECUTE ON FUNCTION create_tenant_with_owner(TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION link_user_to_tenant(UUID, UUID, TEXT, TEXT, user_role) TO authenticated;
 
 -- ============================================
 -- FIN DEL SCRIPT RLS
