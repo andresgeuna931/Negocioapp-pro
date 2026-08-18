@@ -78,7 +78,7 @@ GESTIÓN DE EQUIPO:
 - Límites de usuarios adicionales activos por plan:
   · Starter: solo el dueño (sin usuarios adicionales)
   · Profesional: hasta 2 usuarios adicionales activos
-  · Business: hasta 3 usuarios adicionales activos
+  · Business: hasta 5 usuarios adicionales activos
 - Si se llega al límite, hay que desactivar uno antes de activar otro o mejorar el plan
 - El dueño puede desactivar/reactivar empleados desde Configuración > Equipo (menú de tres puntos)
 - Un empleado desactivado pierde el acceso inmediatamente: al intentar entrar ve una pantalla de "Cuenta desactivada" con indicación de contactar al dueño
@@ -103,7 +103,7 @@ USUARIOS DEMO:
 PLANES Y PRECIOS:
 - Starter: $19.000/mes — hasta 1.000 productos, solo el dueño (sin empleados), soporte Chat Tawk.to (autogestión)
 - Profesional: $39.000/mes o $390.000/año — hasta 5.000 productos, hasta 2 empleados activos, Soporte VIP Telegram 24/7
-- Business: $49.000/mes o $490.000/año — productos ilimitados, hasta 3 empleados activos, Soporte VIP Telegram 24/7
+- Business: $49.000/mes o $490.000/año — productos ilimitados, hasta 5 empleados activos, Soporte VIP Telegram 24/7
 
 FACTURACIÓN:
 - El cobro se procesa a través de MercadoPago (tarjeta de crédito o débito)
