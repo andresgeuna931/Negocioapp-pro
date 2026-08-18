@@ -201,6 +201,12 @@ async function getClaudeResponse(userMessage: string, history: Array<{role: stri
 const conversationHistory: Map<number, Array<{role: string, content: string}>> = new Map();
 
 export async function POST(request: NextRequest) {
+  // Validar secreto del webhook de Telegram
+  const secret = request.headers.get('x-telegram-bot-api-secret-token');
+  if (!secret || secret !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const message = body?.message;
@@ -224,23 +230,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
-      // Verificar token de un solo uso
+      // Consumir token atómicamente — UPDATE WHERE used=false RETURNING evita doble uso
       const { data: telegramToken } = await admin
         .from('telegram_tokens')
-        .select('user_id, used')
+        .update({ used: true })
         .eq('token', token)
+        .eq('used', false)
+        .select('user_id')
         .single();
 
-      if (!telegramToken || telegramToken.used) {
+      if (!telegramToken) {
         await sendMessage(chatId, 'Este link ya fue usado o no es válido. Generá uno nuevo desde la app.');
         return NextResponse.json({ ok: true });
       }
 
-      // Marcar token como usado y vincular chat_id con user_id
-      await Promise.all([
-        admin.from('telegram_tokens').update({ used: true }).eq('token', token),
-        admin.from('telegram_users').upsert({ user_id: telegramToken.user_id, chat_id: chatId }, { onConflict: 'user_id' }),
-      ]);
+      // Vincular chat_id con user_id
+      await admin.from('telegram_users').upsert({ user_id: telegramToken.user_id, chat_id: chatId }, { onConflict: 'user_id' });
 
       await sendMessage(chatId, `¡Hola ${firstName}! 👋 Soy Sofía del equipo de soporte de NegocioApp Pro. ¿En qué te puedo ayudar hoy?`);
       return NextResponse.json({ ok: true });
