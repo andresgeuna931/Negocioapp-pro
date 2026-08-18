@@ -404,11 +404,12 @@ export async function importProducts(
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('tenant_id')
+        .select('tenant_id, role')
         .eq('id', user.id)
         .single();
 
     if (!profile) return { success: false, error: 'Perfil no encontrado' };
+    if (!hasPermission(profile.role, 'products:edit')) return { success: false, error: 'Sin permiso para importar productos', created: 0, updated: 0, errors: [] };
 
     let createdCount = 0;
     let updatedCount = 0;
