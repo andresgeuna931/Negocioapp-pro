@@ -102,8 +102,8 @@ USUARIOS DEMO:
 
 PLANES Y PRECIOS:
 - Starter: $19.000/mes — hasta 1.000 productos, solo el dueño (sin empleados), soporte Chat Tawk.to (autogestión)
-- Profesional: $39.000/mes o $390.000/año — hasta 5.000 productos, hasta 2 empleados activos, Soporte VIP Telegram 24/7
-- Business: $49.000/mes o $490.000/año — productos ilimitados, hasta 5 empleados activos, Soporte VIP Telegram 24/7
+- Profesional: $39.000/mes o $390.000/año — hasta 5.000 productos, hasta 2 usuarios adicionales activos (empleados o dueños), Soporte VIP Telegram 24/7
+- Business: $49.000/mes o $490.000/año — productos ilimitados, hasta 5 usuarios adicionales activos (empleados o dueños), Soporte VIP Telegram 24/7
 
 FACTURACIÓN:
 - El cobro se procesa a través de MercadoPago (tarjeta de crédito o débito)
