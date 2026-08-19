@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
@@ -528,7 +527,13 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                     <p className="text-sm font-medium">Comisión fija</p>
                                     <p className="text-xs text-slate-400">Si activás esto, el % no varía con los niveles</p>
                                 </div>
-                                <Switch checked={newFixed} onCheckedChange={setNewFixed} />
+                                <button
+                                        type="button"
+                                        onClick={() => setNewFixed(!newFixed)}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${newFixed ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                                    >
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${newFixed ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
                             </div>
                             {newFixed && (
                                 <div className="space-y-1">
@@ -568,7 +573,13 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                 <p className="text-sm font-medium">Comisión fija</p>
                                 <p className="text-xs text-slate-400">Si activás esto, el % no varía con los niveles</p>
                             </div>
-                            <Switch checked={editFixed} onCheckedChange={setEditFixed} />
+                            <button
+                                type="button"
+                                onClick={() => setEditFixed(!editFixed)}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editFixed ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                            >
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${editFixed ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
                         </div>
                         {editFixed && (
                             <div className="space-y-1">
