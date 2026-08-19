@@ -282,7 +282,13 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
 
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-slate-900 dark:text-white truncate">{seller.full_name}</p>
-                                            <p className="text-xs text-slate-500 truncate">{seller.email}</p>
+                                            <p className="text-xs text-slate-500 truncate">
+                                                {seller.email}
+                                                {seller.referred_by && (() => {
+                                                    const referrer = sellers.find((s: any) => s.id === seller.referred_by);
+                                                    return referrer ? <span className="ml-2 text-purple-400">· Ref. por {referrer.full_name}</span> : null;
+                                                })()}
+                                            </p>
                                         </div>
 
                                         {/* Clientes activos */}
@@ -356,10 +362,19 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                 </div>
                                 <CardTitle className="text-base">{selectedSeller.full_name}</CardTitle>
                                 <CardDescription>{selectedSeller.email}</CardDescription>
-                                <div className="flex gap-2 mt-1">
+                                <div className="flex flex-wrap gap-2 mt-1">
                                     <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${selectedSeller.commission_fixed ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
                                         {selectedSeller.commission_fixed ? `Fijo ${selectedSeller.commission_pct}%` : `${getLevelLabel(selectedSeller.commission_pct, false)} · ${selectedSeller.commission_pct}%`}
                                     </span>
+                                    {selectedSeller.referred_by && (() => {
+                                        const referrer = sellers.find((s: any) => s.id === selectedSeller.referred_by);
+                                        return referrer ? (
+                                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold border bg-slate-500/10 text-slate-400 border-slate-500/20">
+                                                <Network className="inline w-3 h-3 mr-0.5" />
+                                                Ref. por {referrer.full_name}
+                                            </span>
+                                        ) : null;
+                                    })()}
                                 </div>
                             </CardHeader>
 
