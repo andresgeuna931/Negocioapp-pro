@@ -2,36 +2,43 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, TrendingUp, Building2, DollarSign, Plus, MoreVertical, Check, X, Pencil, Trash2, UserMinus, UserCheck } from 'lucide-react';
+import {
+    Users, TrendingUp, Building2, DollarSign, Plus, MoreVertical,
+    Check, X, Pencil, Trash2, UserMinus, UserCheck, Network, Calendar, Lock
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogClose,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-    createSeller,
-    updateSellerCommission,
-    toggleSellerActive,
-    deleteSeller,
-    assignTenantToSeller,
-    removeAssignment,
-    recordCommissionPayment,
+    createSeller, updateSeller, toggleSellerActive, deleteSeller,
+    assignTenantToSeller, removeAssignment, recordCommissionPayment,
 } from '@/lib/actions/sellers';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// ─── Tipos ──────────────────────────────────────────────────────────────────
+
+interface Assignment {
+    id: string;
+    assigned_at: string;
+    activation_date: string | null;
+    payment_date: string | null;
+    tenant: {
+        id: string;
+        business_name: string;
+        plan_type: string;
+        subscription_status: string;
+        subscriptions: Array<{ plan_id: string; status: string }>;
+    };
+}
 
 interface Seller {
     id: string;
@@ -39,14 +46,18 @@ interface Seller {
     email: string;
     is_active: boolean;
     commission_pct: number;
+    commission_fixed: boolean;
+    referred_by: string | null;
     activeClients: number;
     totalClients: number;
     monthlyRevenue: number;
     monthlyCommission: number;
-    seller_assignments: Array<{
-        id: string;
-        tenant: { id: string; business_name: string; subscriptions: Array<{ plan_id: string; status: string }> };
-    }>;
+    directCommission: number;
+    referredSellersCount: number;
+    networkActiveClients: number;
+    referralThreshold: number;
+    referralCommission: number;
+    seller_assignments: Assignment[];
 }
 
 interface SellersClientProps {
@@ -56,49 +67,102 @@ interface SellersClientProps {
     totalActiveClients: number;
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 const PLAN_LABELS: Record<string, string> = {
     starter: 'Starter · $19.000/mes',
     professional: 'Profesional · $39.000/mes',
     business: 'Business · $49.000/mes',
+    professional_annual: 'Profesional Anual',
+    business_annual: 'Business Anual',
 };
+
+function getLevelLabel(pct: number, fixed: boolean): string {
+    if (fixed) return 'Fijo';
+    if (pct >= 30) return 'Nivel 4';
+    if (pct >= 27) return 'Nivel 3';
+    if (pct >= 24) return 'Nivel 2';
+    return 'Nivel 1';
+}
+
+function formatDate(iso: string | null): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getNextThreshold(networkActive: number): number {
+    const current = Math.floor(networkActive / 10) * 10;
+    return current + 10;
+}
+
+// ─── Componente principal ────────────────────────────────────────────────────
 
 export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissions, totalActiveClients }: SellersClientProps) {
     const router = useRouter();
     const [selectedSeller, setSelectedSeller] = useState<Seller | null>(sellers[0] ?? null);
     const [isNewOpen, setIsNewOpen] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
     const [isAssignOpen, setIsAssignOpen] = useState(false);
     const [isPayOpen, setIsPayOpen] = useState(false);
-    const [editingCommission, setEditingCommission] = useState(false);
-    const [commissionInput, setCommissionInput] = useState('');
+    const [isNetworkOpen, setIsNetworkOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    // Nuevo vendedor
+    const [newFixed, setNewFixed] = useState(false);
+    const [newPct, setNewPct] = useState('20');
+    const [newReferredBy, setNewReferredBy] = useState('');
+
+    // Editar
+    const [editFixed, setEditFixed] = useState(false);
+    const [editPct, setEditPct] = useState('20');
 
     const filtered = sellers.filter(s =>
         s.full_name.toLowerCase().includes(search.toLowerCase()) ||
         s.email.toLowerCase().includes(search.toLowerCase())
     );
 
+    const currentMonth = new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' });
+
+    // ─── Handlers ──────────────────────────────────────────────────────────
+
     const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
         const fd = new FormData(e.currentTarget);
+        fd.set('commission_fixed', newFixed ? 'true' : 'false');
+        fd.set('commission_pct', newFixed ? newPct : '20');
+        if (newReferredBy) fd.set('referred_by', newReferredBy);
         const res = await createSeller(fd);
         setIsLoading(false);
         if (res.error) { toast.error(res.error); return; }
         toast.success('Vendedor creado');
         setIsNewOpen(false);
+        setNewFixed(false);
+        setNewPct('20');
+        setNewReferredBy('');
         router.refresh();
     };
 
-    const handleCommissionSave = async () => {
+    const handleEditSave = async () => {
         if (!selectedSeller) return;
-        const pct = Number(commissionInput);
-        if (isNaN(pct) || pct < 0 || pct > 100) { toast.error('Porcentaje inválido'); return; }
-        const res = await updateSellerCommission(selectedSeller.id, pct);
+        const pct = Number(editPct);
+        if (isNaN(pct) || pct < 1 || pct > 100) { toast.error('Porcentaje inválido'); return; }
+        const res = await updateSeller(selectedSeller.id, {
+            commission_fixed: editFixed,
+            commission_pct: editFixed ? pct : selectedSeller.commission_pct,
+        });
         if (res.error) { toast.error(res.error); return; }
         toast.success('Comisión actualizada');
-        setEditingCommission(false);
+        setIsEditOpen(false);
         router.refresh();
+    };
+
+    const openEdit = (seller: Seller) => {
+        setSelectedSeller(seller);
+        setEditFixed(seller.commission_fixed);
+        setEditPct(String(seller.commission_pct));
+        setIsEditOpen(true);
     };
 
     const handleToggleActive = async (seller: Seller) => {
@@ -135,7 +199,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
 
     const handleMarkPaid = async () => {
         if (!selectedSeller) return;
-        const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+        const month = new Date().toISOString().slice(0, 7);
         const res = await recordCommissionPayment(selectedSeller.id, selectedSeller.monthlyCommission, month);
         if (res.error) { toast.error(res.error); return; }
         toast.success(`Pago de ${formatCurrency(selectedSeller.monthlyCommission)} registrado`);
@@ -143,7 +207,8 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
         router.refresh();
     };
 
-    const currentMonth = new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' });
+    // Vendedores disponibles para referir (excluyendo el actual y sus propios referidos)
+    const availableReferrers = sellers.filter(s => s.id !== selectedSeller?.id);
 
     return (
         <div className="space-y-6">
@@ -151,7 +216,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
             <div className="flex items-start justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Vendedores</h1>
-                    <p className="text-sm text-slate-500 mt-1">Gestión de comisiones por suscripción activa</p>
+                    <p className="text-sm text-slate-500 mt-1">Comisiones · Niveles · Red de referidos</p>
                 </div>
                 <Button onClick={() => setIsNewOpen(true)} className="gap-2">
                     <Plus className="w-4 h-4" /> Nuevo vendedor
@@ -162,10 +227,10 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Vendedores activos', value: sellers.filter(s => s.is_active).length, icon: Users, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-                    { label: 'Clientes asignados', value: totalActiveClients, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                    { label: 'Clientes activos', value: totalActiveClients, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-500/10' },
                     { label: `Comisiones ${currentMonth}`, value: formatCurrency(totalMonthlyCommissions), icon: DollarSign, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-                    { label: 'Negocios sin asignar', value: unassignedTenants.length, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                ].map((tile) => (
+                    { label: 'Sin asignar', value: unassignedTenants.length, icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                ].map(tile => (
                     <Card key={tile.label}>
                         <CardContent className="p-5">
                             <div className={`w-9 h-9 rounded-lg ${tile.bg} flex items-center justify-center mb-3`}>
@@ -181,14 +246,14 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
             {/* PANEL PRINCIPAL */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* TABLA */}
+                {/* LISTA */}
                 <div className="lg:col-span-2">
                     <Card>
                         <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <CardTitle>Todos los vendedores</CardTitle>
-                                    <CardDescription>{currentMonth}</CardDescription>
+                                    <CardDescription>Corte: 1° de cada mes</CardDescription>
                                 </div>
                             </div>
                             <Input
@@ -212,42 +277,49 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                         onClick={() => setSelectedSeller(seller)}
                                         className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${selectedSeller?.id === seller.id ? 'bg-purple-500/5 border-l-2 border-purple-500' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                                     >
-                                        {/* Avatar */}
                                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold flex-shrink-0">
                                             {seller.full_name.charAt(0).toUpperCase()}
                                         </div>
 
-                                        {/* Info */}
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-slate-900 dark:text-white truncate">{seller.full_name}</p>
                                             <p className="text-xs text-slate-500 truncate">{seller.email}</p>
                                         </div>
 
-                                        {/* Clientes */}
+                                        {/* Clientes activos */}
                                         <div className="text-center hidden sm:block">
                                             <p className="font-semibold text-sm">{seller.activeClients}</p>
                                             <p className="text-xs text-slate-400">clientes</p>
                                         </div>
 
-                                        {/* Comisión % */}
+                                        {/* % + nivel */}
                                         <div className="text-center hidden sm:block">
-                                            <span className="text-xs bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full font-semibold">
-                                                {seller.commission_pct}%
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${seller.commission_fixed ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                                {seller.commission_pct}% {seller.commission_fixed ? <Lock className="inline w-2.5 h-2.5 mb-0.5" /> : getLevelLabel(seller.commission_pct, false)}
                                             </span>
                                         </div>
 
-                                        {/* Monto mes */}
+                                        {/* Red referidos */}
+                                        {seller.referredSellersCount > 0 && (
+                                            <div className="text-center hidden md:block">
+                                                <p className="text-xs text-purple-400 font-medium">
+                                                    <Network className="inline w-3 h-3 mr-0.5" />
+                                                    {seller.networkActiveClients} neg.
+                                                </p>
+                                                <p className="text-xs text-slate-400">en red</p>
+                                            </div>
+                                        )}
+
+                                        {/* Comisión mes */}
                                         <div className="text-right">
                                             <p className="font-semibold text-sm text-amber-500">{formatCurrency(seller.monthlyCommission)}</p>
                                             <p className="text-xs text-slate-400">este mes</p>
                                         </div>
 
-                                        {/* Badge estado */}
                                         <Badge variant={seller.is_active ? 'success' : 'default'}>
                                             {seller.is_active ? 'Activo' : 'Inactivo'}
                                         </Badge>
 
-                                        {/* Menú */}
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
@@ -255,19 +327,15 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="bg-slate-800 border-slate-700">
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer gap-2"
-                                                    onClick={e => { e.stopPropagation(); handleToggleActive(seller); }}
-                                                >
+                                                <DropdownMenuItem className="cursor-pointer gap-2" onClick={e => { e.stopPropagation(); openEdit(seller); }}>
+                                                    <Pencil className="w-4 h-4" /> Editar comisión
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem className="cursor-pointer gap-2" onClick={e => { e.stopPropagation(); handleToggleActive(seller); }}>
                                                     {seller.is_active
                                                         ? <><UserMinus className="w-4 h-4 text-red-400" /><span className="text-red-400">Desactivar</span></>
-                                                        : <><UserCheck className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">Activar</span></>
-                                                    }
+                                                        : <><UserCheck className="w-4 h-4 text-emerald-400" /><span className="text-emerald-400">Activar</span></>}
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    className="cursor-pointer gap-2 text-red-400 focus:text-red-400 focus:bg-red-500/10"
-                                                    onClick={e => { e.stopPropagation(); handleDelete(seller); }}
-                                                >
+                                                <DropdownMenuItem className="cursor-pointer gap-2 text-red-400 focus:text-red-400 focus:bg-red-500/10" onClick={e => { e.stopPropagation(); handleDelete(seller); }}>
                                                     <Trash2 className="w-4 h-4" /> Eliminar
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -289,51 +357,75 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                 </div>
                                 <CardTitle className="text-base">{selectedSeller.full_name}</CardTitle>
                                 <CardDescription>{selectedSeller.email}</CardDescription>
+                                <div className="flex gap-2 mt-1">
+                                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${selectedSeller.commission_fixed ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                                        {selectedSeller.commission_fixed ? `Fijo ${selectedSeller.commission_pct}%` : `${getLevelLabel(selectedSeller.commission_pct, false)} · ${selectedSeller.commission_pct}%`}
+                                    </span>
+                                </div>
                             </CardHeader>
 
                             <CardContent className="p-0">
-                                {/* Stats 2x2 */}
+                                {/* Stats grid */}
                                 <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 dark:divide-slate-800 border-y border-slate-100 dark:border-slate-800">
-                                    {[
-                                        { label: 'Clientes activos', value: selectedSeller.activeClients },
-                                        { label: 'Comisión mes', value: formatCurrency(selectedSeller.monthlyCommission), color: 'text-amber-500' },
-                                        { label: 'Total clientes', value: selectedSeller.totalClients },
-                                        {
-                                            label: 'Comisión %',
-                                            value: (
-                                                <div className="flex items-center gap-1">
-                                                    {editingCommission ? (
-                                                        <>
-                                                            <Input
-                                                                type="number"
-                                                                value={commissionInput}
-                                                                onChange={e => setCommissionInput(e.target.value)}
-                                                                className="h-7 w-16 text-sm p-1"
-                                                                min={0} max={100}
-                                                            />
-                                                            <button onClick={handleCommissionSave} className="text-emerald-500 hover:text-emerald-400"><Check className="w-4 h-4" /></button>
-                                                            <button onClick={() => setEditingCommission(false)} className="text-slate-400 hover:text-slate-300"><X className="w-4 h-4" /></button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span className="text-lg font-bold">{selectedSeller.commission_pct}%</span>
-                                                            <button onClick={() => { setEditingCommission(true); setCommissionInput(String(selectedSeller.commission_pct)); }} className="text-slate-400 hover:text-slate-300 ml-1">
-                                                                <Pencil className="w-3 h-3" />
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )
-                                        },
-                                    ].map((stat, i) => (
-                                        <div key={i} className="p-4">
-                                            <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">{stat.label}</p>
-                                            <div className={`text-lg font-bold ${(stat as any).color ?? ''}`}>{stat.value}</div>
-                                        </div>
-                                    ))}
+                                    <div className="p-4">
+                                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Clientes activos</p>
+                                        <p className="text-lg font-bold">{selectedSeller.activeClients}</p>
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Comisión directa</p>
+                                        <p className="text-lg font-bold text-amber-500">{formatCurrency(selectedSeller.directCommission)}</p>
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Red referidos</p>
+                                        <p className="text-lg font-bold text-purple-400">
+                                            {selectedSeller.networkActiveClients > 0
+                                                ? `${selectedSeller.networkActiveClients} neg.`
+                                                : '—'}
+                                        </p>
+                                        {selectedSeller.networkActiveClients > 0 && selectedSeller.referralThreshold < 10 && (
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                Faltan {10 - selectedSeller.networkActiveClients} para cobrar
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Comisión red (5%)</p>
+                                        <p className="text-lg font-bold text-purple-400">
+                                            {selectedSeller.referralCommission > 0
+                                                ? formatCurrency(selectedSeller.referralCommission)
+                                                : '—'}
+                                        </p>
+                                        {selectedSeller.referralThreshold >= 10 && (
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                Sobre {selectedSeller.referralThreshold} neg.
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Clientes asignados */}
+                                {/* Total mes */}
+                                <div className="mx-4 mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                                    <span className="text-sm font-medium text-slate-300">Total a cobrar</span>
+                                    <span className="text-xl font-bold text-emerald-400">{formatCurrency(selectedSeller.monthlyCommission)}</span>
+                                </div>
+
+                                {/* Referidos — botón ver red */}
+                                {selectedSeller.referredSellersCount > 0 && (
+                                    <div className="px-4 mt-3">
+                                        <button
+                                            onClick={() => setIsNetworkOpen(true)}
+                                            className="w-full flex items-center justify-between p-3 rounded-lg bg-purple-500/5 border border-purple-500/20 hover:bg-purple-500/10 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-2 text-sm text-purple-400">
+                                                <Network className="w-4 h-4" />
+                                                Ver red de referidos ({selectedSeller.referredSellersCount} vendedores)
+                                            </div>
+                                            <span className="text-xs text-slate-500">›</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Negocios asignados */}
                                 <div className="p-4 space-y-2">
                                     <div className="flex items-center justify-between mb-3">
                                         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Negocios asignados</p>
@@ -349,32 +441,45 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                     )}
 
                                     {selectedSeller.seller_assignments.map(a => {
-                                        const sub = a.tenant?.subscriptions?.[0];
-                                        const isActive = sub?.status === 'active';
+                                        const isActive = a.tenant?.subscription_status === 'active';
+                                        const isTrial = a.tenant?.subscription_status === 'trial';
                                         return (
-                                            <div key={a.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800">
-                                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-medium truncate">{a.tenant?.business_name}</p>
-                                                    <p className="text-xs text-slate-400">{PLAN_LABELS[sub?.plan_id ?? ''] ?? 'Sin plan'}</p>
+                                            <div key={a.id} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-emerald-500' : isTrial ? 'bg-amber-500' : 'bg-slate-400'}`} />
+                                                    <p className="text-sm font-medium flex-1 truncate">{a.tenant?.business_name}</p>
+                                                    <button onClick={() => handleRemoveAssignment(a.id)} className="text-slate-400 hover:text-red-400 transition-colors flex-shrink-0">
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
                                                 </div>
-                                                <button onClick={() => handleRemoveAssignment(a.id)} className="text-slate-400 hover:text-red-400 transition-colors flex-shrink-0">
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
+                                                <div className="pl-4 space-y-0.5">
+                                                    <p className="text-xs text-slate-400">{PLAN_LABELS[a.tenant?.plan_type ?? ''] ?? 'Sin plan'}</p>
+                                                    {isTrial && a.activation_date && (
+                                                        <p className="text-xs text-amber-400 flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            Activo el {formatDate(a.activation_date)}
+                                                        </p>
+                                                    )}
+                                                    {isActive && a.payment_date && (
+                                                        <p className="text-xs text-emerald-400 flex items-center gap-1">
+                                                            <Check className="w-3 h-3" />
+                                                            Comisión en corte del {formatDate(a.payment_date)}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}
                                 </div>
 
-                                {/* Acción pago */}
+                                {/* Acciones */}
                                 <div className="p-4 pt-0 flex gap-2">
                                     <Button
                                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-2"
                                         onClick={() => setIsPayOpen(true)}
                                         disabled={selectedSeller.monthlyCommission === 0}
                                     >
-                                        <Check className="w-4 h-4" />
-                                        Marcar pagado
+                                        <Check className="w-4 h-4" /> Marcar pagado
                                     </Button>
                                 </div>
                             </CardContent>
@@ -390,12 +495,10 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                 </div>
             </div>
 
-            {/* DIALOG — Nuevo vendedor */}
+            {/* ─── DIALOG: Nuevo vendedor ─── */}
             <Dialog open={isNewOpen} onOpenChange={setIsNewOpen}>
                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Nuevo vendedor</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Nuevo vendedor</DialogTitle></DialogHeader>
                     <form onSubmit={handleCreate} className="space-y-4 py-2">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Nombre completo</label>
@@ -406,9 +509,42 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                             <Input name="email" type="email" placeholder="vendedor@email.com" required />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Comisión (%)</label>
-                            <Input name="commission_pct" type="number" defaultValue={20} min={0} max={100} required />
-                            <p className="text-xs text-slate-400">Por defecto 20% — podés editarlo después individualmente</p>
+                            <label className="text-sm font-medium">Referido por (opcional)</label>
+                            <select
+                                className="w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-sm"
+                                value={newReferredBy}
+                                onChange={e => setNewReferredBy(e.target.value)}
+                            >
+                                <option value="">— Sin referidor —</option>
+                                {sellers.filter(s => s.is_active).map(s => (
+                                    <option key={s.id} value={s.id}>{s.full_name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-3">
+                            <label className="text-sm font-medium">Tipo de comisión</label>
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700">
+                                <div>
+                                    <p className="text-sm font-medium">Comisión fija</p>
+                                    <p className="text-xs text-slate-400">Si activás esto, el % no varía con los niveles</p>
+                                </div>
+                                <Switch checked={newFixed} onCheckedChange={setNewFixed} />
+                            </div>
+                            {newFixed && (
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-400">Porcentaje fijo</label>
+                                    <Input
+                                        type="number"
+                                        value={newPct}
+                                        onChange={e => setNewPct(e.target.value)}
+                                        min={1} max={100}
+                                        placeholder="Ej: 35"
+                                    />
+                                </div>
+                            )}
+                            {!newFixed && (
+                                <p className="text-xs text-slate-500">Arranca en 20% · sube automáticamente con los negocios activos</p>
+                            )}
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
@@ -422,12 +558,97 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                 </DialogContent>
             </Dialog>
 
-            {/* DIALOG — Asignar tenant */}
-            <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+            {/* ─── DIALOG: Editar comisión ─── */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Editar comisión — {selectedSeller?.full_name}</DialogTitle></DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800 border border-slate-700">
+                            <div>
+                                <p className="text-sm font-medium">Comisión fija</p>
+                                <p className="text-xs text-slate-400">Si activás esto, el % no varía con los niveles</p>
+                            </div>
+                            <Switch checked={editFixed} onCheckedChange={setEditFixed} />
+                        </div>
+                        {editFixed && (
+                            <div className="space-y-1">
+                                <label className="text-xs text-slate-400">Porcentaje fijo</label>
+                                <Input
+                                    type="number"
+                                    value={editPct}
+                                    onChange={e => setEditPct(e.target.value)}
+                                    min={1} max={100}
+                                />
+                            </div>
+                        )}
+                        {!editFixed && (
+                            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-blue-300">
+                                El % se calculará automáticamente según negocios activos:<br />
+                                <span className="text-xs text-slate-400 mt-1 block">0-9 → 20% · 10-19 → 24% · 20-29 → 27% · 30+ → 30%</span>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleEditSave}>Guardar cambios</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── DIALOG: Red de referidos ─── */}
+            <Dialog open={isNetworkOpen} onOpenChange={setIsNetworkOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Asignar negocio a {selectedSeller?.full_name}</DialogTitle>
+                        <DialogTitle>Red de referidos — {selectedSeller?.full_name}</DialogTitle>
                     </DialogHeader>
+                    <div className="py-2 space-y-3">
+                        {/* Progreso hacia siguiente umbral */}
+                        {selectedSeller && (
+                            <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-slate-300">Negocios activos en red</span>
+                                    <span className="font-bold text-purple-400">{selectedSeller.networkActiveClients}</span>
+                                </div>
+                                {selectedSeller.referralThreshold >= 10 ? (
+                                    <p className="text-xs text-emerald-400">
+                                        ✓ Cobrás 5% sobre {selectedSeller.referralThreshold} negocios · {formatCurrency(selectedSeller.referralCommission)}/mes
+                                    </p>
+                                ) : (
+                                    <p className="text-xs text-amber-400">
+                                        Faltan {10 - selectedSeller.networkActiveClients} negocios para alcanzar el primer umbral (10)
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Lista de vendedores referidos */}
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {sellers
+                                .filter(s => s.referred_by === selectedSeller?.id)
+                                .map(s => (
+                                    <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-800">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                            {s.full_name.charAt(0)}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">{s.full_name}</p>
+                                            <p className="text-xs text-slate-400">{s.activeClients} negocios activos</p>
+                                        </div>
+                                        <span className="text-xs text-purple-400 font-semibold">{formatCurrency(s.monthlyRevenue)}</span>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsNetworkOpen(false)}>Cerrar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── DIALOG: Asignar tenant ─── */}
+            <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Asignar negocio a {selectedSeller?.full_name}</DialogTitle></DialogHeader>
                     <div className="space-y-2 py-2 max-h-72 overflow-y-auto">
                         {unassignedTenants.length === 0 && (
                             <p className="text-sm text-slate-400 text-center py-6">Todos los negocios ya están asignados</p>
@@ -443,33 +664,38 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                         ))}
                     </div>
                     <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cerrar</Button>
-                        </DialogClose>
+                        <DialogClose asChild><Button variant="outline">Cerrar</Button></DialogClose>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* DIALOG — Confirmar pago */}
+            {/* ─── DIALOG: Confirmar pago ─── */}
             <Dialog open={isPayOpen} onOpenChange={setIsPayOpen}>
                 <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Registrar pago de comisión</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Registrar pago de comisión</DialogTitle></DialogHeader>
                     <div className="py-4 space-y-3">
                         <p className="text-sm text-slate-500">
-                            Vas a registrar el pago de comisión de <strong>{selectedSeller?.full_name}</strong> correspondiente a {currentMonth}.
+                            Vas a registrar el pago de <strong>{selectedSeller?.full_name}</strong> — {currentMonth}.
                         </p>
-                        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                            <p className="text-xs text-slate-400 mb-1">Monto a pagar</p>
-                            <p className="text-2xl font-bold text-emerald-500">{formatCurrency(selectedSeller?.monthlyCommission ?? 0)}</p>
-                            <p className="text-xs text-slate-400 mt-1">{selectedSeller?.commission_pct}% sobre {formatCurrency(selectedSeller?.monthlyRevenue ?? 0)} en suscripciones activas</p>
+                        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="flex justify-between text-sm text-slate-400 mb-1">
+                                <span>Comisión directa ({selectedSeller?.commission_pct}%)</span>
+                                <span>{formatCurrency(selectedSeller?.directCommission ?? 0)}</span>
+                            </div>
+                            {(selectedSeller?.referralCommission ?? 0) > 0 && (
+                                <div className="flex justify-between text-sm text-slate-400 mb-2">
+                                    <span>Comisión red (5% · {selectedSeller?.referralThreshold} neg.)</span>
+                                    <span>{formatCurrency(selectedSeller?.referralCommission ?? 0)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-bold text-emerald-400 text-lg border-t border-emerald-500/20 pt-2">
+                                <span>Total</span>
+                                <span>{formatCurrency(selectedSeller?.monthlyCommission ?? 0)}</span>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cancelar</Button>
-                        </DialogClose>
+                        <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
                         <Button onClick={handleMarkPaid} className="bg-emerald-600 hover:bg-emerald-700">
                             <Check className="w-4 h-4 mr-2" /> Confirmar pago
                         </Button>
