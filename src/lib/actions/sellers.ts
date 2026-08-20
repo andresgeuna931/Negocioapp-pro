@@ -25,7 +25,7 @@ function getReferralThreshold(networkActiveClients: number): number {
     if (networkActiveClients >= 50) return 50;
     if (networkActiveClients >= 30) return 30;
     if (networkActiveClients >= 20) return 20;
-    if (networkActiveClients >= 10) return 10;
+    if (networkActiveClients >= 1) return 1;
     return 0;
 }
 
@@ -34,7 +34,7 @@ function getReferralPct(threshold: number): number {
     if (threshold >= 50) return 0.12;
     if (threshold >= 30) return 0.09;
     if (threshold >= 20) return 0.07;
-    if (threshold >= 10) return 0.05;
+    if (threshold >= 1) return 0.05;
     return 0;
 }
 
@@ -336,7 +336,7 @@ export async function getTotalMonthlyCommissions() {
 
             const threshold = getReferralThreshold(networkActiveClients);
             const refPct = getReferralPct(threshold);
-            const referralCommission = threshold >= 10
+            const referralCommission = threshold >= 1
                 ? Math.round((networkRevenue * threshold / Math.max(networkActiveClients, 1)) * refPct)
                 : 0;
 
