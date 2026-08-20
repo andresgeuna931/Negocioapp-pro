@@ -254,7 +254,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
 
         const rows = [
             ['Clientes activos', `${selectedSeller.activeClients}`],
-            ['Comisión directa (' + selectedSeller.commissionPct + '%)', formatCurrency(selectedSeller.directCommission)],
+            ['Comisión directa (' + selectedSeller.commission_pct + '%)', formatCurrency(selectedSeller.directCommission)],
             ['Comisión de red', selectedSeller.referralCommission > 0 ? formatCurrency(selectedSeller.referralCommission) : '—'],
             ['TOTAL A COBRAR', formatCurrency(selectedSeller.monthlyCommission)],
         ];
