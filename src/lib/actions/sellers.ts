@@ -20,9 +20,22 @@ function getCommissionLevel(activeClients: number): number {
     return 20;
 }
 
-// Calcula el umbral de referidos (múltiplo de 10, mínimo 10)
+// Calcula el umbral de referidos activo según los escalones definidos
 function getReferralThreshold(networkActiveClients: number): number {
-    return Math.floor(networkActiveClients / 10) * 10;
+    if (networkActiveClients >= 50) return 50;
+    if (networkActiveClients >= 30) return 30;
+    if (networkActiveClients >= 20) return 20;
+    if (networkActiveClients >= 10) return 10;
+    return 0;
+}
+
+// Porcentaje de comisión de red según el umbral alcanzado
+function getReferralPct(threshold: number): number {
+    if (threshold >= 50) return 0.12;
+    if (threshold >= 30) return 0.09;
+    if (threshold >= 20) return 0.07;
+    if (threshold >= 10) return 0.05;
+    return 0;
 }
 
 // Determina si un negocio ya superó los 15 días de prueba
@@ -322,8 +335,9 @@ export async function getTotalMonthlyCommissions() {
             }, 0);
 
             const threshold = getReferralThreshold(networkActiveClients);
+            const refPct = getReferralPct(threshold);
             const referralCommission = threshold >= 10
-                ? Math.round((networkRevenue * threshold / Math.max(networkActiveClients, 1)) * 0.05)
+                ? Math.round((networkRevenue * threshold / Math.max(networkActiveClients, 1)) * refPct)
                 : 0;
 
             const totalCommission = directCommission + referralCommission;
