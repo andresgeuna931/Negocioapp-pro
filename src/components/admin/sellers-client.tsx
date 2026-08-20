@@ -90,8 +90,19 @@ function formatDate(iso: string | null): string {
 }
 
 function getNextThreshold(networkActive: number): number {
-    const current = Math.floor(networkActive / 10) * 10;
-    return current + 10;
+    if (networkActive < 10) return 10;
+    if (networkActive < 20) return 20;
+    if (networkActive < 30) return 30;
+    if (networkActive < 50) return 50;
+    return 50;
+}
+
+function getReferralPctLabel(threshold: number): string {
+    if (threshold >= 50) return '12%';
+    if (threshold >= 30) return '9%';
+    if (threshold >= 20) return '7%';
+    if (threshold >= 10) return '5%';
+    return '5%';
 }
 
 // ─── Componente principal ────────────────────────────────────────────────────
@@ -403,7 +414,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                         )}
                                     </div>
                                     <div className="p-4">
-                                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Comisión red (5%)</p>
+                                        <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">Comisión red ({getReferralPctLabel(selectedSeller.referralThreshold)})</p>
                                         <p className="text-lg font-bold text-purple-400">
                                             {selectedSeller.referralCommission > 0
                                                 ? formatCurrency(selectedSeller.referralCommission)
@@ -637,7 +648,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                 </div>
                                 {selectedSeller.referralThreshold >= 10 ? (
                                     <p className="text-xs text-emerald-400">
-                                        ✓ Cobrás 5% sobre {selectedSeller.referralThreshold} negocios · {formatCurrency(selectedSeller.referralCommission)}/mes
+                                        ✓ Cobrás {getReferralPctLabel(selectedSeller.referralThreshold)} sobre {selectedSeller.referralThreshold} negocios · {formatCurrency(selectedSeller.referralCommission)}/mes
                                     </p>
                                 ) : (
                                     <p className="text-xs text-amber-400">
@@ -710,7 +721,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                             </div>
                             {(selectedSeller?.referralCommission ?? 0) > 0 && (
                                 <div className="flex justify-between text-sm text-slate-400 mb-2">
-                                    <span>Comisión red (5% · {selectedSeller?.referralThreshold} neg.)</span>
+                                    <span>Comisión red ({getReferralPctLabel(selectedSeller?.referralThreshold ?? 0)} · {selectedSeller?.referralThreshold} neg.)</span>
                                     <span>{formatCurrency(selectedSeller?.referralCommission ?? 0)}</span>
                                 </div>
                             )}
