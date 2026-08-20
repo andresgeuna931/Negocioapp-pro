@@ -316,6 +316,33 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
             });
         }
 
+        // Red de referidos
+        if (selectedSeller.referredSellersCount > 0) {
+            y += 8;
+            doc.setDrawColor(220, 220, 230);
+            doc.line(14, y - 4, 196, y - 4);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(30, 30, 46);
+            doc.text('Red de referidos', 14, y + 4);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 120);
+            doc.text(`${selectedSeller.networkActiveClients} negocios activos en red · ${selectedSeller.referredSellersCount} vendedor${selectedSeller.referredSellersCount > 1 ? 'es' : ''}`, 14, y + 14);
+            y += 24;
+
+            // Resumen de red
+            doc.setFillColor(245, 240, 255);
+            doc.rect(12, y - 6, 184, 10, 'F');
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(30, 30, 46);
+            doc.text('Comisión de red', 16, y);
+            doc.setTextColor(selectedSeller.referralCommission > 0 ? 20 : 100, selectedSeller.referralCommission > 0 ? 150 : 100, selectedSeller.referralCommission > 0 ? 80 : 120);
+            doc.text(selectedSeller.referralCommission > 0 ? formatCurrency(selectedSeller.referralCommission) : `Faltan ${10 - selectedSeller.networkActiveClients} negocios para cobrar`, 196, y, { align: 'right' });
+            y += 12;
+        }
+
         // Footer
         doc.setFontSize(8);
         doc.setTextColor(160, 160, 170);
