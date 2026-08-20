@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Users, TrendingUp, Building2, DollarSign, Plus, MoreVertical,
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
     createSeller, updateSeller, toggleSellerActive, deleteSeller,
-    assignTenantToSeller, removeAssignment, recordCommissionPayment,
+    assignTenantToSeller, removeAssignment, recordCommissionPayment, getCommissionPayments,
 } from '@/lib/actions/sellers';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -117,6 +117,7 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
     const [isNetworkOpen, setIsNetworkOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [payments, setPayments] = useState<{ id: string; amount: number; month: string; paid_at: string }[]>([]);
 
     // Nuevo vendedor
     const [newFixed, setNewFixed] = useState(false);
@@ -126,6 +127,13 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
     // Editar
     const [editFixed, setEditFixed] = useState(false);
     const [editPct, setEditPct] = useState('20');
+
+    useEffect(() => {
+        if (!selectedSeller) return;
+        getCommissionPayments(selectedSeller.id).then(res => {
+            setPayments(res.payments ?? []);
+        });
+    }, [selectedSeller?.id]);
 
     const filtered = sellers.filter(s =>
         s.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -214,6 +222,8 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
         if (res.error) { toast.error(res.error); return; }
         toast.success(`Pago de ${formatCurrency(selectedSeller.monthlyCommission)} registrado`);
         setIsPayOpen(false);
+        const res2 = await getCommissionPayments(selectedSeller.id);
+        setPayments(res2.payments ?? []);
         router.refresh();
     };
 
@@ -506,6 +516,26 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                     >
                                         <Check className="w-4 h-4" /> Marcar pagado
                                     </Button>
+                                </div>
+
+                                {/* Historial de pagos */}
+                                <div className="px-4 pb-4">
+                                    <p className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-2">Historial de pagos</p>
+                                    {payments.length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic">Sin pagos registrados</p>
+                                    ) : (
+                                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                                            {payments.map(p => (
+                                                <div key={p.id} className="flex items-center justify-between bg-slate-800/50 rounded-lg px-3 py-2">
+                                                    <div>
+                                                        <p className="text-xs font-medium text-slate-200 capitalize">{p.month}</p>
+                                                        <p className="text-xs text-slate-400">{new Date(p.paid_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-emerald-400">{formatCurrency(p.amount)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
