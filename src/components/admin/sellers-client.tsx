@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Users, TrendingUp, Building2, DollarSign, Plus, MoreVertical,
-    Check, X, Pencil, Trash2, UserMinus, UserCheck, Network, Calendar, Lock
+    Check, X, Pencil, Trash2, UserMinus, UserCheck, Network, Calendar, Lock, FileDown
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -213,6 +213,115 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
         if (res.error) { toast.error(res.error); return; }
         toast.success('Asignación eliminada');
         router.refresh();
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!selectedSeller) return;
+        const { default: jsPDF } = await import('jspdf');
+        const doc = new jsPDF();
+        const month = new Date().toLocaleString('es-AR', { month: 'long', year: 'numeric' });
+
+        // Header
+        doc.setFillColor(30, 30, 46);
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Resumen de Comisiones', 14, 18);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Período: ${month.charAt(0).toUpperCase() + month.slice(1)}`, 14, 30);
+
+        // Datos del vendedor
+        doc.setTextColor(30, 30, 46);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(selectedSeller.full_name, 14, 55);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 120);
+        doc.text(selectedSeller.email, 14, 63);
+
+        // Línea separadora
+        doc.setDrawColor(220, 220, 230);
+        doc.line(14, 68, 196, 68);
+
+        // Resumen
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 30, 46);
+        doc.text('Resumen del mes', 14, 80);
+
+        const rows = [
+            ['Clientes activos', `${selectedSeller.activeClients}`],
+            ['Comisión directa (' + selectedSeller.commissionPct + '%)', formatCurrency(selectedSeller.directCommission)],
+            ['Comisión de red', selectedSeller.referralCommission > 0 ? formatCurrency(selectedSeller.referralCommission) : '—'],
+            ['TOTAL A COBRAR', formatCurrency(selectedSeller.monthlyCommission)],
+        ];
+
+        let y = 90;
+        rows.forEach(([label, value], i) => {
+            const isTotal = i === rows.length - 1;
+            if (isTotal) {
+                doc.setFillColor(240, 255, 245);
+                doc.rect(12, y - 6, 184, 12, 'F');
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(20, 150, 80);
+            } else {
+                doc.setFont('helvetica', i % 2 === 0 ? 'normal' : 'normal');
+                doc.setTextColor(30, 30, 46);
+                if (i % 2 === 0) {
+                    doc.setFillColor(248, 248, 252);
+                    doc.rect(12, y - 6, 184, 10, 'F');
+                }
+            }
+            doc.setFontSize(11);
+            doc.text(label, 16, y);
+            doc.text(value, 196, y, { align: 'right' });
+            y += 12;
+        });
+
+        // Negocios asignados
+        y += 8;
+        doc.setDrawColor(220, 220, 230);
+        doc.line(14, y - 4, 196, y - 4);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(30, 30, 46);
+        doc.text('Negocios activos asignados', 14, y + 4);
+        y += 14;
+
+        const activeAssignments = selectedSeller.seller_assignments?.filter(
+            (a: any) => a.tenant?.subscription_status === 'active'
+        ) ?? [];
+
+        if (activeAssignments.length === 0) {
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 160);
+            doc.text('Sin negocios activos este mes', 16, y);
+        } else {
+            activeAssignments.forEach((a: any, i: number) => {
+                if (i % 2 === 0) {
+                    doc.setFillColor(248, 248, 252);
+                    doc.rect(12, y - 6, 184, 10, 'F');
+                }
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(30, 30, 46);
+                doc.text(a.tenant?.business_name ?? '—', 16, y);
+                doc.setTextColor(100, 100, 120);
+                doc.text(a.tenant?.plan_type ?? '', 196, y, { align: 'right' });
+                y += 11;
+            });
+        }
+
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(160, 160, 170);
+        doc.text(`Generado el ${new Date().toLocaleDateString('es-AR')} · NegocioApp Pro`, 14, 285);
+
+        doc.save(`comisiones-${selectedSeller.full_name.replace(/ /g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 7)}.pdf`);
     };
 
     const handleMarkPaid = async () => {
@@ -515,6 +624,13 @@ export function SellersClient({ sellers, unassignedTenants, totalMonthlyCommissi
                                         disabled={selectedSeller.monthlyCommission === 0}
                                     >
                                         <Check className="w-4 h-4" /> Marcar pagado
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="gap-2 border-slate-600 hover:bg-slate-700"
+                                        onClick={handleDownloadPDF}
+                                    >
+                                        <FileDown className="w-4 h-4" /> PDF
                                     </Button>
                                 </div>
 
