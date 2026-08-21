@@ -2,60 +2,208 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, X, Info } from "lucide-react";
 import { BUSINESS_TYPES } from "@/lib/constants/business-types";
+import { PLANS, formatPrice } from "@/lib/config/plans";
 
+// ─── tipos ────────────────────────────────────────────────────────────────────
 type BillingCycle = "monthly" | "annual";
 
-const PLANS_DISPLAY = [
-    {
-        id: "starter",
-        annualId: null,
-        name: "Starter",
-        description: "Ideal para kioscos pequeños que recién empiezan.",
-        features: [
-            "Hasta 1.000 productos",
-            "Múltiples listas de precios",
-            "Control de caja",
-            "Reportes básicos",
-            "Actualización masiva de precios",
-        ],
-        recommended: false,
-    },
-    {
-        id: "professional",
-        annualId: "professional_annual",
-        name: "Profesional",
-        description: "Para negocios en crecimiento que necesitan gestión de clientes.",
-        features: [
-            "Hasta 5.000 productos",
-            "2 empleados",
-            "Cuenta corriente de clientes",
-            "Soporte VIP por Telegram",
-            "Exportación a Excel",
-            "Actualización masiva de precios",
-            "Reportes avanzados",
-        ],
-        recommended: true,
-    },
-    {
-        id: "business",
-        annualId: "business_annual",
-        name: "Business",
-        description: "Gestión total sin límites para comercios establecidos.",
-        features: [
-            "Productos ilimitados",
-            "5 empleados",
-            "Cuenta corriente de clientes",
-            "Soporte VIP por Telegram",
-            "Exportación a Excel",
-            "Actualización masiva de precios",
-            "Reportes avanzados",
-            "Prioridad máxima de soporte",
-        ],
-        recommended: false,
-    },
-];
+// ─── FeatureRow (igual que pricing-card) ─────────────────────────────────────
+function FeatureRow({
+    included,
+    text,
+    tooltip,
+    highlight = false,
+}: {
+    included: boolean;
+    text: string;
+    tooltip?: string;
+    highlight?: boolean;
+}) {
+    return (
+        <div className="flex items-center gap-2">
+            {included ? (
+                <Check className={`w-4 h-4 flex-shrink-0 ${highlight ? "text-emerald-400" : "text-emerald-500"}`} />
+            ) : (
+                <X className="w-4 h-4 text-slate-600 flex-shrink-0" />
+            )}
+            <div className="flex items-center gap-1">
+                <span
+                    className={
+                        included
+                            ? highlight
+                                ? "text-white font-semibold text-sm"
+                                : "text-slate-200 text-sm"
+                            : "text-slate-600 line-through text-sm"
+                    }
+                    title={tooltip}
+                >
+                    {text}
+                </span>
+                {tooltip && (
+                    <span title={tooltip} className="cursor-help flex items-center">
+                        <Info className="w-3 h-3 text-slate-500" />
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
 
+// ─── PlanCard ─────────────────────────────────────────────────────────────────
+function PlanCard({
+    planKey,
+    onSelect,
+    disabled = false,
+}: {
+    planKey: keyof typeof PLANS;
+    onSelect: (planId: string) => void;
+    disabled?: boolean;
+}) {
+    const plan = PLANS[planKey] as any;
+    const isPro = plan.id === "professional";
+    const isAnnual = plan.id.endsWith("_annual");
+    const isVIP = plan.id !== "starter";
+
+    const supportText = plan.id === "starter"
+        ? "Chat en vivo Tawk.to (Autogestión)"
+        : "Soporte VIP Telegram 24/7";
+
+    return (
+        <div
+            className={`relative flex flex-col h-full rounded-2xl border transition-all duration-300 overflow-hidden
+                ${disabled
+                    ? "border-slate-700 bg-slate-800/30 opacity-40 cursor-not-allowed"
+                    : isPro
+                        ? "border-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.15)] scale-105 z-10 bg-slate-800"
+                        : "border-slate-700 bg-slate-800 hover:border-slate-500"
+                }`}
+        >
+            {/* Badges superiores */}
+            {isPro && !disabled && (
+                <div className="bg-emerald-500 text-white text-xs font-bold text-center py-1.5 uppercase tracking-widest">
+                    Recomendado
+                </div>
+            )}
+            {isAnnual && plan.savings && !disabled && (
+                <div className="bg-amber-500 text-white text-xs font-bold text-center py-1.5 uppercase tracking-widest">
+                    Ahorrás {formatPrice(plan.savings)} pagando anual
+                </div>
+            )}
+            {disabled && (
+                <div className="bg-slate-700 text-slate-500 text-xs font-bold text-center py-1.5 uppercase tracking-widest">
+                    Solo disponible en mensual
+                </div>
+            )}
+
+            <div className="flex flex-col h-full p-6 gap-5">
+                {/* Nombre y descripción */}
+                <div>
+                    <h3 className={`text-xl font-bold mb-1 ${disabled ? "text-slate-500" : "text-white"}`}>
+                        {plan.name}
+                    </h3>
+                    <p className="text-slate-400 text-sm min-h-[36px] leading-snug">{plan.description}</p>
+                </div>
+
+                {/* Precio */}
+                <div>
+                    <div className="flex items-baseline gap-1">
+                        <span className={`text-4xl font-bold ${disabled ? "text-slate-600" : "text-white"}`}>
+                            {formatPrice(plan.price)}
+                        </span>
+                        <span className="text-slate-400 text-sm">/{isAnnual ? "año" : "mes"}</span>
+                    </div>
+                    {isAnnual && plan.monthlyEquivalent && (
+                        <p className="text-sm text-emerald-400 mt-1 font-medium">
+                            Equivale a {formatPrice(plan.monthlyEquivalent)}/mes
+                        </p>
+                    )}
+                </div>
+
+                {/* Features */}
+                <div className="flex-1 space-y-2.5">
+                    <FeatureRow
+                        included={true}
+                        text={
+                            plan.limits.products === -1
+                                ? "Productos Ilimitados"
+                                : `Hasta ${plan.limits.products.toLocaleString("es-AR")} productos`
+                        }
+                        highlight={plan.limits.products === -1}
+                    />
+                    <FeatureRow
+                        included={true}
+                        text={
+                            plan.limits.users === 0
+                                ? "Solo el dueño"
+                                : `Hasta ${plan.limits.users} empleados`
+                        }
+                    />
+
+                    <div className="border-t border-slate-700 my-1" />
+
+                    <FeatureRow
+                        included={plan.features.current_account}
+                        text="Cuentas Corrientes (Fiado)"
+                        tooltip="Vender a crédito y registrar deudas de clientes"
+                        highlight={plan.features.current_account}
+                    />
+                    <FeatureRow
+                        included={plan.features.multi_price_lists}
+                        text="Listas de precios múltiples"
+                        tooltip="Precios diferenciados por mayorista, minorista, etc."
+                    />
+                    <FeatureRow
+                        included={plan.features.bulk_products_update}
+                        text="Actualización masiva de precios"
+                        tooltip="Actualizar todos los precios por porcentaje"
+                    />
+                    <FeatureRow
+                        included={true}
+                        text={plan.features.reports === "basic" ? "Reportes básicos" : "Reportes avanzados"}
+                    />
+                    <FeatureRow
+                        included={plan.features.excel_reports_export}
+                        text="Exportar a Excel"
+                        tooltip="Descargar reportes en formato Excel"
+                    />
+                    <FeatureRow
+                        included={true}
+                        text="Módulo de Gastos"
+                        tooltip="Registrá gastos del negocio y visualizá tu ganancia real"
+                    />
+
+                    {/* Soporte */}
+                    <div className="pt-2 border-t border-slate-700">
+                        <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Soporte</p>
+                        <div className="flex items-start gap-2">
+                            <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                            <span className={`text-sm ${isVIP ? "font-semibold text-emerald-400" : "text-slate-300"}`}>
+                                {supportText}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Botón */}
+                <button
+                    onClick={() => !disabled && onSelect(plan.id)}
+                    disabled={disabled}
+                    className={`w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 mt-2
+                        ${disabled
+                            ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer"
+                        }`}
+                >
+                    {disabled ? "No disponible en anual" : "Crear cuenta →"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
 export default function RegistrarsePage() {
     const router = useRouter();
     const [step, setStep] = useState<"plan" | "form">("plan");
@@ -78,19 +226,16 @@ export default function RegistrarsePage() {
         setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
     }
 
-    function selectPlan(plan: typeof PLANS_DISPLAY[0]) {
-        if (billing === "annual" && !plan.annualId) return; // Starter no disponible en anual
-        const planId = billing === "annual" && plan.annualId ? plan.annualId : plan.id;
+    function handleSelectPlan(planId: string) {
         setSelectedPlanId(planId);
         setStep("form");
     }
 
     function getSelectedPlanName(): string {
-        for (const p of PLANS_DISPLAY) {
-            if (p.id === selectedPlanId) return `${p.name} — mensual`;
-            if (p.annualId === selectedPlanId) return `${p.name} — anual`;
-        }
-        return selectedPlanId;
+        const plan = Object.values(PLANS).find(p => p.id === selectedPlanId) as any;
+        if (!plan) return selectedPlanId;
+        const isAnnual = selectedPlanId.endsWith("_annual");
+        return `${plan.name} — ${isAnnual ? "anual" : "mensual"}`;
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -141,6 +286,10 @@ export default function RegistrarsePage() {
         }
     }
 
+    // Planes por ciclo
+    const monthlyPlans: (keyof typeof PLANS)[] = ["STARTER", "PROFESSIONAL", "BUSINESS"];
+    const annualPlans: (keyof typeof PLANS)[] = ["STARTER", "PROFESSIONAL_ANNUAL", "BUSINESS_ANNUAL"];
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center px-4 py-12 relative">
             {/* Decoración de fondo */}
@@ -157,16 +306,16 @@ export default function RegistrarsePage() {
                 <h1 className="text-3xl font-bold text-white">
                     NegocioApp <span className="text-emerald-400">Pro</span>
                 </h1>
-                <p className="text-slate-400 mt-1">Creá tu cuenta y empezá hoy</p>
+                <p className="text-slate-400 mt-1">Planes diseñados para kioscos y almacenes en Argentina.</p>
             </div>
 
-            {/* STEP 1 — ELEGIR PLAN */}
+            {/* ── STEP 1 — PLANES ── */}
             {step === "plan" && (
-                <div className="w-full max-w-4xl relative z-10">
+                <div className="w-full max-w-5xl relative z-10">
                     <h2 className="text-xl font-semibold text-white mb-4 text-center">Elegí tu plan</h2>
 
-                    {/* Toggle mensual / anual */}
-                    <div className="flex items-center justify-center gap-3 mb-8">
+                    {/* Toggle */}
+                    <div className="flex items-center justify-center gap-3 mb-10">
                         <span className={`text-sm font-medium ${billing === "monthly" ? "text-white" : "text-slate-400"}`}>
                             Mensual
                         </span>
@@ -175,9 +324,7 @@ export default function RegistrarsePage() {
                             onClick={() => setBilling(prev => prev === "monthly" ? "annual" : "monthly")}
                             className={`relative w-12 h-6 rounded-full transition-colors ${billing === "annual" ? "bg-emerald-500" : "bg-slate-600"}`}
                         >
-                            <span
-                                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${billing === "annual" ? "translate-x-6" : "translate-x-0"}`}
-                            />
+                            <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${billing === "annual" ? "translate-x-6" : "translate-x-0"}`} />
                         </button>
                         <span className={`text-sm font-medium ${billing === "annual" ? "text-white" : "text-slate-400"}`}>
                             Anual
@@ -189,83 +336,28 @@ export default function RegistrarsePage() {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {PLANS_DISPLAY.map((plan) => {
-                            const isAnnual = billing === "annual";
-                            const unavailable = isAnnual && !plan.annualId;
-
-                            return (
-                                <button
-                                    key={plan.id}
-                                    onClick={() => selectPlan(plan)}
-                                    disabled={unavailable}
-                                    className={`relative text-left rounded-2xl border-2 p-6 transition-all ${
-                                        unavailable
-                                            ? "border-slate-700 bg-slate-800/30 opacity-40 cursor-not-allowed"
-                                            : plan.recommended
-                                                ? "border-emerald-500 bg-slate-800/80 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 hover:shadow-xl cursor-pointer"
-                                                : "border-slate-700 bg-slate-800/60 hover:border-emerald-500/50 hover:bg-slate-800/80 cursor-pointer"
-                                    }`}
-                                >
-                                    {plan.recommended && !unavailable && (
-                                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap shadow-md">
-                                            Más elegido
-                                        </span>
-                                    )}
-
-                                    <div className="flex items-start justify-between mb-1">
-                                        <h3 className={`text-lg font-bold ${unavailable ? "text-slate-500" : "text-white"}`}>
-                                            {plan.name}
-                                        </h3>
-                                        {!unavailable && isAnnual && plan.annualId && (
-                                            <span className="text-xs bg-emerald-500/20 text-emerald-400 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 ml-2 mt-0.5">
-                                                Anual
-                                            </span>
-                                        )}
-                                        {!isAnnual && plan.annualId && (
-                                            <span className="text-xs bg-slate-700 text-slate-400 font-medium px-2 py-0.5 rounded-full ml-2 mt-0.5">
-                                                Mensual
-                                            </span>
-                                        )}
-                                        {unavailable && (
-                                            <span className="text-xs bg-slate-700 text-slate-500 font-medium px-2 py-0.5 rounded-full ml-2 mt-0.5">
-                                                Solo mensual
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <p className={`text-sm mb-4 ${unavailable ? "text-slate-600" : "text-slate-400"}`}>
-                                        {plan.description}
-                                    </p>
-
-                                    <ul className="space-y-1.5">
-                                        {plan.features.map((f) => (
-                                            <li key={f} className={`flex items-center gap-2 text-sm ${unavailable ? "text-slate-600" : "text-slate-300"}`}>
-                                                <span className={unavailable ? "text-slate-600" : "text-emerald-400"}>✓</span>
-                                                {f}
-                                            </li>
-                                        ))}
-                                    </ul>
-
-                                    {!unavailable && (
-                                        <div className="mt-6">
-                                            <span className={`inline-block w-full text-center font-semibold py-2.5 rounded-xl text-sm transition-colors ${
-                                                plan.recommended
-                                                    ? "bg-emerald-500 text-white hover:bg-emerald-400"
-                                                    : "bg-slate-700 text-white hover:bg-slate-600"
-                                            }`}>
-                                                Elegir {plan.name} →
-                                            </span>
-                                        </div>
-                                    )}
-                                </button>
-                            );
-                        })}
+                    {/* Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+                        {(billing === "monthly" ? monthlyPlans : annualPlans).map((key) => (
+                            <PlanCard
+                                key={key}
+                                planKey={key}
+                                onSelect={handleSelectPlan}
+                                disabled={billing === "annual" && key === "STARTER"}
+                            />
+                        ))}
                     </div>
+
+                    <p className="text-center text-sm text-slate-500 mt-8">
+                        ¿Ya tenés cuenta?{" "}
+                        <a href="/login" className="text-emerald-400 hover:underline font-medium">
+                            Iniciá sesión
+                        </a>
+                    </p>
                 </div>
             )}
 
-            {/* STEP 2 — FORMULARIO */}
+            {/* ── STEP 2 — FORMULARIO ── */}
             {step === "form" && (
                 <div className="w-full max-w-md relative z-10">
                     <div className="bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-700 p-8">
@@ -285,94 +377,68 @@ export default function RegistrarsePage() {
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">Tu nombre completo</label>
                                 <input
-                                    name="fullName"
-                                    type="text"
-                                    required
-                                    value={form.fullName}
-                                    onChange={handleChange}
+                                    name="fullName" type="text" required
+                                    value={form.fullName} onChange={handleChange}
                                     placeholder="Juan García"
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">Nombre del negocio</label>
                                 <input
-                                    name="businessName"
-                                    type="text"
-                                    required
-                                    value={form.businessName}
-                                    onChange={handleChange}
+                                    name="businessName" type="text" required
+                                    value={form.businessName} onChange={handleChange}
                                     placeholder="Kiosco El Sol"
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">Tipo de negocio</label>
                                 <select
                                     name="businessType"
-                                    value={form.businessType}
-                                    onChange={handleChange}
+                                    value={form.businessType} onChange={handleChange}
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 >
                                     {BUSINESS_TYPES.map((bt) => (
-                                        <option key={bt.value} value={bt.value}>
-                                            {bt.label}
-                                        </option>
+                                        <option key={bt.value} value={bt.value}>{bt.label}</option>
                                     ))}
                                 </select>
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
                                 <input
-                                    name="email"
-                                    type="email"
-                                    required
-                                    value={form.email}
-                                    onChange={handleChange}
+                                    name="email" type="email" required
+                                    value={form.email} onChange={handleChange}
                                     placeholder="juan@ejemplo.com"
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">Contraseña</label>
                                 <input
-                                    name="password"
-                                    type="password"
-                                    required
-                                    value={form.password}
-                                    onChange={handleChange}
+                                    name="password" type="password" required
+                                    value={form.password} onChange={handleChange}
                                     placeholder="Mínimo 6 caracteres"
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">Repetir contraseña</label>
                                 <input
-                                    name="confirmPassword"
-                                    type="password"
-                                    required
-                                    value={form.confirmPassword}
-                                    onChange={handleChange}
+                                    name="confirmPassword" type="password" required
+                                    value={form.confirmPassword} onChange={handleChange}
                                     placeholder="Repetí tu contraseña"
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
-
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">
                                     Código de referido{" "}
                                     <span className="text-slate-500 font-normal">(opcional)</span>
                                 </label>
                                 <input
-                                    name="referralCode"
-                                    type="text"
-                                    value={form.referralCode}
-                                    onChange={handleChange}
+                                    name="referralCode" type="text"
+                                    value={form.referralCode} onChange={handleChange}
                                     placeholder="ej: ABC123"
                                     className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase"
                                 />
@@ -385,8 +451,7 @@ export default function RegistrarsePage() {
                             )}
 
                             <button
-                                type="submit"
-                                disabled={loading}
+                                type="submit" disabled={loading}
                                 className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-lg shadow-emerald-500/20"
                             >
                                 {loading ? "Creando tu cuenta..." : "Crear cuenta y pagar →"}
@@ -402,7 +467,7 @@ export default function RegistrarsePage() {
 
                         <p className="text-center text-sm text-slate-500 mt-6">
                             ¿Ya tenés cuenta?{" "}
-                            <a href="/login" className="text-emerald-400 hover:underline font-medium transition-colors">
+                            <a href="/login" className="text-emerald-400 hover:underline font-medium">
                                 Iniciá sesión
                             </a>
                         </p>
