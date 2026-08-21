@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, X, Info } from "lucide-react";
 import { BUSINESS_TYPES } from "@/lib/constants/business-types";
 import { PLANS, formatPrice } from "@/lib/config/plans";
@@ -196,19 +196,23 @@ function PlanCard({
                             : "bg-emerald-500 hover:bg-emerald-400 text-white cursor-pointer"
                         }`}
                 >
-                    {disabled ? "No disponible en anual" : "Crear cuenta →"}
+                    {disabled ? "No disponible en anual" : "Suscribirte →"}
                 </button>
             </div>
         </div>
     );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
-export default function RegistrarsePage() {
+// ─── Formulario (necesita useSearchParams → debe estar en Suspense) ───────────
+function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
+    selectedPlanId: string;
+    getSelectedPlanName: () => string;
+    onBack: () => void;
+}) {
     const router = useRouter();
-    const [step, setStep] = useState<"plan" | "form">("plan");
-    const [selectedPlanId, setSelectedPlanId] = useState<string>("");
-    const [billing, setBilling] = useState<BillingCycle>("monthly");
+    const searchParams = useSearchParams();
+    const referralCode = searchParams.get("ref") || "";
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -219,23 +223,10 @@ export default function RegistrarsePage() {
         confirmPassword: "",
         businessName: "",
         businessType: "kiosco",
-        referralCode: "",
     });
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
         setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    }
-
-    function handleSelectPlan(planId: string) {
-        setSelectedPlanId(planId);
-        setStep("form");
-    }
-
-    function getSelectedPlanName(): string {
-        const plan = Object.values(PLANS).find(p => p.id === selectedPlanId) as any;
-        if (!plan) return selectedPlanId;
-        const isAnnual = selectedPlanId.endsWith("_annual");
-        return `${plan.name} — ${isAnnual ? "anual" : "mensual"}`;
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -263,7 +254,7 @@ export default function RegistrarsePage() {
                     businessName: form.businessName,
                     businessType: form.businessType,
                     planId: selectedPlanId,
-                    referralCode: form.referralCode || undefined,
+                    referralCode: referralCode || undefined,
                 }),
             });
 
@@ -284,6 +275,130 @@ export default function RegistrarsePage() {
         } finally {
             setLoading(false);
         }
+    }
+
+    return (
+        <div className="w-full max-w-md relative z-10">
+            <div className="bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-700 p-8">
+                <button
+                    onClick={onBack}
+                    className="text-sm text-slate-400 hover:text-white mb-4 flex items-center gap-1 transition-colors"
+                >
+                    ← Volver a planes
+                </button>
+                <h2 className="text-xl font-semibold text-white mb-1">Datos de tu cuenta</h2>
+                <p className="text-sm text-slate-400 mb-6">
+                    Plan:{" "}
+                    <span className="font-semibold text-emerald-400">{getSelectedPlanName()}</span>
+                </p>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Tu nombre completo</label>
+                        <input
+                            name="fullName" type="text" required
+                            value={form.fullName} onChange={handleChange}
+                            placeholder="Juan García"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Nombre del negocio</label>
+                        <input
+                            name="businessName" type="text" required
+                            value={form.businessName} onChange={handleChange}
+                            placeholder="Kiosco El Sol"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Tipo de negocio</label>
+                        <select
+                            name="businessType"
+                            value={form.businessType} onChange={handleChange}
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        >
+                            {BUSINESS_TYPES.map((bt) => (
+                                <option key={bt.value} value={bt.value}>{bt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                        <input
+                            name="email" type="email" required
+                            value={form.email} onChange={handleChange}
+                            placeholder="juan@ejemplo.com"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Contraseña</label>
+                        <input
+                            name="password" type="password" required
+                            value={form.password} onChange={handleChange}
+                            placeholder="Mínimo 6 caracteres"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Repetir contraseña</label>
+                        <input
+                            name="confirmPassword" type="password" required
+                            value={form.confirmPassword} onChange={handleChange}
+                            placeholder="Repetí tu contraseña"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3">
+                            {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit" disabled={loading}
+                        className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-lg shadow-emerald-500/20"
+                    >
+                        {loading ? "Creando tu cuenta..." : "Crear cuenta y pagar →"}
+                    </button>
+
+                    <p className="text-center text-xs text-slate-500 mt-2">
+                        Al continuar aceptás los{" "}
+                        <a href="/terminos" className="underline hover:text-slate-300 transition-colors">términos de uso</a>{" "}
+                        y la{" "}
+                        <a href="/privacidad" className="underline hover:text-slate-300 transition-colors">política de privacidad</a>.
+                    </p>
+                </form>
+
+                <p className="text-center text-sm text-slate-500 mt-6">
+                    ¿Ya tenés cuenta?{" "}
+                    <a href="/login" className="text-emerald-400 hover:underline font-medium">
+                        Iniciá sesión
+                    </a>
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+export default function RegistrarsePage() {
+    const [step, setStep] = useState<"plan" | "form">("plan");
+    const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+    const [billing, setBilling] = useState<BillingCycle>("monthly");
+
+    function handleSelectPlan(planId: string) {
+        setSelectedPlanId(planId);
+        setStep("form");
+    }
+
+    function getSelectedPlanName(): string {
+        const plan = Object.values(PLANS).find(p => p.id === selectedPlanId) as any;
+        if (!plan) return selectedPlanId;
+        const isAnnual = selectedPlanId.endsWith("_annual");
+        return `${plan.name} — ${isAnnual ? "anual" : "mensual"}`;
     }
 
     // Planes por ciclo
@@ -359,120 +474,15 @@ export default function RegistrarsePage() {
 
             {/* ── STEP 2 — FORMULARIO ── */}
             {step === "form" && (
-                <div className="w-full max-w-md relative z-10">
-                    <div className="bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-700 p-8">
-                        <button
-                            onClick={() => setStep("plan")}
-                            className="text-sm text-slate-400 hover:text-white mb-4 flex items-center gap-1 transition-colors"
-                        >
-                            ← Volver a planes
-                        </button>
-                        <h2 className="text-xl font-semibold text-white mb-1">Datos de tu cuenta</h2>
-                        <p className="text-sm text-slate-400 mb-6">
-                            Plan:{" "}
-                            <span className="font-semibold text-emerald-400">{getSelectedPlanName()}</span>
-                        </p>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Tu nombre completo</label>
-                                <input
-                                    name="fullName" type="text" required
-                                    value={form.fullName} onChange={handleChange}
-                                    placeholder="Juan García"
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Nombre del negocio</label>
-                                <input
-                                    name="businessName" type="text" required
-                                    value={form.businessName} onChange={handleChange}
-                                    placeholder="Kiosco El Sol"
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Tipo de negocio</label>
-                                <select
-                                    name="businessType"
-                                    value={form.businessType} onChange={handleChange}
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                >
-                                    {BUSINESS_TYPES.map((bt) => (
-                                        <option key={bt.value} value={bt.value}>{bt.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
-                                <input
-                                    name="email" type="email" required
-                                    value={form.email} onChange={handleChange}
-                                    placeholder="juan@ejemplo.com"
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Contraseña</label>
-                                <input
-                                    name="password" type="password" required
-                                    value={form.password} onChange={handleChange}
-                                    placeholder="Mínimo 6 caracteres"
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Repetir contraseña</label>
-                                <input
-                                    name="confirmPassword" type="password" required
-                                    value={form.confirmPassword} onChange={handleChange}
-                                    placeholder="Repetí tu contraseña"
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Código de referido{" "}
-                                    <span className="text-slate-500 font-normal">(opcional)</span>
-                                </label>
-                                <input
-                                    name="referralCode" type="text"
-                                    value={form.referralCode} onChange={handleChange}
-                                    placeholder="ej: ABC123"
-                                    className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent uppercase"
-                                />
-                            </div>
-
-                            {error && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3">
-                                    {error}
-                                </div>
-                            )}
-
-                            <button
-                                type="submit" disabled={loading}
-                                className="w-full bg-emerald-500 text-white font-semibold py-3 rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-lg shadow-emerald-500/20"
-                            >
-                                {loading ? "Creando tu cuenta..." : "Crear cuenta y pagar →"}
-                            </button>
-
-                            <p className="text-center text-xs text-slate-500 mt-2">
-                                Al continuar aceptás los{" "}
-                                <a href="/terminos" className="underline hover:text-slate-300 transition-colors">términos de uso</a>{" "}
-                                y la{" "}
-                                <a href="/privacidad" className="underline hover:text-slate-300 transition-colors">política de privacidad</a>.
-                            </p>
-                        </form>
-
-                        <p className="text-center text-sm text-slate-500 mt-6">
-                            ¿Ya tenés cuenta?{" "}
-                            <a href="/login" className="text-emerald-400 hover:underline font-medium">
-                                Iniciá sesión
-                            </a>
-                        </p>
-                    </div>
-                </div>
+                <Suspense fallback={
+                    <div className="w-full max-w-md h-96 rounded-2xl bg-slate-800/50 animate-pulse" />
+                }>
+                    <RegistrarseForm
+                        selectedPlanId={selectedPlanId}
+                        getSelectedPlanName={getSelectedPlanName}
+                        onBack={() => setStep("plan")}
+                    />
+                </Suspense>
             )}
         </div>
     );
