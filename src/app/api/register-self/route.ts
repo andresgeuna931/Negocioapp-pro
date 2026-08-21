@@ -17,9 +17,9 @@ function generateSlug(name: string): string {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { email, password, fullName, businessName, phone, businessType, planId, referralCode } = body;
+        const { email, password, fullName, businessName, phone, address, businessType, planId, referralCode } = body;
 
-        if (!email || !password || !fullName || !businessName || !phone || !planId) {
+        if (!email || !password || !fullName || !businessName || !phone || !address || !planId) {
             return NextResponse.json(
                 { error: "Faltan datos requeridos." },
                 { status: 400 }
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
                 slug,
                 status: 'trial',
                 phone,
+                address,
             })
             .select()
             .single();
