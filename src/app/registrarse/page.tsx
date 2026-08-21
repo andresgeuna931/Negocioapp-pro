@@ -222,6 +222,7 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
         password: "",
         confirmPassword: "",
         businessName: "",
+        phone: "",
         businessType: "kiosco",
     });
 
@@ -252,6 +253,7 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
                     password: form.password,
                     fullName: form.fullName,
                     businessName: form.businessName,
+                    phone: form.phone,
                     businessType: form.businessType,
                     planId: selectedPlanId,
                     referralCode: referralCode || undefined,
@@ -308,6 +310,15 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
                             name="businessName" type="text" required
                             value={form.businessName} onChange={handleChange}
                             placeholder="Kiosco El Sol"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Teléfono del negocio</label>
+                        <input
+                            name="phone" type="tel" required
+                            value={form.phone} onChange={handleChange}
+                            placeholder="+54 11 1234-5678"
                             className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                         />
                     </div>
