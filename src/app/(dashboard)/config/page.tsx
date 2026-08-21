@@ -219,35 +219,8 @@ export default async function ConfigPage() {
                 </Card>
             )}
 
-            {/* Stock Alerts */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Bell className="w-5 h-5" />
-                        Alertas de Stock
-                    </CardTitle>
-                    <CardDescription>
-                        Configurá cuándo recibir alertas de stock bajo
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800">
-                        <div>
-                            <p className="font-medium text-slate-900 dark:text-white">Umbral por defecto</p>
-                            <p className="text-sm text-slate-500">Se alerta cuando el stock baja de este valor</p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                                {tenant?.low_stock_threshold_default || 5}
-                            </p>
-                            <p className="text-sm text-slate-500">unidades</p>
-                        </div>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-3">
-                        Podés configurar un umbral diferente para cada producto en la edición del producto.
-                    </p>
-                </CardContent>
-            </Card>
+            {/* Stock Alerts — sección eliminada: umbral global solo aplica a productos por unidad
+                y se configura individualmente por producto en la edición del producto */}
 
             {/* Price Lists */}
             <Link href="/config/precios">
