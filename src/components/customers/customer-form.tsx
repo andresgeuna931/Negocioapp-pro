@@ -25,7 +25,7 @@ const customerSchema = z.object({
     full_name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
     dni: z.string().optional(),
     email: z.string().email('Email inválido').optional().or(z.literal('')),
-    phone: z.string().optional(),
+    phone: z.string().min(6, 'Ingresá un teléfono válido'),
     address: z.string().optional(),
     credit_limit: z.union([z.string(), z.number()]).transform(val => Number(val) || 0),
     notes: z.string().optional(),
@@ -169,7 +169,7 @@ export function CustomerForm({ customer, onSuccess }: CustomerFormProps) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel><OptionalLabel>Teléfono</OptionalLabel></FormLabel>
+                                <FormLabel><RequiredLabel>Teléfono</RequiredLabel></FormLabel>
                                 <FormControl>
                                     <Input placeholder="11 1234 5678" autoComplete="off" {...field} />
                                 </FormControl>
