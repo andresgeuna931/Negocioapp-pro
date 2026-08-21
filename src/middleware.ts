@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited', '/register', '/cuenta-suspendida'];
+const PUBLIC_ROUTES = ['/login', '/forgot-password', '/reset-password', '/terminos', '/privacidad', '/unirse', '/api/webhooks', '/api/telegram', '/precios', '/register-invited', '/register', '/cuenta-suspendida', '/registrarse', '/api/register-self', '/bienvenido'];
 
 // F-02: rutas restringidas para staff — el servidor redirige antes de enviar contenido
 const STAFF_RESTRICTED_ROUTES = [
