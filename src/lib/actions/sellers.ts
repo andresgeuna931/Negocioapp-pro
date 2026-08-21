@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/actions/auth';
 import { revalidatePath } from 'next/cache';
+import { sendEmail, referralEmailHtml } from '@/lib/brevo';
 
 const PLAN_PRICES: Record<string, number> = {
     starter: 19000,
@@ -57,6 +58,18 @@ function getActivationDate(tenant: any): Date {
 // Fecha estimada de pago al vendedor (1ro del mes siguiente a la activación)
 function getPaymentDate(activationDate: Date): Date {
     return new Date(activationDate.getFullYear(), activationDate.getMonth() + 1, 1);
+}
+
+// Genera un código de referido único: 3 letras del nombre + 4 chars random
+function generateReferralCode(name: string): string {
+    const prefix = name
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z]/g, '')
+        .substring(0, 3)
+        .toUpperCase();
+    const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `${prefix}${suffix}`;
 }
 
 // --- Vendedores ---
@@ -133,14 +146,41 @@ export async function createSeller(formData: FormData) {
 
     if (!full_name || !email) return { error: 'Nombre y email son requeridos' };
 
+    // Generar referral_code único (reintentar hasta 5 veces si hay colisión)
+    let referral_code = generateReferralCode(full_name);
+    for (let i = 0; i < 5; i++) {
+        const { data: existing } = await admin
+            .from('sellers')
+            .select('id')
+            .eq('referral_code', referral_code)
+            .single();
+        if (!existing) break;
+        referral_code = generateReferralCode(full_name);
+    }
+
     const { error } = await admin.from('sellers').insert({
         full_name,
         email,
         commission_pct,
         commission_fixed,
         referred_by: referred_by || null,
+        referral_code,
     });
     if (error) return { error: error.message };
+
+    // Mandar mail con link de referido (no bloquea si falla)
+    try {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://negocioapp-pro.vercel.app';
+        const referralLink = `${baseUrl}/registrarse?ref=${referral_code}`;
+        await sendEmail({
+            to: { email, name: full_name },
+            subject: 'Tu link de vendedor — NegocioApp Pro',
+            htmlContent: referralEmailHtml(full_name, referralLink),
+        });
+    } catch (emailError) {
+        console.error('Error enviando mail al vendedor:', emailError);
+        // No falla la creación si el mail falla
+    }
 
     revalidatePath('/admin/vendedores');
     return { success: true };
