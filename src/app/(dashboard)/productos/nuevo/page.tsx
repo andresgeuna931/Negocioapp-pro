@@ -272,10 +272,12 @@ export default function NewProductPage() {
                         </div>
 
                         <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                            <Button type="submit" loading={loading} className="flex-1 w-full">
-                                <Save className="w-5 h-5 mr-2" />
-                                Guardar Producto
-                            </Button>
+                            <div className="flex-1">
+                                <Button type="submit" loading={loading} className="w-full">
+                                    <Save className="w-5 h-5 mr-2" />
+                                    Guardar Producto
+                                </Button>
+                            </div>
                             <Link href="/productos" className="flex-1">
                                 <Button type="button" variant="outline" className="w-full">
                                     Cancelar
