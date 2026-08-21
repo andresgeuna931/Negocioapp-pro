@@ -53,7 +53,12 @@ export async function middleware(request: NextRequest) {
     if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone();
         url.pathname = '/login';
-        url.searchParams.set('redirect', pathname);
+        // Solo agregar redirect si el destino no es la raíz (evita ?redirect=%2F innecesario)
+        if (pathname !== '/') {
+            url.searchParams.set('redirect', pathname);
+        } else {
+            url.searchParams.delete('redirect');
+        }
         return NextResponse.redirect(url);
     }
 
