@@ -266,12 +266,8 @@ export default function NewProductPage() {
                                 type="number"
                                 step="0.001"
                                 min="0"
-                                label="Alerta stock bajo (opcional)"
-                                placeholder={
-                                    unitType === 'kg' ? 'Ej: 2.500 (kg)' :
-                                    unitType === 'lt' ? 'Ej: 1.500 (lt)' :
-                                    '5 (por defecto)'
-                                }
+                                label={`Alerta stock bajo (${unitLabel})`}
+                                placeholder={unitType === 'kg' ? 'Ej: 2.500' : unitType === 'lt' ? 'Ej: 1.500' : '5 (por defecto)'}
                             />
                         </div>
 
