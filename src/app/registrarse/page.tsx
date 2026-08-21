@@ -406,14 +406,16 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
-export default function RegistrarsePage() {
-    const [step, setStep] = useState<"plan" | "form">("plan");
-    const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+function RegistrarsePageInner() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const step = (searchParams.get("paso") as "plan" | "form") || "plan";
+    const [selectedPlanId, setSelectedPlanId] = useState<string>(searchParams.get("plan") || "");
     const [billing, setBilling] = useState<BillingCycle>("monthly");
 
     function handleSelectPlan(planId: string) {
         setSelectedPlanId(planId);
-        setStep("form");
+        router.push(`/registrarse?paso=form&plan=${planId}`);
     }
 
     function getSelectedPlanName(): string {
@@ -502,10 +504,18 @@ export default function RegistrarsePage() {
                     <RegistrarseForm
                         selectedPlanId={selectedPlanId}
                         getSelectedPlanName={getSelectedPlanName}
-                        onBack={() => setStep("plan")}
+                        onBack={() => router.push("/registrarse")}
                     />
                 </Suspense>
             )}
         </div>
+    );
+}
+
+export default function RegistrarsePage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+            <RegistrarsePageInner />
+        </Suspense>
     );
 }
