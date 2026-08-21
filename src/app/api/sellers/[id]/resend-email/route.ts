@@ -1,13 +1,15 @@
-// src/app/api/admin/sellers/[id]/resend-email/route.ts
+// src/app/api/sellers/[id]/resend-email/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { sendEmail, referralEmailHtml } from "@/lib/brevo";
 
 export async function POST(
     _request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
+
         const supabase = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -16,7 +18,7 @@ export async function POST(
         const { data: seller, error } = await supabase
             .from("sellers")
             .select("id, full_name, email, referral_code")
-            .eq("id", params.id)
+            .eq("id", id)
             .single();
 
         if (error || !seller) {
