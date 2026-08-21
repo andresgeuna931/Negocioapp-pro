@@ -169,7 +169,15 @@ export function EditProductModal({ product, onClose }: { product: Product; onClo
                                     <span className="text-xs text-slate-400">Solo desde Inventario</span>
                                 </div>
                             </div>
-                            <Input label="Alerta stock bajo" type="number" step="1" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)} placeholder="5 (por defecto)" />
+                            <Input
+                                label={`Alerta stock bajo (${unitLabel})`}
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                value={threshold}
+                                onChange={(e) => setThreshold(e.target.value)}
+                                placeholder={unitType === 'kg' ? 'Ej: 2.500' : unitType === 'lt' ? 'Ej: 1.500' : '5 (por defecto)'}
+                            />
                         </div>
                     </div>
 
