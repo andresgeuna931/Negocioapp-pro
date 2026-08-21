@@ -80,17 +80,12 @@ export default async function DashboardRootLayout({
         return SUSPENDED_SCREEN;
     }
 
-    const { data: tenant } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('id', profile.tenant_id)
-        .single();
-
-    let { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('tenant_id', profile.tenant_id)
-        .single();
+    const [tenantResult, subscriptionResult] = await Promise.all([
+        supabase.from('tenants').select('*').eq('id', profile.tenant_id).single(),
+        supabase.from('subscriptions').select('*').eq('tenant_id', profile.tenant_id).single(),
+    ]);
+    const { data: tenant } = tenantResult;
+    let { data: subscription } = subscriptionResult;
 
     if (tenant) {
         session.tenant = tenant;
