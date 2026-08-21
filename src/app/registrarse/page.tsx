@@ -223,6 +223,7 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
         confirmPassword: "",
         businessName: "",
         phone: "",
+        address: "",
         businessType: "kiosco",
     });
 
@@ -254,6 +255,7 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
                     fullName: form.fullName,
                     businessName: form.businessName,
                     phone: form.phone,
+                    address: form.address,
                     businessType: form.businessType,
                     planId: selectedPlanId,
                     referralCode: referralCode || undefined,
@@ -314,11 +316,20 @@ function RegistrarseForm({ selectedPlanId, getSelectedPlanName, onBack }: {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">Teléfono del negocio</label>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Teléfono del negocio <span className="text-red-500">*</span></label>
                         <input
                             name="phone" type="tel" required
                             value={form.phone} onChange={handleChange}
                             placeholder="+54 11 1234-5678"
+                            className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">Dirección del negocio <span className="text-red-500">*</span></label>
+                        <input
+                            name="address" type="text" required
+                            value={form.address} onChange={handleChange}
+                            placeholder="Av. Siempre Viva 123, Buenos Aires"
                             className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                         />
                     </div>
