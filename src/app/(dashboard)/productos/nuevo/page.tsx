@@ -264,10 +264,14 @@ export default function NewProductPage() {
                             <Input
                                 name="threshold"
                                 type="number"
-                                step="1"
+                                step="0.001"
                                 min="0"
                                 label="Alerta stock bajo (opcional)"
-                                placeholder="5 (por defecto)"
+                                placeholder={
+                                    unitType === 'kg' ? 'Ej: 2.500 (kg)' :
+                                    unitType === 'lt' ? 'Ej: 1.500 (lt)' :
+                                    '5 (por defecto)'
+                                }
                             />
                         </div>
 
