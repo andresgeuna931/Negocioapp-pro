@@ -19,7 +19,7 @@ import { importProducts } from '@/lib/actions/products';
 export function ProductsImportModal() {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [summary, setSummary] = useState<{ created: number; updated: number; errors: string[] | null } | null>(null);
+    const [summary, setSummary] = useState<{ created: number; updated: number; errors: string[] | null; weightWithoutThreshold?: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
@@ -33,7 +33,8 @@ export function ProductsImportModal() {
                 Costo: 1800,
                 Stock: 24,
                 Categoria: 'Bebidas',
-                Unidad: 'unit'
+                Unidad: 'unit',
+                AlertaStock: 5
             },
             {
                 Nombre: 'Ejemplo: Papas (Kilo)',
@@ -43,7 +44,8 @@ export function ProductsImportModal() {
                 Costo: 800,
                 Stock: 50,
                 Categoria: 'Verdulería',
-                Unidad: 'kg'
+                Unidad: 'kg',
+                AlertaStock: 2.5
             }
         ];
 
@@ -72,19 +74,39 @@ export function ProductsImportModal() {
                 return;
             }
 
+            // Normaliza números con coma decimal (ej: "1,5" → 1.5)
+            const parseNum = (val: any): number => {
+                if (val === undefined || val === null || val === '') return 0;
+                return Number(String(val).replace(/\./g, '').replace(',', '.')) || 0;
+            };
+            const parseThreshold = (val: any): number | undefined => {
+                if (val === undefined || val === null || val === '') return undefined;
+                const n = Number(String(val).replace(/\./g, '').replace(',', '.'));
+                return isNaN(n) ? undefined : n;
+            };
+
             // Map Excel columns to our schema
-            const productsToImport = jsonData.map(row => ({
-                name: String(row.Nombre || row.nombre || ''),
-                barcode: row.CodigoBarra ? String(row.CodigoBarra) : undefined,
-                sku: row.SKU ? String(row.SKU) : undefined,
-                price: Number(row.PrecioVenta || row.precio || 0),
-                cost: Number(row.Costo || row.costo || 0),
-                stock_on_hand: Number(row.Stock || row.stock || 0),
-                category: String(row.Categoria || row.categoria || 'General'),
-                unit_type: (row.Unidad === 'kg' || row.Unidad === 'g' || row.Unidad === 'lt' || row.Unidad === 'ml')
+            const productsToImport = jsonData.map(row => {
+                const unit_type = (row.Unidad === 'kg' || row.Unidad === 'lt')
                     ? row.Unidad
-                    : 'unit' as any
-            })).filter(p => p.name && p.price >= 0); // Basic validation
+                    : 'unit' as any;
+                const threshold = parseThreshold(row.AlertaStock ?? row.alertastock ?? row.alerta_stock);
+                return {
+                    name: String(row.Nombre || row.nombre || ''),
+                    barcode: row.CodigoBarra ? String(row.CodigoBarra) : undefined,
+                    sku: row.SKU ? String(row.SKU) : undefined,
+                    price: parseNum(row.PrecioVenta || row.precio),
+                    cost: parseNum(row.Costo || row.costo) || undefined,
+                    stock_on_hand: parseNum(row.Stock || row.stock),
+                    category: String(row.Categoria || row.categoria || 'General'),
+                    unit_type,
+                    low_stock_threshold_override: threshold,
+                };
+            }).filter(p => p.name && p.price >= 0); // Basic validation
+
+            const weightWithoutThreshold = productsToImport.filter(
+                p => (p.unit_type === 'kg' || p.unit_type === 'lt') && p.low_stock_threshold_override === undefined
+            ).length;
 
             if (productsToImport.length === 0) {
                 toast.error('No se encontraron productos válidos en el archivo');
@@ -100,7 +122,8 @@ export function ProductsImportModal() {
                 setSummary({
                     created: result.created || 0,
                     updated: result.updated || 0,
-                    errors: result.errors || null
+                    errors: result.errors || null,
+                    weightWithoutThreshold,
                 });
                 toast.success('Importación completada');
                 router.refresh();
@@ -226,6 +249,15 @@ export function ProductsImportModal() {
                                 </ul>
                             </div>
                         )}
+
+                        {summary.weightWithoutThreshold && summary.weightWithoutThreshold > 0 ? (
+                            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                <span>
+                                    <strong>{summary.weightWithoutThreshold} producto{summary.weightWithoutThreshold > 1 ? 's' : ''} por kg/lt</strong> quedaron sin alerta de stock. Editálos desde Productos para configurar el umbral individualmente.
+                                </span>
+                            </div>
+                        ) : null}
 
                         <Button onClick={() => setOpen(false)} className="w-full">
                             Entendido
