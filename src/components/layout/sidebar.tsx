@@ -131,22 +131,6 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
 
                     {isOwner && (
                         <Link
-                            href="/admin/vendedores"
-                            onClick={onClose}
-                            className={cn(
-                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
-                                pathname.startsWith('/admin/vendedores')
-                                    ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
-                            )}
-                        >
-                            <UserCheck className="w-5 h-5" />
-                            Vendedores
-                        </Link>
-                    )}
-
-                    {isOwner && (
-                        <Link
                             href="/ayuda"
                             onClick={onClose}
                             className={cn(
