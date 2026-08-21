@@ -71,7 +71,7 @@ function LoginForm() {
                 </div>
 
                 {/* Form (changed to div to prevent browser auto-submit) */}
-                <div 
+                <div
                     className="space-y-5"
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -140,9 +140,9 @@ function LoginForm() {
 
                 {/* Register link */}
                 <div className="mt-4 text-center text-sm text-slate-400">
-                    ¿Querés conocer la plataforma?{' '}
-                    <a href="/register" className="text-emerald-400 hover:underline font-medium">
-                        Solicitá una invitación
+                    ¿No tenés cuenta?{' '}
+                    <a href="/registrarse" className="text-emerald-400 hover:underline font-medium">
+                        Crear cuenta
                     </a>
                 </div>
             </CardContent>
