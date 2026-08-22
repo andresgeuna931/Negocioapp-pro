@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { NavigationProgress } from './navigation-progress';
 import { TrialBanner } from '@/components/subscriptions/trial-banner';
 import { SubscriptionExpiredScreen } from '@/components/subscriptions/subscription-expired-screen';
 import { TawkToWidget } from '@/components/tawk-to';
@@ -60,6 +61,7 @@ export function DashboardLayout({ children, session, isExpired = false, daysRema
 
     return (
         <div className="min-h-screen bg-slate-900">
+            <NavigationProgress />
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} planName={tenant?.plan_type} userRole={session?.profile?.role} />
 
             <div className="lg:pl-72">
