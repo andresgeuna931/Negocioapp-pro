@@ -219,7 +219,7 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
             const cell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
             if (cell) {
                 cell.t = 'n'; // tipo número
-                cell.z = '0'; // sin decimales ni separador de miles
+                cell.z = '0.##'; // decimales opcionales, sin separador de miles
             }
         }
 
@@ -317,7 +317,7 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                     <CardContent className="space-y-4">
                         <ol className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pl-4 list-decimal">
                             <li>Descargá la lista con tus productos y precios actuales</li>
-                            <li>Modificá solo los precios que querés cambiar — podés escribir <span className="font-medium text-slate-600 dark:text-slate-300">1500</span>, <span className="font-medium text-slate-600 dark:text-slate-300">25.50</span> o <span className="font-medium text-slate-600 dark:text-slate-300">1.500</span>, el sistema los interpreta correctamente</li>
+                            <li>Modificá solo los precios que querés cambiar — escribí el número directo: <span className="font-medium text-slate-600 dark:text-slate-300">1500</span> o <span className="font-medium text-slate-600 dark:text-slate-300">25.50</span> (sin puntos de miles)</li>
                             <li>Subí el archivo y revisá el preview antes de confirmar</li>
                         </ol>
                         <Button
