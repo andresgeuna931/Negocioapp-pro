@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Percent, Upload, Eye, Check, AlertCircle, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Percent, Upload, Eye, Check, AlertCircle, Loader2, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import {
     previewExcelImport,
     applyExcelImport
 } from '@/lib/actions/prices';
+import { getProducts } from '@/lib/actions/products';
 import * as XLSX from 'xlsx';
 
 interface PriceUpdateFormProps {
@@ -177,6 +178,23 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
         setApplying(false);
     };
 
+    // Descargar lista actual de productos para editar precios
+    const handleDownloadCurrentPrices = async () => {
+        const result = await getProducts();
+        if (!result.data || result.data.length === 0) return;
+
+        const rows = result.data.map((p: any) => ({
+            Codigo: p.barcode || p.sku || p.id,
+            Nombre: p.name,
+            Precio: p.price,
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Precios');
+        XLSX.writeFile(wb, 'lista_precios_actual.xlsx');
+    };
+
     // Reset
     const handleReset = () => {
         setPreview([]);
@@ -264,6 +282,16 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleDownloadCurrentPrices}
+                            className="w-full gap-2"
+                            disabled={activeMethod === 'percentage'}
+                        >
+                            <Download className="w-4 h-4" />
+                            Descargar lista actual para editar
+                        </Button>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                                 Archivo Excel
