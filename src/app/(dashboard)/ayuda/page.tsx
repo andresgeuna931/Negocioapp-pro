@@ -276,6 +276,11 @@ const faqData: FAQCategory[] = [
                 keywords: ['empleado', 'ver', 'gastos', 'permiso']
             },
             {
+                question: '¿Cómo registro las compras a proveedores que pago en cuotas o en cuenta corriente?',
+                answer: 'La app no tiene módulo de proveedores todavía, pero podés reflejar correctamente los pagos así:\n\n1. Cuando llega la mercadería: no registrás nada todavía — la deuda con el proveedor la llevás vos por fuera (papel, planilla, etc.).\n\n2. Cada vez que le pagás algo al proveedor: registrás ese monto como Gasto con categoría "Mercadería" y la fecha real del pago. Si pagás en efectivo desde caja, usá Retiro/Gasto en Caja — aparece solo en Gastos.\n\n3. Si pagás en tres cuotas (por ejemplo agosto, septiembre y octubre), cada cuota la cargás como Gasto en el mes que realmente pagaste.\n\nAsí el Resultado Económico de cada mes refleja correctamente cuánto gastaste, aunque la mercadería haya llegado antes. La deuda pendiente con el proveedor no queda registrada en el sistema — esa parte hay que llevarla externamente por ahora.',
+                keywords: ['proveedor', 'cuenta corriente', 'cuotas', 'debo', 'deuda', 'mercaderia', 'pago']
+            },
+            {
                 question: '¿Puedo filtrar los gastos por período?',
                 answer: 'Sí. En la página de Gastos podés filtrar por: Hoy, Esta semana, Este mes o Este año. El resumen y la lista se actualizan automáticamente.',
                 keywords: ['filtrar', 'periodo', 'mes', 'año', 'semana']
