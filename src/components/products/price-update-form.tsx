@@ -83,8 +83,28 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                         row['precio'] || row['Precio'] ||
                         row['nuevo_precio'] || row['Nuevo Precio'] || '0'
                     ).trim();
-                    // Normaliza "1.500" → 1500 y "1,5" → 1.5 (formato argentino)
-                    const price = Number(rawPrice.replace(/\./g, '').replace(',', '.'));
+                    // Normaliza precios en formato argentino o internacional:
+                    // "1.500" → 1500 (punto = miles), "25.50" → 25.5 (punto = decimal)
+                    // "1,500" → 1500 (coma = miles), "25,50" → 25.5 (coma = decimal)
+                    const normalizePrice = (val: string): number => {
+                        const dotIdx = val.lastIndexOf('.');
+                        const commaIdx = val.lastIndexOf(',');
+                        if (commaIdx > dotIdx) {
+                            // coma es el separador decimal → quitar puntos de miles
+                            return Number(val.replace(/\./g, '').replace(',', '.'));
+                        } else if (dotIdx > commaIdx) {
+                            // punto podría ser miles o decimal
+                            const afterDot = val.length - dotIdx - 1;
+                            if (afterDot === 3) {
+                                // "1.500" → miles
+                                return Number(val.replace(/\./g, '').replace(',', ''));
+                            }
+                            // "25.50" → decimal
+                            return Number(val.replace(/,/g, ''));
+                        }
+                        return Number(val);
+                    };
+                    const price = normalizePrice(rawPrice);
 
                     if (barcode && price > 0) {
                         items.push({ barcode, price });
@@ -188,10 +208,21 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
         const rows = result.data.map((p: any) => ({
             Codigo: p.barcode || p.sku || p.id,
             Nombre: p.name,
-            Precio: p.price,
+            Precio: Number(p.price), // número puro, sin formato
         }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
+
+        // Forzar formato numérico en columna Precio (columna C)
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+        for (let row = 1; row <= range.e.r; row++) {
+            const cell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
+            if (cell) {
+                cell.t = 'n'; // tipo número
+                cell.z = '0'; // sin decimales ni separador de miles
+            }
+        }
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Precios');
         XLSX.writeFile(wb, 'lista_precios_actual.xlsx');
@@ -284,6 +315,11 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <ol className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pl-4 list-decimal">
+                            <li>Descargá la lista con tus productos y precios actuales</li>
+                            <li>Modificá solo los precios que querés cambiar</li>
+                            <li>Subí el archivo y revisá el preview antes de confirmar</li>
+                        </ol>
                         <Button
                             variant="outline"
                             size="sm"
