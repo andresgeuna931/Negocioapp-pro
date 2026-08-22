@@ -145,13 +145,18 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo actualizo los precios masivamente?',
-                answer: 'Andá a Productos > "Actualizar Precios". Podés aplicar un porcentaje de aumento o descuento a todos los productos o solo a una categoría específica.',
-                keywords: ['precios', 'masivo', 'porcentaje', 'inflacion', 'actualizar']
+                answer: 'Andá a Productos > "Actualizar Precios". Tenés dos métodos:\n\nOpción A — Porcentaje:\nElegí una categoría (o "Todas") y el porcentaje de aumento o descuento. El sistema muestra un preview antes de confirmar.\n\nOpción B — Planilla Excel:\n1. Tocá "Descargar lista actual para editar" — te genera un Excel con tus productos y precios actuales\n2. Modificá solo los precios que querés cambiar — escribí el número directo: 1500 o 25.50 (sin puntos de miles)\n3. Subí el archivo y revisá el preview antes de confirmar\n\n⚠️ Esta planilla es solo para actualizar precios. No la subas en "Importar Excel" — son flujos distintos.',
+                keywords: ['precios', 'masivo', 'porcentaje', 'inflacion', 'actualizar', 'planilla', 'excel']
             },
             {
                 question: '¿Cómo importo productos desde Excel?',
-                answer: 'Andá a Productos > "Importar Excel". Descargá la plantilla, completá tus productos, y subí el archivo. Podés importar hasta 500 productos de una vez.\n\nSi un producto ya existe (mismo código de barras o SKU), se actualizará automáticamente. Si no existe, se creará como producto nuevo.',
-                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla']
+                answer: 'Andá a Productos > "Importar Excel" (no confundir con Actualizar Precios).\n\n1. Descargá la plantilla con el botón "Descargar .xlsx"\n2. Completá tus productos. Las columnas son:\n   • Nombre (obligatorio)\n   • CodigoBarra\n   • PrecioVenta (obligatorio)\n   • Costo (opcional)\n   • Stock\n   • Categoria\n   • Unidad: "unit" (unidad), "kg" o "lt"\n   • AlertaStock (umbral de alerta — importante para productos por kg o lt)\n3. Subí el archivo\n\nSi un producto ya existe (mismo código de barras o SKU), se actualiza. Si no existe, se crea como nuevo.\n\nEjemplos de cómo escribir el precio en la planilla:\n• 2500 → $2.500 ✓\n• 25.50 → $25,50 ✓\n• 1200 → $1.200 ✓\nEscribí siempre el número directo, sin punto de miles.',
+                keywords: ['excel', 'importar', 'csv', 'masivo', 'planilla', 'columnas', 'plantilla']
+            },
+            {
+                question: '¿Cuál es la diferencia entre "Importar Excel" y "Actualizar Precios"?',
+                answer: 'Son dos herramientas distintas con propósitos distintos:\n\n📋 Importar Excel (botón en Productos):\nSirve para cargar productos nuevos o actualizar datos completos: nombre, precio, costo, stock, categoría, unidad de medida. Usala cuando cargás el inventario por primera vez o cuando querés actualizar muchos campos a la vez.\n\n💰 Actualizar Precios > Excel (en Productos > Actualizar Precios):\nSirve exclusivamente para cambiar precios. Descargás la lista actual, modificás los precios que querés, y subís el archivo. La planilla solo tiene tres columnas: Codigo, Nombre y Precio.\n\n⚠️ No subas la planilla de "Actualizar Precios" en "Importar Excel" ni al revés — los formatos son distintos y puede generar errores en todos los productos.',
+                keywords: ['diferencia', 'importar', 'actualizar precios', 'excel', 'dos flujos', 'planilla', 'confundir']
             },
             {
                 question: '¿Cómo filtro productos por categoría?',
@@ -234,8 +239,8 @@ const faqData: FAQCategory[] = [
             },
             {
                 question: '¿Cómo funciona la alerta de stock bajo?',
-                answer: 'Cuando un producto baja de cierta cantidad (por defecto 5 unidades), aparece en la sección "Stock Bajo". Podés personalizar este umbral por producto o globalmente en Configuración.',
-                keywords: ['alerta', 'bajo', 'minimo', 'umbral', 'aviso']
+                answer: 'Cuando un producto baja de cierta cantidad aparece en la sección "Stock Bajo". El umbral funciona así según el tipo de unidad:\n\n• Productos por unidad (unit): si no configurás un umbral específico, el sistema usa 5 como valor por defecto.\n• Productos por kg o lt: la alerta solo se activa si configuraste un umbral manualmente. Si no tiene umbral, no aparece en stock bajo — esto evita falsas alertas en productos a granel.\n\nPara configurar el umbral de un producto: editá el producto desde Productos o Inventario y completá el campo "Alerta stock bajo (kg)" o "Alerta stock bajo (lt)" según corresponda.\n\nEjemplo: si vendés papas por kg y querés que te avise cuando queden menos de 2.5 kg, ponés 2.5 en ese campo.',
+                keywords: ['alerta', 'bajo', 'minimo', 'umbral', 'aviso', 'kg', 'lt', 'granel']
             },
             {
                 question: '¿Cómo hago un ajuste de inventario?',
