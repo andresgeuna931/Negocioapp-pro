@@ -18,6 +18,7 @@ import {
     UserCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { startNavProgress } from './navigation-progress';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -99,12 +100,12 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                onClick={onClose}
+                                onClick={() => { if (!isActive) startNavProgress(); onClose(); }}
                                 className={cn(
-                                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150',
                                     isActive
                                         ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-emerald-500/10 active:text-emerald-400 active:scale-[0.97]'
                                 )}
                             >
                                 <item.icon className="w-5 h-5" />
@@ -116,12 +117,12 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                     {isOwner && (
                         <Link
                             href="/gastos"
-                            onClick={onClose}
+                            onClick={() => { if (!pathname.startsWith('/gastos')) startNavProgress(); onClose(); }}
                             className={cn(
-                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150',
                                 pathname.startsWith('/gastos')
                                     ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-emerald-500/10 active:text-emerald-400 active:scale-[0.97]'
                             )}
                         >
                             <Receipt className="w-5 h-5" />
@@ -132,12 +133,12 @@ export function Sidebar({ isOpen, onClose, planName, userRole }: SidebarProps) {
                     {isOwner && (
                         <Link
                             href="/ayuda"
-                            onClick={onClose}
+                            onClick={() => { if (!pathname.startsWith('/ayuda')) startNavProgress(); onClose(); }}
                             className={cn(
-                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                                'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-150',
                                 pathname.startsWith('/ayuda')
                                     ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-slate-700 active:scale-[0.98]'
+                                    : 'text-slate-400 hover:text-white hover:bg-slate-800 active:bg-emerald-500/10 active:text-emerald-400 active:scale-[0.97]'
                             )}
                         >
                             <HelpCircle className="w-5 h-5" />
