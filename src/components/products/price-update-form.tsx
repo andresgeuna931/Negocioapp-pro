@@ -78,11 +78,13 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                         row['code'] || row['Code'] || ''
                     ).trim();
 
-                    const price = Number(
+                    const rawPrice = String(
                         row['price'] || row['Price'] ||
                         row['precio'] || row['Precio'] ||
-                        row['nuevo_precio'] || row['Nuevo Precio'] || 0
-                    );
+                        row['nuevo_precio'] || row['Nuevo Precio'] || '0'
+                    ).trim();
+                    // Normaliza "1.500" → 1500 y "1,5" → 1.5 (formato argentino)
+                    const price = Number(rawPrice.replace(/\./g, '').replace(',', '.'));
 
                     if (barcode && price > 0) {
                         items.push({ barcode, price });
