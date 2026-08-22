@@ -58,6 +58,14 @@ HISTORIAL DE CIERRES:
 - Cada cierre es expandible y muestra el desglose por método de pago y la lista de ventas
 - Las ventas dentro del historial también son expandibles para ver el detalle de productos
 
+PROVEEDORES Y COMPRAS EN CUENTA CORRIENTE:
+- La app no tiene módulo de proveedores. La deuda pendiente con proveedores se lleva externamente (papel, planilla, etc.)
+- El flujo correcto para compras a crédito: no registrar nada cuando llega la mercadería; registrar cada pago al proveedor como Gasto (categoría "Mercadería") en la fecha real del pago
+- Si el pago es en efectivo desde caja: usar Retiro/Gasto en Caja, que aparece automáticamente en Gastos
+- Si pagan en cuotas: cada cuota va como Gasto en el mes que realmente se paga
+- Así el Resultado Económico refleja los gastos reales por mes (criterio de caja)
+- El módulo de proveedores con cuenta corriente es una feature planificada para el futuro
+
 MÓDULO DE GASTOS (solo visible para dueño):
 - El dueño puede registrar gastos del negocio con categoría, monto, fecha y descripción
 - Categorías: Mercadería, Alquiler, Electricidad, Agua, Gas, Internet/Teléfono, Sueldos, Limpieza, Mantenimiento, Impuestos, Otros
