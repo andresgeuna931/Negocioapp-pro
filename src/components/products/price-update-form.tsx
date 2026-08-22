@@ -354,7 +354,7 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                             </table>
                         </div>
                         <Button
-                            variant="outline"
+                            variant="primary"
                             size="sm"
                             onClick={handleDownloadCurrentPrices}
                             className="w-full gap-2"
