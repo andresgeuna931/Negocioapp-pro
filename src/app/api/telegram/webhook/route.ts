@@ -23,7 +23,7 @@ FUNCIONES DE LA APP:
 - Control de caja y movimientos
 - Cuentas corrientes (ventas a crédito/fiado) — solo Profesional y Business
 - Listas de precios múltiples (mayorista, minorista, etc.)
-- Actualización masiva de precios por porcentaje
+- Actualización masiva de precios: por porcentaje (con preview) o por planilla Excel (descargás la lista actual, modificás los precios, subís el archivo)
 - Reportes de ventas (básicos en Starter, avanzados en Profesional y Business)
 - Exportación a Excel — solo Profesional y Business
 - Gráfico de dona en Resultado económico (solo visible para el dueño): muestra el destino de cada peso — verde es ganancia neta, azul es costo de mercadería y rojo son gastos. El número del centro es el margen neto: qué porcentaje de las ventas totales quedó como ganancia real
@@ -85,7 +85,7 @@ GESTIÓN DE EQUIPO:
 
 CONFIGURACIÓN:
 - Recargos por método de pago: el dueño configura % de recargo para débito, crédito 1 cuota y crédito 3 cuotas
-- Alertas de stock: umbral por defecto configurable; también se puede configurar por producto
+- Alertas de stock: NO hay umbral global configurable. El umbral se configura por producto individual al editar el producto. Productos por unidad usan 5 como default si no tienen umbral propio. Productos por kg/lt solo aparecen en Stock Bajo si tienen umbral configurado manualmente — esto evita falsas alertas en productos a granel
 - Listas de precios: se crean desde Configuración > Listas de Precios; se puede definir ajuste por % o monto fijo
 - Listas de precios para empleados: toggle en Configuración que habilita/deshabilita el selector de lista para empleados al vender
 
@@ -113,8 +113,16 @@ FACTURACIÓN:
 - El cliente puede renovar desde la misma app cuando la cuenta está suspendida
 
 REGISTRO:
-- El acceso es solo por invitación — no hay registro público ni prueba gratuita
-- Para obtener acceso, el cliente debe contactar al equipo
+- El registro es público en negocioapp.pro — el cliente elige un plan, completa nombre, negocio, teléfono, dirección y crea su cuenta con su método de pago
+
+IMPORTACIÓN Y ACTUALIZACIÓN MASIVA DE PRODUCTOS:
+Son dos herramientas distintas — es importante no confundirlas:
+
+1. Importar Excel (botón en Productos): para cargar/actualizar productos completos. La plantilla tiene columnas Nombre, CodigoBarra, SKU, PrecioVenta, Costo, Stock, Categoria, Unidad (unit/kg/lt), AlertaStock. Si el producto ya existe (por código de barras o SKU) se actualiza; si no, se crea nuevo.
+
+2. Actualizar Precios > Excel (en Productos > Actualizar Precios): solo para cambiar precios. El dueño descarga la lista actual (3 columnas: Codigo, Nombre, Precio), modifica los precios y sube el archivo. Los precios se escriben como número directo: 1500, 25.50 (sin puntos de miles). El sistema muestra un preview antes de confirmar.
+
+⚠️ Error frecuente: subir la planilla de "Actualizar Precios" en "Importar Excel" genera el error "chk_products_price" porque el formato de columnas es distinto. Si un cliente reporta este error, preguntarle qué botón usó para subir el archivo.
 
 SOPORTE:
 - Starter: Chat Tawk.to (autogestión)
