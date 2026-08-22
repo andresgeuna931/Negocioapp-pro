@@ -219,7 +219,8 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
             const cell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
             if (cell) {
                 cell.t = 'n'; // tipo número
-                cell.z = '0.##'; // decimales opcionales, sin separador de miles
+                cell.z = '0.00'; // 2 decimales, sin separador de miles
+                delete cell.w;   // borrar texto cacheado para que el formato aplique
             }
         }
 
@@ -317,9 +318,41 @@ export function PriceUpdateForm({ categories }: PriceUpdateFormProps) {
                     <CardContent className="space-y-4">
                         <ol className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pl-4 list-decimal">
                             <li>Descargá la lista con tus productos y precios actuales</li>
-                            <li>Modificá solo los precios que querés cambiar — escribí el número directo: <span className="font-medium text-slate-600 dark:text-slate-300">1500</span> o <span className="font-medium text-slate-600 dark:text-slate-300">25.50</span> (sin puntos de miles)</li>
+                            <li>Modificá solo los precios que querés cambiar</li>
                             <li>Subí el archivo y revisá el preview antes de confirmar</li>
                         </ol>
+                        {/* Tabla de ejemplos de formato de precio */}
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
+                            <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-slate-500 dark:text-slate-400 font-medium">
+                                Ejemplos de cómo escribir el precio
+                            </div>
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                                        <th className="px-3 py-1.5 text-left text-slate-400 dark:text-slate-500 font-medium">Producto</th>
+                                        <th className="px-3 py-1.5 text-left text-slate-400 dark:text-slate-500 font-medium">Precio</th>
+                                        <th className="px-3 py-1.5 text-left text-slate-400 dark:text-slate-500 font-medium">Resultado</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    <tr>
+                                        <td className="px-3 py-1.5 text-slate-600 dark:text-slate-300">Coca Cola 1.5L</td>
+                                        <td className="px-3 py-1.5 font-mono font-medium text-emerald-600 dark:text-emerald-400">2500</td>
+                                        <td className="px-3 py-1.5 text-slate-400">$2.500,00 ✓</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="px-3 py-1.5 text-slate-600 dark:text-slate-300">Yogur (200g)</td>
+                                        <td className="px-3 py-1.5 font-mono font-medium text-emerald-600 dark:text-emerald-400">25.50</td>
+                                        <td className="px-3 py-1.5 text-slate-400">$25,50 ✓</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="px-3 py-1.5 text-slate-600 dark:text-slate-300">Papas (kg)</td>
+                                        <td className="px-3 py-1.5 font-mono font-medium text-emerald-600 dark:text-emerald-400">1200</td>
+                                        <td className="px-3 py-1.5 text-slate-400">$1.200,00 ✓</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <Button
                             variant="outline"
                             size="sm"
